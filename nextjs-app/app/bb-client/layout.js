@@ -1,0 +1,96 @@
+'use client';
+
+import { SidebarNav } from "./(sidebar)/sidebar";
+import { Header } from "../../components/navigation/header";
+import { Spinner } from "@/components/spinner";
+import authentication from "../../services/authentication";
+import { useEffect, useState } from 'react';
+import { redirect } from "next/navigation";
+import api from '@/apiConfig.json'
+
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar"
+
+export default function ClientLayout({ children }) {
+  
+  const [authState, setAuthState] = useState({
+    isLoading: true,
+    isAuthenticated: false,
+    isSubscriber: false,
+    isAdmin: false,
+    id: "",
+    role: "",
+  });
+
+    const [currentUserState, setCurrentUserState] = useState({
+      isLoading: true,
+      user: null
+    });
+
+  useEffect(() => {
+    async function loadData() {
+      // Check settings to decide sign-in requirement
+      let signInEnabled = true;
+      try {
+        const res = await fetch(`${api.ApiConfig.main}/${api.ApiConfig.settings.get.url}`, { credentials: 'include' });
+        const data = await res.json();
+        signInEnabled = data?.settings?.sign_in_enabled !== false;
+      } catch(_) {}
+
+      const auth = new authentication();
+      const currentUser = signInEnabled ? await auth.currentUser() : { isAuthenticated: true, isSubscriber: true, isAdmin: false, id: '__temp__', role: 'Subscriber' };
+  
+
+      setAuthState({
+        isLoading: false,
+        isAuthenticated: currentUser.isAuthenticated,
+        isSubscriber: currentUser.isSubscriber,
+        isAdmin: currentUser.isAdmin,
+        id: currentUser.id,
+        role: currentUser.role,
+      });
+    }
+    loadData();
+  }, []);
+
+
+ if (authState.isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  
+
+  // Redirect when sign-in required and not authenticated
+      if (!authState.isAuthenticated) {
+            redirect('/bb-auth/login');
+      }
+      else{
+        
+          return (
+              <div >
+                  <Header />
+                  <div className="h-full flex dark:bg-[#1F1F1F]" style={{ ['--sidebar-width']: '4rem' }}>
+                    <SidebarProvider>
+                      <SidebarNav />
+                      <SidebarInset>
+                        <main className="flex-1 h-full overflow-y-auto relative pt-16 group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-svh w-full">
+                          {children}
+                        </main>
+                        
+                      </SidebarInset>
+                    </SidebarProvider>
+                
+                  </div>
+              
+              </div>
+            );
+        }
+
+}

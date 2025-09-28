@@ -1,0 +1,8 @@
+{
+    "origin": ["http://192.168.1.161:3001", "http://localhost:3001", "http://127.0.0.1:8080", "http://localhost:3000","http://localhost:3002","http://192.168.1.173:3002", "http://192.168.1.161:3000", "http://192.168.1.173:3000", "http://192.168.1.173:3001", "http://192.168.1.173:3002", "http://192.168.1.173:3003"],
+    "methods": ["GET","HEAD","POST","DELETE","PUT","PATCH", "OPTIONS"],
+    "allowedHeaders": "Content-Type",
+    "exposeHeaders": false,
+    "credentials": true,
+    "maxAge": 90
+}

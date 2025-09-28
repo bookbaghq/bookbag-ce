@@ -1,0 +1,32 @@
+# Node modules (root and subpackages)
+node_modules/
+**/node_modules/
+
+# Next.js build artifacts
+nextjs-app/.next/
+nextjs-app/out/
+nextjs-app/.vercel/
+
+# Logs
+log/*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# SQLite databases (exclude all .sqlite/.sqlite3/.db files)
+*.sqlite
+*.sqlite3
+*.db
+**/*.sqlite
+**/*.sqlite3
+**/*.db
+
+# Env files
+.env
+.env.*.local
+nextjs-app/.env
+nextjs-app/.env.*.local
+
+# OS junk
+.DS_Store
+Thumbs.db
