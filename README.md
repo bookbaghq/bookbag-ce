@@ -146,4 +146,3 @@ Internal enablement and onboarding materials can be added under `doc/`.
 - Unified chat experience with streaming/tokens/thinking UI
 - Admin experiences for users, models, mail, and media
 - Works locally (SQLite) and can scale with MySQL‑backed contexts
-- Clean Next.js UI and socket‑based live updates
