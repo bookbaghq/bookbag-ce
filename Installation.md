@@ -40,7 +40,7 @@ Dev environment defaults to SQLite for the backend contexts; test/prod configs c
 1) Install dependencies
 ```bash
 # install Masterrecord
-npm Install -g masterrecord
+npm install -g masterrecord
 # run migrations development
 master=development masterrecord update-database-all
 # run migrations production

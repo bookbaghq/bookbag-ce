@@ -59,7 +59,7 @@ The recommended way to run Bookbag for development is the node‑native setup:
 1) Install dependencies
 ```bash
 # install Masterrecord
-npm Install -g masterrecord
+npm install -g masterrecord
 # run migrations development
 master=development masterrecord update-database-all
 # run migrations production
@@ -68,9 +68,18 @@ master=development masterrecord update-database-all
 npm install
 #then
 cd nextjs-app && npm install
+# running two servers in node js
+ 
 ```
 
-2) Start the backend
+2) Credentials
+```bash
+# password and email - please update after first use
+email: admin@bookbag.work
+password: password
+```
+
+3) Start the backend (Master.js)
 ```bash
 # from the repo root
 # master=development selects config/environments/env.development.json
@@ -78,11 +87,30 @@ master=development node server.js
 ```
 Backend default: http://127.0.0.1:8080
 
-3) Start the frontend (Next.js)
+4) Start the frontend (Next.js)
 ```bash
 cd nextjs-app
 npm run dev
 ```
+
+5) Run frontend (Next.js) and backend (Master.js) Development
+```bash
+# install concurrently tool (easiest for local dev)
+npm install -g concurrently
+# then run servers
+concurrently  "MASTER=development node server.js" "cd nextjs-app && npm run dev"
+```
+
+6) Run frontend (Next.js) and backend (Master.js) Production
+```bash
+# install PM2 (for long running / production)
+npm install -g pm2
+# then run servers
+pm2 start npm --name frontend -- run dev --cwd ./nextjs-app
+pm2 start server.js --name backend --env MASTER=development
+pm2 ls
+```
+
 Frontend default: http://localhost:3000 (root redirects to `/bb-auth/login`).
 
 ### MySQL configuration (test/prod)
