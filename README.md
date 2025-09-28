@@ -53,7 +53,7 @@ For product information, demos, and services, please contact the Bookbag team. R
 
 Supported OS: macOS/Linux/Windows (Node.js supported platforms). See `config/environments/*.json` for environment‑specific settings.
 
-## Installation
+## Installation (Bash Commands)
 The recommended way to run Bookbag for development is the node‑native setup:
 
 1) Install dependencies
@@ -76,7 +76,7 @@ cd nextjs-app && npm install
 ```bash
 # password and email - please update after first use
 email: admin@bookbag.work
-password: password
+password: admin
 ```
 
 3) Start the backend (Master.js)
