@@ -10,11 +10,11 @@ class Init extends masterrecord.schema {
     up(table){
         this.init(table);
         
-        this.createTable(table.User);
-        this.createTable(table.Auth);
-        this.createTable(table.Settings);
+     this.createTable(table.User);
+     this.createTable(table.Auth);
+     this.createTable(table.Settings);
 
-        this.seed('User', {
+      this.seed('User', {
             user_name: 'admin',
             email: 'admin@bookbag.work',
             role: 1,
@@ -39,9 +39,9 @@ class Init extends masterrecord.schema {
     down(table){
         this.init(table);
         
-        this.droptable(table.User);
-        this.droptable(table.Auth);
-        this.droptable(table.Settings);
+    this.droptable(table.User);
+    this.droptable(table.Auth);
+    this.droptable(table.Settings);
     }
 }
 module.exports = Init;

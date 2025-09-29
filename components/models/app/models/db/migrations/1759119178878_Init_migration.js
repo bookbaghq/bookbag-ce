@@ -47,6 +47,7 @@ class Init extends masterrecord.schema {
         created_at: Date.now().toString(),
         updated_at: Date.now().toString()
       });
+      
     }
 
     down(table){
