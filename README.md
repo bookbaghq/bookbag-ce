@@ -63,7 +63,7 @@ npm install -g masterrecord
 # run migrations development
 master=development masterrecord update-database-all
 # run migrations production
-master=development masterrecord update-database-all
+master=production masterrecord update-database-all
 # from the repo root
 npm install
 #then
