@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { contextService, modelService } from '../services/contextService';
 import { apiService } from '../services/apiService';
 import { calculateConversationTokenCount, preprocessInput } from '../tools/tokenUtils';
