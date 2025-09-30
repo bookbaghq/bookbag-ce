@@ -107,9 +107,13 @@ concurrently  "MASTER=development node server.js" "cd nextjs-app && npm run dev"
 ```bash
 # install PM2 (for long running / production)
 npm install -g pm2
-# then run servers
-pm2 start npm --name frontend -- run dev --cwd ./nextjs-app
+# run command inside root application folder
 pm2 start server.js --name backend --env MASTER=development
+# go into nextjs app folder
+cd nextjs-app
+# then run servers
+pm2 start npm --name "frontend" -- run dev
+
 pm2 ls
 ```
 
