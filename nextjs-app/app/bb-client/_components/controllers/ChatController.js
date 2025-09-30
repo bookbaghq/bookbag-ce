@@ -97,19 +97,27 @@ export function useChatController({
   }, [messages]);
 
   // Fetch context size on page load, model change, and after new messages arrive
+  const fetchContextSizeMemo = useCallback((overrideModelId = null) => {
+    return fetchContextSize(overrideModelId);
+  }, [fetchContextSize]);
+
   useEffect(() => {
     if (modelLimits && selectedModelId && !isStreaming) {
       const timer = setTimeout(() => {
-        fetchContextSize();
+        fetchContextSizeMemo();
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [selectedModelId, currentChatId, messages.length, isStreaming, modelLimits]);
+  }, [selectedModelId, currentChatId, messages.length, isStreaming, modelLimits, fetchContextSizeMemo]);
 
   // Initialize models on mount
+  const initializeModelsMemo = useCallback(() => {
+    return initializeModels();
+  }, [initializeModels]);
+
   useEffect(() => {
-    initializeModels();
-  }, []);
+    initializeModelsMemo();
+  }, [initializeModelsMemo]);
 
   // Auto-scroll to bottom when new messages arrive if the user is already at bottom
   useEffect(() => {

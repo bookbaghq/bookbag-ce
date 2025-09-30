@@ -51,7 +51,7 @@ export default function WorkspaceEditPage(){
     }
     load()
     return () => { stop = true }
-  }, [id])
+  }, [id, svc])
 
   if (!id) return (<div className="p-6">Invalid workspace id</div>)
   if (loading) return (<div className="p-6">Loading…</div>)

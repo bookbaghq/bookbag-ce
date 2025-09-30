@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import Swal from 'sweetalert2';
@@ -22,8 +22,8 @@ import userService from "../../../../../../services/userService";
 export default function EditUserPage() {
   // Get the id from the URL params
   const params = useParams();
-  const proServ = new profileService();
-  const userServ = new userService();
+  const proServ = useMemo(() => new profileService(), []);
+  const userServ = useMemo(() => new userService(), []);
   const urlId = params.id;
   
   // User data state

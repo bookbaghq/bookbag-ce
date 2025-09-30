@@ -4,7 +4,7 @@
 import profileService from "../../../../services/profileService";
 import userService from "../../../../services/userService";
 import Swal from 'sweetalert2';
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { 
@@ -41,8 +41,8 @@ export default function AllUsersPage() {
   const [paginatedUsers, setPaginatedUsers] = useState([]);
   const [totalPages, setTotalPages] = useState(1);
 
-  const proServ = new profileService();
-  const userServ = new userService();
+  const proServ = useMemo(() => new profileService(), []);
+  const userServ = useMemo(() => new userService(), []);
 
   // Function to delete a user and update the UI
   const deleteUsers = async (id) => {

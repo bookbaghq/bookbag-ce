@@ -290,7 +290,7 @@ export function SidebarNav(props) {
     if (expandedSections.allThreads && allThreads.length === 0) {
       fetchAllThreads();
     }
-  }, [expandedSections.allThreads]);
+  }, [expandedSections.allThreads, allThreads.length, fetchAllThreads]);
 
   // Expand section when active chat changes
   useEffect(() => {
@@ -499,7 +499,7 @@ export function SidebarNav(props) {
       }
     };
     loadExpanded();
-  }, [workspaces, workspaceExpanded]);
+  }, [workspaces, workspaceExpanded, workspaceChats]);
 
 
   const handleDeleteChat = async (chatId) => {
@@ -637,7 +637,7 @@ export function SidebarNav(props) {
             <Button
               key={item.id}
               variant="ghost"
-              className={`w-full flex items-center justify-start gap-3 h-auto p-1.5 ${
+              className={`w-full flex items-center justify-start gap-3 h-auto p-1.5 cursor-pointer ${
                 activeNavItem === item.id ? 'dark:bg-gray-800 bg-zinc-200' : 'hover:dark:bg-gray-800/50 hover:bg-zinc-200/50'
               }`}
               onClick={() => handleNavItemClick(item.id)}
@@ -747,7 +747,7 @@ export function SidebarNav(props) {
               <div className="space-y-1 mt-1">
                 {workspaces.map(ws => (
                   <div key={`ws-${ws.id}`} className="rounded-md mx-2">
-                    <button className="w-full flex items-center justify-between px-2 py-2 rounded hover:bg-zinc-200/50 dark:hover:bg-gray-800/50"
+                    <button className="w-full flex items-center justify-between px-2 py-2 rounded hover:bg-zinc-200/50 dark:hover:bg-gray-800/50 cursor-pointer"
                       onClick={() => toggleWorkspace(ws.id)}>
                       <span className="text-sm truncate mr-2">{ws.name}</span>
                       {workspaceExpanded[ws.id] ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
@@ -764,7 +764,7 @@ export function SidebarNav(props) {
                             onMouseEnter={() => { if (chatId != null) setHoveredThread(`ws:${ws.id}:${chatId}`); }}
                             onMouseLeave={() => setHoveredThread(null)}
                           > 
-                            <div className="flex-1 relative overflow-hidden mx-1 cursor-pointer transition-colors dark:hover:bg-gray-800/50 hover:bg-zinc-200/70 min-w-0"
+                            <div className="flex-1 relative overflow-hidden mx-1 cursor-pointer transition-colors dark:hover:bg-gray-800/50 hover:bg-zinc-200/70 min-w-0 cursor-pointer"
                               onClick={() => { if (chatId != null) handleChatClick({ id: chatId }); }}>
                               <div className="flex items-center px-1 py-1 min-w-0">
                                 <div className="flex-1 min-w-0">
@@ -782,7 +782,7 @@ export function SidebarNav(props) {
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      className={`h-6 w-6 p-0 transition-opacity relative z-20 hover:bg-transparent border-none bg-transparent ${
+                                      className={`h-6 w-6 p-0 transition-opacity relative z-20 hover:bg-transparent border-none bg-transparent cursor-pointer ${
                                         hoveredThread === `ws:${ws.id}:${chatId}` ? 'opacity-100' : 'opacity-0'
                                       }`}
                                       onClick={(e) => e.stopPropagation()}
@@ -869,7 +869,7 @@ export function SidebarNav(props) {
             <div className="mb-4">
               <Button
                 variant="ghost"
-                className="w-full flex items-center justify-between px-4 py-1 h-auto text-left"
+                className="w-full flex items-center justify-between px-4 py-1 h-auto text-left cursor-pointer"
                 onClick={() => toggleSection('favorites')}
               >
                 <div className="flex items-center gap-2">
@@ -911,7 +911,7 @@ export function SidebarNav(props) {
             <div className="mb-4">
               <Button
                 variant="ghost"
-                className="w-full flex items-center justify-between px-4 py-1 h-auto text-left"
+                className="w-full flex items-center justify-between px-4 py-1 h-auto text-left cursor-pointer"
                 onClick={() => toggleSection('recent')}
               >
                 <span className="text-sm font-medium text-gray-500">Recent</span>
@@ -962,7 +962,7 @@ export function SidebarNav(props) {
             <div className="mb-4">
               <Button
                 variant="ghost"
-                className="w-full flex items-center justify-between px-4 py-1 h-auto text-left"
+                className="w-full flex items-center justify-between px-4 py-1 h-auto text-left cursor-pointer"
                 onClick={() => toggleSection('yesterday')}
               >
                 <span className="text-sm font-medium text-gray-500">Yesterday</span>
@@ -1013,7 +1013,7 @@ export function SidebarNav(props) {
             <div className="mb-4">
               <Button
                 variant="ghost"
-                className="w-full flex items-center justify-between px-4 py-1 h-auto text-left"
+                className="w-full flex items-center justify-between px-4 py-1 h-auto text-left cursor-pointer"
                 onClick={() => toggleSection('previousWeek')}
               >
                 <span className="text-sm font-medium text-gray-500">Previous 7 Days</span>

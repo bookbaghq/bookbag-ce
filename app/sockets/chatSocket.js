@@ -155,6 +155,7 @@ class chatSocket {
 								settings: Object.keys(wsSettings).length > 0 ? wsSettings : (this.modelConfig.settings || {})
 							};
 							this.modelSettings = this.modelConfig.settings || {};
+						}
 						} catch (e) {
 							console.error('⚠️ Workspace overrides failed:', e?.message);
 						}

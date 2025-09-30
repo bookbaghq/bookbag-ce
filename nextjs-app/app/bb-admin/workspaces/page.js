@@ -48,13 +48,13 @@ export default function WorkspacesPage(){
     try { const res = await svc.list({ q }); if (res?.success && Array.isArray(res.workspaces)) setItems(res.workspaces) } catch(_) { setItems([]) } finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [load])
 
   // Live search as you type (debounced)
   useEffect(() => {
     const handle = setTimeout(() => { load() }, 300)
     return () => clearTimeout(handle)
-  }, [q])
+  }, [q, load])
 
   // Load profiles list for optional association
   useEffect(() => {
@@ -181,10 +181,10 @@ export default function WorkspacesPage(){
             <div className="font-semibold">{w.name}</div>
             <div className="text-sm text-muted-foreground truncate">{w.description || ''}</div>
             <div className="mt-3 flex gap-2">
-              <button onClick={() => openEdit(w)} className="inline-flex items-center justify-center rounded-md border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground h-9 px-4">Edit</button>
+              <button onClick={() => openEdit(w)} className="inline-flex items-center justify-center rounded-md border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground h-9 px-4 cursor-pointer">Edit</button>
               <button
                 onClick={() => openDelete(w)}
-                className="inline-flex items-center justify-center rounded-md border-0 bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90 hover:text-white h-9 px-4"
+                className="inline-flex items-center justify-center rounded-md border-0 bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90 hover:text-white h-9 px-4 cursor-pointer"
                 title="Delete workspace"
                 aria-label="Delete workspace"
               >

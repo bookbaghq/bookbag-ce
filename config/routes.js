@@ -1,5 +1,6 @@
 
 var master = require('mastercontroller');
+var router = master.router.start();
 
 //var router = master.router.start();
 //an example of using a slug

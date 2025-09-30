@@ -99,46 +99,46 @@ export default function ModelLibraryPage() {
   useEffect(() => { setOaCategory('all') }, [provider])
 
   // Client-side fuzzy filtering for models (title only)
-  const category = (oaCategory || 'all').toLowerCase()
-  const catMatchers = provider === 'grok'
-    ? {
-        grok4: ['grok-4', 'grok4'],
-        grok3: ['grok-3', 'grok3'],
-        grok2: ['grok-2', 'grok2'],
-        grokcode: ['grok-code', 'grokcode']
-      }
-    : {
-        gpt5: ['gpt-5', 'gpt5'],
-        gpt4: ['gpt-4', 'gpt4', 'gpt-4o', 'gpt-4.1', 'gpt-4o-mini'],
-        gpt3: ['gpt-3', 'gpt3'],
-        mini: ['mini'],
-        nano: ['nano']
-      }
-  const matchesCategory = (name) => {
-    if (category === 'all') return true
-    const keys = catMatchers[category] || []
-    const lower = (name || '').toLowerCase()
-    return keys.some(k => lower.includes(k))
-  }
-  const score = (name) => {
-    const term = (searchTerm || '').toLowerCase().trim()
-    const lower = (name || '').toLowerCase()
-    let s = 0
-    if (term) {
-      const idx = lower.indexOf(term)
-      if (idx >= 0) s += (1000 - idx)
-    }
-    if (category !== 'all') {
-      const keys = catMatchers[category] || []
-      for (const k of keys) {
-        const idx = lower.indexOf(k)
-        if (idx >= 0) { s += (500 - idx); break }
-      }
-    }
-    return s
-  }
-
   const filteredModels = useMemo(() => {
+    const category = (oaCategory || 'all').toLowerCase()
+    const catMatchers = provider === 'grok'
+      ? {
+          grok4: ['grok-4', 'grok4'],
+          grok3: ['grok-3', 'grok3'],
+          grok2: ['grok-2', 'grok2'],
+          grokcode: ['grok-code', 'grokcode']
+        }
+      : {
+          gpt5: ['gpt-5', 'gpt5'],
+          gpt4: ['gpt-4', 'gpt4', 'gpt-4o', 'gpt-4.1', 'gpt-4o-mini'],
+          gpt3: ['gpt-3', 'gpt3'],
+          mini: ['mini'],
+          nano: ['nano']
+        }
+    const matchesCategory = (name) => {
+      if (category === 'all') return true
+      const keys = catMatchers[category] || []
+      const lower = (name || '').toLowerCase()
+      return keys.some(k => lower.includes(k))
+    }
+    const score = (name) => {
+      const term = (searchTerm || '').toLowerCase().trim()
+      const lower = (name || '').toLowerCase()
+      let s = 0
+      if (term) {
+        const idx = lower.indexOf(term)
+        if (idx >= 0) s += (1000 - idx)
+      }
+      if (category !== 'all') {
+        const keys = catMatchers[category] || []
+        for (const k of keys) {
+          const idx = lower.indexOf(k)
+          if (idx >= 0) { s += (500 - idx); break }
+        }
+      }
+      return s
+    }
+
     const list = provider === 'grok' ? (grokResults || []) : (oaResults || [])
     const term = (searchTerm || '').toLowerCase().trim()
     return list
@@ -147,7 +147,7 @@ export default function ModelLibraryPage() {
       .filter(x => (term ? x.s > 0 : true))
       .sort((a, b) => b.s - a.s)
       .map(x => x.m)
-  }, [provider, grokResults, oaResults, oaCategory, searchTerm, matchesCategory, score])
+  }, [provider, grokResults, oaResults, oaCategory, searchTerm])
 
   return (
     <div className="space-y-6 p-6 md:p-10">

@@ -2,7 +2,7 @@
 
 import profileService from "../../../../services/profileService";
 import userService from "../../../../services/userService";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Swal from 'sweetalert2';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -21,8 +21,8 @@ import {
 
 
 export default function ProfilePage() {
-  const proServ = new profileService();
-  const userServ = new userService();
+  const proServ = useMemo(() => new profileService(), []);
+  const userServ = useMemo(() => new userService(), []);
   // State setup
   const [user, setUser] = useState({
     userName: "",
