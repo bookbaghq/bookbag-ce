@@ -344,7 +344,7 @@ export function SidebarNav(props) {
     } catch (_) {}
   };
 
-  const fetchAllThreads = async () => {
+  async function fetchAllThreads() {
     try {
       setAllThreadsLoading(true);
       const apiUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main}/bb-chat/api/chat/all?limit=20`;
@@ -379,7 +379,7 @@ export function SidebarNav(props) {
     } finally {
       setAllThreadsLoading(false);
     }
-  };
+  }
 
   const fetchAdminChats = async () => {
     try {
