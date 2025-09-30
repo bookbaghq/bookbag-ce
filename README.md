@@ -60,6 +60,8 @@ The recommended way to run Bookbag for development is the node‑native setup:
 ```bash
 # install Masterrecord
 npm install -g masterrecord
+# enable migrations
+masterrecord enable-migrations-all
 # run migrations development
 master=development masterrecord update-database-all
 # run migrations production
