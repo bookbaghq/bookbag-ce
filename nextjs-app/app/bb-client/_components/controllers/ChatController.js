@@ -197,7 +197,7 @@ export function useChatController({
   };
 
 
-  const initializeModels = async () => {
+  async function initializeModels() {
     try {
       // Provide chatId and hint if it's workspace-created for scoped filtering
       modelService.currentChatId = currentChatId;
@@ -211,7 +211,7 @@ export function useChatController({
     } catch (error) {
       console.error('Failed to initialize models:', error);
     }
-  };
+  }
   const buildModelStorageKey = (chatId) => {
     const base = 'bb:selectedModel';
     return chatId ? `${base}:${chatId}` : base;
@@ -284,7 +284,7 @@ export function useChatController({
   }, [currentChatId]);
 
 
-  const fetchContextSize = async (overrideModelId = null) => {
+  async function fetchContextSize(overrideModelId = null) {
     const modelIdToUse = overrideModelId || selectedModelId;
     if (!modelIdToUse) return;
 
@@ -299,7 +299,7 @@ export function useChatController({
     } finally {
       setContextLoading(false);
     }
-  };
+  }
 
   const handleModelSelection = (modelId) => {
     const selectedModel = modelService.setSelectedModel(modelId);
