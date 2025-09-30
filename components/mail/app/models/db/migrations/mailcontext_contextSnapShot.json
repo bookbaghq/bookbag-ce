@@ -1,6 +1,0 @@
-{
-  "contextLocation": "../../mailContext.js",
-  "migrationFolder": ".",
-  "snapShotLocation": "mailcontext_contextSnapShot.json",
-  "schema": []
-}
