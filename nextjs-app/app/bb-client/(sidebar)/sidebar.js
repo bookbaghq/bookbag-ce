@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { SearchModal } from "../_components/search-modal";
+import WorkspaceService from "@/services/workspaceService";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -167,8 +168,11 @@ export function SidebarNav(props) {
   const [loading, setLoading] = useState(true);
   const [allThreadsLoading, setAllThreadsLoading] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
-  const [openDropdown, setOpenDropdown] = useState(null);
-  const [hoveredThread, setHoveredThread] = useState(null);
+  const [openDropdown, setOpenDropdown] = useState(null); // composite key: scope:id or scope:wsId:chatId
+  const [hoveredThread, setHoveredThread] = useState(null); // composite key: scope:id or scope:wsId:chatId
+  const [workspaces, setWorkspaces] = useState([]);
+  const [workspaceExpanded, setWorkspaceExpanded] = useState({});
+  const [workspaceChats, setWorkspaceChats] = useState({});
   
   // AlertDialog state management
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -195,11 +199,90 @@ export function SidebarNav(props) {
   }, [expandedSections.favorites]);
 
   useEffect(() => {
+    // Handle global deletion/archival events to keep sidebar in sync
+    const onDeleted = (e) => {
+      const id = e?.detail?.chatId;
+      if (!id) return;
+      // Remove from all local state arrays, including workspace lists
+      setAllThreads(prev => prev.filter(thread => String(thread.id) !== String(id)));
+      setChatData(prev => ({
+        favorites: prev.favorites.filter(chat => String(chat.id) !== String(id)),
+        recent: prev.recent.filter(chat => String(chat.id) !== String(id)),
+        yesterday: prev.yesterday.filter(chat => String(chat.id) !== String(id)),
+        previousWeek: prev.previousWeek.filter(chat => String(chat.id) !== String(id))
+      }));
+      setWorkspaceChats(prev => {
+        const next = { ...prev };
+        for (const wid of Object.keys(next)) {
+          next[wid] = (next[wid] || []).filter(c => String((c?.id ?? c?.chat_id)) !== String(id));
+        }
+        return next;
+      });
+    };
+    const onArchived = onDeleted;
+    const onTitleUpdated = (e) => {
+      const id = e?.detail?.chatId;
+      const t = e?.detail?.title;
+      if (!id || typeof t !== 'string') return;
+      const updateTitle = (arr) => arr.map(c => (String(c.id) === String(id) ? { ...c, title: t } : c));
+      setAllThreads(prev => updateTitle(prev));
+      setChatData(prev => ({
+        favorites: updateTitle(prev.favorites),
+        recent: updateTitle(prev.recent),
+        yesterday: updateTitle(prev.yesterday),
+        previousWeek: updateTitle(prev.previousWeek)
+      }));
+      setWorkspaceChats(prev => {
+        const next = { ...prev };
+        for (const wid of Object.keys(next)) {
+          next[wid] = (next[wid] || []).map(c => {
+            const cid = (c && (c.id != null ? c.id : c.chat_id != null ? c.chat_id : null));
+            if (String(cid) === String(id)) {
+              return { ...c, title: t };
+            }
+            return c;
+          });
+        }
+        return next;
+      });
+    };
+    try {
+      window.addEventListener('bb:chat-deleted', onDeleted);
+      window.addEventListener('bb:chat-archived', onArchived);
+      window.addEventListener('bb:chat-title-updated', onTitleUpdated);
+    } catch (_) {}
+
+    return () => {
+      try {
+        window.removeEventListener('bb:chat-deleted', onDeleted);
+        window.removeEventListener('bb:chat-archived', onArchived);
+        window.removeEventListener('bb:chat-title-updated', onTitleUpdated);
+      } catch (_) {}
+    };
+  }, []);
+
+  useEffect(() => {
     fetchFavorites();
     fetchRecent();
     fetchYesterday();
     fetchPreviousWeek();
     fetchAdminChats();
+    // Load user's workspaces
+    (async () => {
+      try {
+        const svc = new WorkspaceService();
+        const data = await svc.my();
+        if (data?.success && Array.isArray(data.workspaces)) setWorkspaces(data.workspaces);
+      } catch (_) {}
+    })();
+    // Restore workspace expanded states
+    try {
+      const saved = localStorage.getItem('sidebarWorkspaceExpanded');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') setWorkspaceExpanded(parsed);
+      }
+    } catch (_) {}
   }, []);
 
   // Auto-fetch threads if All Threads section is expanded on page load
@@ -387,13 +470,44 @@ export function SidebarNav(props) {
     }
   };
 
+  const toggleWorkspace = async (wid) => {
+    const next = !workspaceExpanded[wid];
+    const updated = { ...workspaceExpanded, [wid]: next };
+    setWorkspaceExpanded(updated);
+    try { localStorage.setItem('sidebarWorkspaceExpanded', JSON.stringify(updated)); } catch (_) {}
+    if (next && !workspaceChats[wid]) {
+      try {
+        const svc = new WorkspaceService();
+        const res = await svc.listChats(wid);
+        if (res?.success) setWorkspaceChats(prev => ({ ...prev, [wid]: res.chats || [] }));
+      } catch (_) {}
+    }
+  };
+
+  // Auto-load chats for any workspaces that are restored as expanded on page load
+  useEffect(() => {
+    const loadExpanded = async () => {
+      const svc = new WorkspaceService();
+      for (const ws of workspaces) {
+        const wid = ws.id;
+        if (workspaceExpanded[wid] && !workspaceChats[wid]) {
+          try {
+            const res = await svc.listChats(wid);
+            if (res?.success) setWorkspaceChats(prev => ({ ...prev, [wid]: res.chats || [] }));
+          } catch (_) {}
+        }
+      }
+    };
+    loadExpanded();
+  }, [workspaces, workspaceExpanded]);
+
 
   const handleDeleteChat = async (chatId) => {
     try {
       console.log('Deleting chat:', chatId);
       
       // Call DELETE API endpoint
-      const apiUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main}/bb-chat/api/chat/${chatId}`;
+      const apiUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main}/bb-chat/api/chat/${chatId}/delete`;
       const response = await fetch(apiUrl, {
         method: 'DELETE',
         credentials: 'include'
@@ -418,6 +532,16 @@ export function SidebarNav(props) {
             yesterday: prev.yesterday.filter(chat => chat.id.toString() !== chatId.toString()),
             previousWeek: prev.previousWeek.filter(chat => chat.id.toString() !== chatId.toString())
           }));
+          setWorkspaceChats(prev => {
+            const next = { ...prev };
+            for (const wid of Object.keys(next)) {
+              next[wid] = (next[wid] || []).filter(c => String((c?.id ?? c?.chat_id)) !== String(chatId));
+            }
+            return next;
+          });
+
+          // Broadcast global event for any other UI listeners
+          try { window.dispatchEvent(new CustomEvent('bb:chat-deleted', { detail: { chatId } })); } catch (_) {}
           
           // If we deleted the currently active chat, navigate to main page
           if (activeChatId && activeChatId.toString() === chatId.toString()) {
@@ -442,7 +566,7 @@ export function SidebarNav(props) {
       console.log('Archiving chat:', chatId);
       
       // Call PATCH API endpoint
-      const apiUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main}/bb-chat/api/chat/${chatId}/archive`;
+      const apiUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main}/bb-chat/api/chat/${chatId}/delete`;
       const response = await fetch(apiUrl, {
         method: 'PATCH',
         credentials: 'include'
@@ -467,6 +591,16 @@ export function SidebarNav(props) {
             yesterday: prev.yesterday.filter(chat => chat.id.toString() !== chatId.toString()),
             previousWeek: prev.previousWeek.filter(chat => chat.id.toString() !== chatId.toString())
           }));
+          setWorkspaceChats(prev => {
+            const next = { ...prev };
+            for (const wid of Object.keys(next)) {
+              next[wid] = (next[wid] || []).filter(c => String((c?.id ?? c?.chat_id)) !== String(chatId));
+            }
+            return next;
+          });
+
+          // Broadcast global event for any other UI listeners
+          try { window.dispatchEvent(new CustomEvent('bb:chat-archived', { detail: { chatId } })); } catch (_) {}
           
           // If we archived the currently active chat, navigate to main page
           if (activeChatId && activeChatId.toString() === chatId.toString()) {
@@ -561,7 +695,7 @@ export function SidebarNav(props) {
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction
-                        className="bg-yellow-600 hover:bg-yellow-700"
+                        className="bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60"
                         onClick={() => handleArchiveChat(activeChatId)}
                       >
                         Yes, Archive
@@ -606,17 +740,118 @@ export function SidebarNav(props) {
       {/* Scrollable chat history section */}
       <SidebarContent className="px-2 flex-grow overflow-hidden">
         <ScrollArea className="h-full pr-2">
+          {/* Workspaces section */}
+          {workspaces.length > 0 && (
+            <div className="mb-4">
+              <div className="px-4 py-1 text-sm font-medium text-gray-500">Workspaces</div>
+              <div className="space-y-1 mt-1">
+                {workspaces.map(ws => (
+                  <div key={`ws-${ws.id}`} className="rounded-md mx-2">
+                    <button className="w-full flex items-center justify-between px-2 py-2 rounded hover:bg-zinc-200/50 dark:hover:bg-gray-800/50"
+                      onClick={() => toggleWorkspace(ws.id)}>
+                      <span className="text-sm truncate mr-2">{ws.name}</span>
+                      {workspaceExpanded[ws.id] ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
+                    </button>
+                    {workspaceExpanded[ws.id] && (
+                      <div className="ml-3 pl-2 border-l border-gray-200 dark:border-gray-700 space-y-1">
+                        {(workspaceChats[ws.id] || []).map((c, idx) => {
+                          const chatId = (c && (c.id != null ? c.id : c.chat_id != null ? c.chat_id : null));
+                          const keyId = chatId != null ? chatId : `tmp-${idx}`;
+                          return (
+                          <div 
+                            key={`wsc-${ws.id}-${keyId}`} 
+                            className={`flex items-center justify-between rounded-md mx-2 mb-1 w-full ${isChatActive(chatId) ? 'dark:bg-gray-800/60 bg-zinc-200/60 border-l-2 border-zinc-400 dark:border-gray-600' : ''}`}
+                            onMouseEnter={() => { if (chatId != null) setHoveredThread(`ws:${ws.id}:${chatId}`); }}
+                            onMouseLeave={() => setHoveredThread(null)}
+                          > 
+                            <div className="flex-1 relative overflow-hidden mx-1 cursor-pointer transition-colors dark:hover:bg-gray-800/50 hover:bg-zinc-200/70 min-w-0"
+                              onClick={() => { if (chatId != null) handleChatClick({ id: chatId }); }}>
+                              <div className="flex items-center px-1 py-1 min-w-0">
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-medium text-xs truncate dark:text-gray-200 text-zinc-800">{c.title || `Chat ${chatId ?? ''}`}</h4>
+                                </div>
+                              </div>
+                            </div>
+                            {chatId != null && (
+                              <div className="flex-shrink-0 flex items-center justify-end w-6 mr-2">
+                                <DropdownMenu 
+                                  open={openDropdown === `ws:${ws.id}:${chatId}`} 
+                                  onOpenChange={(open) => setOpenDropdown(open ? `ws:${ws.id}:${chatId}` : null)}
+                                >
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className={`h-6 w-6 p-0 transition-opacity relative z-20 hover:bg-transparent border-none bg-transparent ${
+                                        hoveredThread === `ws:${ws.id}:${chatId}` ? 'opacity-100' : 'opacity-0'
+                                      }`}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <MoreHorizontal className="h-4 w-4 text-gray-400 hover:text-white" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-48 z-50">
+                                    <DropdownMenuItem 
+                                      onClick={() => {
+                                        setSelectedThreadId(chatId);
+                                        setOpenDropdown(null);
+                                        setArchiveDialogOpen(true);
+                                      }}
+                                      className="flex items-center gap-2"
+                                    >
+                                      <Archive className="h-4 w-4" />
+                                      Archive
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      onClick={() => {
+                                        setSelectedThreadId(chatId);
+                                        setOpenDropdown(null);
+                                        setDeleteDialogOpen(true);
+                                      }}
+                                      className="flex items-center gap-2 text-red-600 dark:text-red-400"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            )}
+                          </div>
+                          );
+                        })}
+                        <div className="mx-2">
+                          <Button variant="ghost" size="sm" className="h-7 text-xs w-full" onClick={async () => {
+                            try {
+                              const svc = new WorkspaceService();
+                              const res = await svc.createWorkspaceChat(ws.id, 'thread');
+                              if (res?.success && res.chat?.id) {
+                                // Refresh chats under this workspace and navigate to the new chat
+                                const list = await svc.listChats(ws.id);
+                                if (list?.success) setWorkspaceChats(prev => ({ ...prev, [ws.id]: list.chats || [] }));
+                                window.location.href = `/bb-client/${res.chat.id}`;
+                              }
+                            } catch (_) {}
+                          }}>+ New chat</Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {/* Admin-created chats list (simple) */}
           {adminChats.length > 0 && (
             <div className="mb-2">
               {adminChats.map(chat => {
-                const colors = ['bg-blue-500','bg-emerald-500','bg-amber-500','bg-purple-500','bg-rose-500'];
+                const colors = ['bg-zinc-500','bg-emerald-500','bg-amber-500','bg-purple-500','bg-rose-500'];
                 const dot = colors[Number(chat.id) % colors.length];
                 return (
                   <div key={`admin-${chat.id}`} className="flex items-center justify-between rounded-md mx-2 mb-1 px-3 py-2 cursor-pointer dark:hover:bg-gray-800/50 hover:bg-zinc-200/50" onClick={() => handleChatClick(chat)}>
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-sm font-medium text-blue-700 dark:text-blue-300 truncate max-w-[170px]">{(chat.title || '').replace(/\.+$/, '')}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200 shrink-0">{chat.timestamp || formatRelativeTime(chat.updated_at)}</span>
+                      <span className="text-sm font-medium text-zinc-900 dark:text-gray-200 truncate max-w-[170px]">{(chat.title || '').replace(/\.+$/, '')}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-zinc-100 text-zinc-700 dark:bg-gray-800/60 dark:text-gray-300 shrink-0">{chat.timestamp || formatRelativeTime(chat.updated_at)}</span>
                     </div>
                     <span className={`h-2.5 w-2.5 rounded-full ${dot}`}></span>
                   </div>
@@ -693,7 +928,7 @@ export function SidebarNav(props) {
                       key={chat.id}
                       className={`rounded-md overflow-hidden mx-2 mb-2 cursor-pointer transition-colors ${
                         isChatActive(chat.id) 
-                          ? 'dark:bg-blue-900/50 bg-blue-100 border-l-2 border-blue-500' 
+                          ? 'dark:bg-gray-800/60 bg-zinc-200/60 border-l-2 border-zinc-400 dark:border-gray-600' 
                           : 'dark:hover:bg-gray-800/50 hover:bg-zinc-200/70'
                       }`}
                       onClick={() => handleChatClick(chat)}
@@ -702,7 +937,7 @@ export function SidebarNav(props) {
                         <div className="flex justify-between items-start mb-1">
                           <h4 className={`font-medium text-sm ${
                             isChatActive(chat.id) 
-                              ? 'dark:text-blue-200 text-blue-800' 
+                              ? 'dark:text-gray-200 text-zinc-900' 
                               : 'dark:text-gray-200 text-zinc-800'
                           }`}>
                             {(chat.title || '').replace(/\.+$/, '')}
@@ -744,7 +979,7 @@ export function SidebarNav(props) {
                       key={chat.id}
                       className={`rounded-md overflow-hidden mx-2 mb-2 cursor-pointer transition-colors ${
                         isChatActive(chat.id) 
-                          ? 'dark:bg-blue-900/50 bg-blue-100 border-l-2 border-blue-500' 
+                          ? 'dark:bg-gray-800/60 bg-zinc-200/60 border-l-2 border-zinc-400 dark:border-gray-600' 
                           : 'dark:hover:bg-gray-800/50 hover:bg-zinc-200/70'
                       }`}
                       onClick={() => handleChatClick(chat)}
@@ -753,7 +988,7 @@ export function SidebarNav(props) {
                         <div className="flex justify-between items-start mb-1">
                           <h4 className={`font-medium text-sm ${
                             isChatActive(chat.id) 
-                              ? 'dark:text-blue-200 text-blue-800' 
+                              ? 'dark:text-gray-200 text-zinc-900' 
                               : 'dark:text-gray-200 text-zinc-800'
                           }`}>
                             {(chat.title || '').replace(/\.+$/, '')}
@@ -795,7 +1030,7 @@ export function SidebarNav(props) {
                       key={chat.id}
                       className={`rounded-md overflow-hidden mx-2 mb-2 cursor-pointer transition-colors ${
                         isChatActive(chat.id) 
-                          ? 'dark:bg-blue-900/50 bg-blue-100 border-l-2 border-blue-500' 
+                          ? 'dark:bg-gray-800/60 bg-zinc-200/60 border-l-2 border-zinc-400 dark:border-gray-600' 
                           : 'dark:hover:bg-gray-800/50 hover:bg-zinc-200/70'
                       }`}
                       onClick={() => handleChatClick(chat)}
@@ -804,7 +1039,7 @@ export function SidebarNav(props) {
                         <div className="flex justify-between items-start mb-1">
                           <h4 className={`font-medium text-sm mr-2 ${
                             isChatActive(chat.id) 
-                              ? 'dark:text-blue-200 text-blue-800' 
+                              ? 'dark:text-gray-200 text-zinc-900' 
                               : 'dark:text-gray-200 text-zinc-800'
                           }`}>
                             {(chat.title || '').replace(/\.+$/, '')}
@@ -853,7 +1088,7 @@ export function SidebarNav(props) {
                       key={thread.id}
                       className="flex items-center justify-between rounded-md mx-2 mb-2 w-full"
                       style={isChatActive(thread.id) ? { backgroundColor: 'rgba(57, 58, 59, 0.5)' } : {}}
-                      onMouseEnter={() => setHoveredThread(thread.id)}
+                      onMouseEnter={() => setHoveredThread(`all:${thread.id}`)}
                       onMouseLeave={() => setHoveredThread(null)}
                     >
                       <div 
@@ -898,15 +1133,15 @@ export function SidebarNav(props) {
                       
                       <div className="flex-shrink-0 flex items-center justify-end w-6 mr-2">
                         <DropdownMenu 
-                          open={openDropdown === thread.id} 
-                          onOpenChange={(open) => setOpenDropdown(open ? thread.id : null)}
+                          open={openDropdown === `all:${thread.id}`} 
+                          onOpenChange={(open) => setOpenDropdown(open ? `all:${thread.id}` : null)}
                         >
                           <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
                               size="sm"
                               className={`h-6 w-6 p-0 transition-opacity relative z-20 hover:bg-transparent border-none bg-transparent ${
-                                hoveredThread === thread.id ? 'opacity-100' : 'opacity-0'
+                                hoveredThread === `all:${thread.id}` ? 'opacity-100' : 'opacity-0'
                               }`}
                               onClick={(e) => e.stopPropagation()}
                             >
@@ -1033,7 +1268,7 @@ export function SidebarNav(props) {
             Cancel
           </AlertDialogCancel>
           <AlertDialogAction
-            className="bg-red-600 hover:bg-red-700"
+            className="bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60"
             onClick={() => {
               if (selectedThreadId) {
                 handleDeleteChat(selectedThreadId);

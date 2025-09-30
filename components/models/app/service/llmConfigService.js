@@ -100,8 +100,20 @@ class llmConfigService {
         }
 
 
-        // Apply overrides for this model
-        const overrides = ctx.ModelOverrides.where(o => o.model_id == $$, modelId).toList();
+        // Apply overrides for this model (defensive: ensure iterable)
+        let overrides = [];
+        try {
+            const raw = ctx.ModelOverrides.where(o => o.model_id == $$, modelId).toList();
+            if (Array.isArray(raw)) {
+                overrides = raw;
+            } else if (raw && typeof raw[Symbol.iterator] === 'function') {
+                overrides = Array.from(raw);
+            } else if (raw) {
+                overrides = [raw];
+            }
+        } catch (_) {
+            overrides = [];
+        }
         const effective = { ...defaults };
         for (const ov of overrides) {
             try {
@@ -189,6 +201,29 @@ class llmConfigService {
     clearCache() {
         this.configCache = null;
         this.lastCacheTime = 0;
+    }
+
+    // Returns the first published model id (or null if none)
+    async getFirstPublishedModelId() {
+        try {
+            const modelContext = require(`${this.getRootDir()}/components/models/app/models/modelContext`);
+            const ctx = new modelContext();
+            let list = [];
+            try {
+                list = ctx.Model
+                    .where(r => r.is_published == $$, 1)
+                    .orderBy(m => m.created_at)
+                    .toList();
+            } catch (_) {
+                list = [];
+            }
+            if (Array.isArray(list) && list.length > 0) {
+                return list[0].id;
+            }
+            return null;
+        } catch (_) {
+            return null;
+        }
     }
 }
 

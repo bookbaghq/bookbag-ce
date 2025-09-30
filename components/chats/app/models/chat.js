@@ -22,6 +22,10 @@ class Chat {
         db.boolean().default(false);
     }
 
+    is_workplace_created(db){
+        db.boolean().default(false);
+    }
+
     total_token_count(db){
         // the total token amount of the whole session
         // if the session count gets to big create a new session or trucate the messages

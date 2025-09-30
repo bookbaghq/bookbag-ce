@@ -144,6 +144,23 @@ export class ModelService {
       this.modelsLoading = true;
       const backendUrl = api.ApiConfig.main;
 
+      // If chat is workspace-created, fetch allowed model IDs and filter; else return full list
+      let allowedModelIds = null;
+      try {
+        const chatIdCandidate = this.currentChatId || null;
+        if (chatIdCandidate && this.currentChatIsWorkspace) {
+          const url = new URL(`${backendUrl}/bb-workspace/api/chat/allowed-models`);
+          url.searchParams.set('chatId', String(chatIdCandidate));
+          const allowRes = await fetch(url.toString(), { credentials: 'include' });
+          if (allowRes.ok) {
+            const allowData = await allowRes.json();
+            if (allowData?.success && Array.isArray(allowData.models) && allowData.models.length > 0) {
+              allowedModelIds = new Set(allowData.models.map(String));
+            }
+          }
+        }
+      } catch (_) { /* non-fatal */ }
+
       // Use DB-backed published models list (bb-models namespace)
       const response = await fetch(`${backendUrl}/bb-models/api/models/published`, {
         credentials: 'include'
@@ -161,12 +178,16 @@ export class ModelService {
         
         if (data.success && Array.isArray(data.models)) {
           // Map to structure expected by UI; include label "name (type)"
-          this.availableModels = data.models.map(m => ({
+          let models = data.models.map(m => ({
             id: String(m.id),
             name: m.label || (m.type ? `${m.name} (${m.type})` : m.name),
             rawName: m.name,
             type: m.type
           }));
+          if (allowedModelIds) {
+            models = models.filter(m => allowedModelIds.has(String(m.id)));
+          }
+          this.availableModels = models;
           
           // Set the first model as selected by default (preselect first one)
           if (this.availableModels.length > 0 && !this.selectedModelId) {

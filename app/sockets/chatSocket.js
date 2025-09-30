@@ -51,6 +51,117 @@ class chatSocket {
 			this.modelConfig = modelResult;
 			this.modelSettings = this.modelConfig.settings || {};
 
+			// Workspace-aware overrides: prompt template, system prompt, and settings via workspace Profile/Overrides
+			try {
+				// Attempt to detect if chat is workspace-created and load its workspace
+				let isWorkspaceCreated = false;
+				let workspaceId = null;
+				try {
+					const chatEntity = chatContext.Chat.where(r => r.id == $$, chatId || 0).single();
+					isWorkspaceCreated = !!(chatEntity && (chatEntity.is_workplace_created === true || chatEntity.is_workplace_created === 1));
+				} catch (_) {}
+				if (isWorkspaceCreated) {
+					let workspaceContext = null;
+					try { workspaceContext = (master.requestList && master.requestList.workspaceContext) ? master.requestList.workspaceContext : null; } catch (_) { workspaceContext = null; }
+					if (workspaceContext) {
+						try {
+							const link = workspaceContext.WorkspaceChat.where(r => r.chat_id == $$, chatId).toList()[0];
+							workspaceId = link ? link.workspace_id : null;
+						} catch (_) { workspaceId = null; }
+					}
+					if (workspaceId) {
+						try {
+							const ws = workspaceContext.Workspace.where(r => r.id == $$, workspaceId).single();
+							// 1) prompt_template override (if provided on workspace)
+							const wsPromptTemplate = (typeof ws?.prompt_template === 'string' && ws.prompt_template.trim().length > 0)
+								? ws.prompt_template.trim()
+								: null;
+							// 2) system_prompt override (if provided on workspace)
+							const wsSystemPrompt = (typeof ws?.system_prompt === 'string' && ws.system_prompt.trim().length > 0)
+								? ws.system_prompt.trim()
+								: null;
+
+							// 3) Build settings from workspace Profile + ModelOverrides(workspace)
+							const modelCtxFactory = require(`${master.root}/components/models/app/models/modelContext`);
+							const mctx = new modelCtxFactory();
+							// Resolve workspace profile and rules
+							let rules = [];
+							try {
+								const profileId = ws.profile_id || ws.Profile?.id;
+								if (profileId) {
+									const prof = mctx.Profiles.where(r => r.id == $$, profileId).single();
+									const pr = prof?.ProfileFieldRules;
+									rules = pr?.toList ? pr.toList() : (Array.isArray(pr) ? pr : (pr ? [pr] : []));
+								}
+							} catch (_) { rules = []; }
+							const defaults = {}; const ruleMeta = {};
+							for (const r of rules) {
+								if (!r || !r.name) continue;
+								defaults[r.name] = r.default_value;
+								ruleMeta[r.name] = { field_type: (r.field_type || '').toString().toLowerCase(), range: (r.range || '').toString() };
+							}
+							// Workspace-specific overrides
+							let overrides = [];
+							try {
+								const raw = mctx.ModelOverrides.where(o => o.workspace_id == $$, workspaceId).toList();
+								overrides = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+							} catch (_) { overrides = []; }
+							const effective = { ...defaults };
+							for (const ov of overrides) {
+								try {
+									for (const ru of rules) {
+										if (ru.id === ov.profile_field_rule_id) {
+											const key = ru.name;
+											if (key === 'stop_strings') {
+												effective['stop_strings'] = ov.StopStrings || ov.stop_strings || ov.stop || [];
+											} else if (typeof ov.value !== 'undefined' && ov.value !== null) {
+												effective[key] = ov.value;
+											}
+										}
+									}
+								} catch (_) {}
+							// Coercion copied from llmConfigService
+							const coerceByType = (type, value, rangeStr) => {
+								const t = (type || '').toLowerCase();
+								if (value === null || typeof value === 'undefined') return undefined;
+								if (t === 'integer' || t === 'int') { const n = parseInt(value, 10); return Number.isFinite(n) ? n : undefined; }
+								if (t === 'float' || t === 'number' || t === 'range') { const n = parseFloat(value); return Number.isFinite(n) ? n : undefined; }
+								if (t === 'boolean' || t === 'bool') {
+									if (typeof value === 'boolean') return value;
+									const s = String(value).trim().toLowerCase();
+									if (s === 'true' || s === '1' || s === 'yes' || s === 'y') return true;
+									if (s === 'false' || s === '0' || s === 'no' || s === 'n') return false;
+									return undefined;
+								}
+								if (t === 'json') {
+									if (typeof value === 'object') return value;
+									if (typeof value === 'string') { try { return JSON.parse(value); } catch (_) { return undefined; } }
+									return undefined;
+								}
+								return String(value);
+							};
+							const wsSettings = {};
+							for (const key of Object.keys(effective)) {
+								const meta = ruleMeta[key] || { field_type: 'string', range: '' };
+								const coerced = coerceByType(meta.field_type, effective[key], meta.range);
+								if (typeof coerced !== 'undefined') wsSettings[key] = coerced;
+							}
+
+							// Apply workspace overrides to modelConfig/settings
+							this.modelConfig = {
+								...this.modelConfig,
+								prompt_template: wsPromptTemplate || this.modelConfig.prompt_template,
+								system_prompt: wsSystemPrompt || this.modelConfig.system_prompt,
+								settings: Object.keys(wsSettings).length > 0 ? wsSettings : (this.modelConfig.settings || {})
+							};
+							this.modelSettings = this.modelConfig.settings || {};
+						} catch (e) {
+							console.error('⚠️ Workspace overrides failed:', e?.message);
+						}
+					}
+				}
+			} catch (_) { /* non-fatal */ }
+
 			// Persistence
 			const persistenceService = new MessagePersistenceService(chatContext, currentUser);
 

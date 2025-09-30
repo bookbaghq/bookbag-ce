@@ -92,6 +92,14 @@ const data = {
       ],
     },
     {
+      title: "Workspaces",
+      url: "#",
+      icon: LayoutDashboard,
+      items: [
+        { title: "All", url: "/bb-admin/workspaces" },
+      ],
+    },
+    {
       title: "Chats",
       url: "#",
       icon: MessageSquare,

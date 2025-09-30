@@ -74,6 +74,7 @@ export function useChatController({
     }
     if (initialChatId) {
       setCurrentChatId(initialChatId);
+      try { modelService.currentChatId = initialChatId; } catch (_) {}
     }
     if (chatTitle) {
       setTitle(chatTitle);
@@ -190,6 +191,9 @@ export function useChatController({
 
   const initializeModels = async () => {
     try {
+      // Provide chatId and hint if it's workspace-created for scoped filtering
+      modelService.currentChatId = currentChatId;
+      modelService.currentChatIsWorkspace = currentChatId ? await isWorkspaceCreated(currentChatId) : false;
       const models = await modelService.fetchAvailableModels();
       setAvailableModels(models);
       setModelsLoading(modelService.isLoading());
@@ -239,7 +243,36 @@ export function useChatController({
     if (availableModels && availableModels.length > 0) {
       tryRestoreSelectedModelForChat(availableModels, currentChatId);
     }
+    try { modelService.currentChatId = currentChatId; } catch (_) {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentChatId]);
+
+  const isWorkspaceCreated = async (chatId) => {
+    try {
+      const backendUrl = (await import('@/apiConfig.json')).default.ApiConfig.main;
+      const res = await fetch(`${backendUrl}/bb-chat/api/chat/${chatId}`, { method: 'GET', credentials: 'include' });
+      if (!res.ok) return false;
+      const data = await res.json();
+      return !!(data?.success && data?.chat?.is_workplace_created);
+    } catch (_) {
+      return false;
+    }
+  };
+
+  // Keep local title in sync when header saves and broadcasts
+  useEffect(() => {
+    const onTitleUpdated = (e) => {
+      const id = e?.detail?.chatId;
+      const t = e?.detail?.title;
+      if (!id || typeof t !== 'string') return;
+      if (String(id) === String(currentChatIdRef.current || currentChatId)) {
+        setTitle(t);
+      }
+    };
+    try { window.addEventListener('bb:chat-title-updated', onTitleUpdated); } catch (_) {}
+    return () => {
+      try { window.removeEventListener('bb:chat-title-updated', onTitleUpdated); } catch (_) {}
+    };
   }, [currentChatId]);
 
 
@@ -718,6 +751,11 @@ The request failed due to network issues or the response was too large. This oft
     const result = await apiService.deleteChat(currentChatId);
     if (result.success) {
       setDeleteDialogOpen(false);
+      try {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('bb:chat-deleted', { detail: { chatId: currentChatId } }));
+        }
+      } catch (_) {}
       window.location.href = '/bb-client/';
     } else {
       alert(`Failed to delete chat: ${result.error}`);
@@ -728,6 +766,11 @@ The request failed due to network issues or the response was too large. This oft
     const result = await apiService.archiveChat(currentChatId);
     if (result.success) {
       setArchiveDialogOpen(false);
+      try {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('bb:chat-archived', { detail: { chatId: currentChatId } }));
+        }
+      } catch (_) {}
       window.location.href = '/bb-client/';
     } else {
       alert(`Failed to archive chat: ${result.error}`);

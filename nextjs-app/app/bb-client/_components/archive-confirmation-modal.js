@@ -28,7 +28,7 @@ export function ArchiveConfirmationModal({ isOpen, onClose, onConfirm, isArchivi
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Archive className="h-5 w-5 text-blue-500" />
+            <Archive className="h-5 w-5 text-zinc-600" />
             Archive Chat Session
           </DialogTitle>
           <DialogDescription className="text-gray-600 dark:text-gray-300">
@@ -48,7 +48,7 @@ export function ArchiveConfirmationModal({ isOpen, onClose, onConfirm, isArchivi
           <Button
             onClick={onConfirm}
             disabled={isArchiving}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+            className="flex-1 bg-zinc-700 hover:bg-zinc-800 text-white"
           >
             {isArchiving ? (
               <>

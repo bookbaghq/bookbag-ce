@@ -1,13 +1,13 @@
 {
   "name": "bookbag",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "private": true,
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "content-type": "^1.0.5",
     "jsonwebtoken": "^9.0.2",
     "mastercontroller": "^1.2.6",
-    "masterrecord": "^0.2.23",
+    "masterrecord": "^0.2.24",
     "nodemailer": "^7.0.6",
     "object-mapper": "^6.2.0",
     "openai": "^5.16.0",

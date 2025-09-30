@@ -12,6 +12,7 @@ var userContext = require(`${master.root}/components/user/app/models/userContext
 var chatContext = require(`${master.root}/components/chats/app/models/chatContext`);
 var modelContext = require(`${master.root}/components/models/app/models/modelContext`);
 var mailContext = require(`${master.root}/components/mail/app/models/mailContext`);
+var workspaceContext = require(`${master.root}/components/workspace/app/models/workspaceContext`);
 
 const MailTemplateService = require(`${master.root}/components/mail/app/service/mailTemplateService`);
 const MailDeliveryService = require(`${master.root}/components/mail/app/service/mailDeliveryService`);
@@ -37,6 +38,7 @@ master.addSingleton("userContext", userContext);
 master.addSingleton("chatContext", chatContext);
 master.addSingleton("modelContext", modelContext);
 master.addSingleton("mailContext", mailContext);
+master.addSingleton("workspaceContext", workspaceContext);
 master.register("_mapper", mapObject);
 
 // Initialize and register mail services so controllers can use them
@@ -50,6 +52,7 @@ master.component("components", "user");
 master.component("components", "chats");
 master.component("components", "models");
 master.component("components", "mail");
+master.component("components", "workspace");
 
 // register these apps to have access to them in the controller.
 // example: master.register("mainContext", { anyobject : "name"});

@@ -8,7 +8,7 @@ export function LiveTPSBadge({ streamingStats, isStreamingCurrentMessage, histor
     return (
       <Badge 
         variant="secondary" 
-        className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200"
+        className="text-xs px-2 py-1 bg-zinc-200 dark:bg-gray-800 text-zinc-800 dark:text-gray-200"
       >
         {historical.tps.toFixed(1)} TPS
       </Badge>

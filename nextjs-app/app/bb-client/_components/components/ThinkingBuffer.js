@@ -13,7 +13,7 @@ export function ThinkingBuffer({ isShowingThinking, thinkingContent, thinkingSta
 						<div className="flex items-center justify-between w-full">
 							<div className="flex items-center">
 								{isShowingThinking && (
-									<div className="animate-pulse h-3 w-3 mr-2 bg-blue-500 rounded-full"></div>
+								<div className="animate-pulse h-3 w-3 mr-2 bg-zinc-500 rounded-full"></div>
 								)}
 								<span className="text-sm font-medium">AI thoughts</span>
 							</div>

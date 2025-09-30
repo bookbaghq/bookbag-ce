@@ -8,7 +8,47 @@ class chatController {
     constructor(req) {
         this._currentUser = req.authService.currentUser(req.request, req.userContext);
         this._chatContext = req.chatContext;
+        this._workspaceContext = req.workspaceContext;
         // Admin-only actions moved to adminChatController
+    }
+
+    // API endpoint to edit chat title
+    async editChat(obj) {
+        try {
+            const f = obj?.params?.formData || obj?.params || {};
+            const chatId = parseInt(f.chatId || f.chat_id || f.id, 10);
+            const titleRaw = (typeof f.title === 'string') ? f.title : (typeof f.name === 'string' ? f.name : '');
+            const newTitle = String(titleRaw || '').trim();
+
+            if (!chatId) {
+                return this.returnJson({ success: false, error: "Chat ID is required" });
+            }
+            if (!newTitle) {
+                return this.returnJson({ success: false, error: "Title is required" });
+            }
+
+            const chat = this._chatContext.Chat
+                .where(c => c.id == $$, chatId)
+                .single();
+            if (!chat) {
+                return this.returnJson({ success: false, error: "Chat not found or access denied" });
+            }
+
+            // Membership check (direct or via workspace)
+            if (!this._isCurrentUserMemberOfChat(chat)) {
+                if (!this._isUserMemberOfChatWorkspace(chat.id)) {
+                    return this.returnJson({ success: false, error: "Chat not found or access denied" });
+                }
+            }
+
+            chat.title = newTitle;
+            chat.updated_at = Date.now().toString();
+            this._chatContext.saveChanges();
+
+            return this.returnJson({ success: true, chat: { id: chat.id, title: chat.title } });
+        } catch (error) {
+            return this.returnJson({ success: false, error: error.message });
+        }
     }
 
     // API endpoint to get admin-created chats for the current user (top 50)
@@ -50,6 +90,27 @@ class chatController {
                 if (String(candidate) === currentId) {
                     return true;
                 }
+            }
+            return false;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    // Helper: check if current user is a member of any workspace that contains this chat
+    _isUserMemberOfChatWorkspace(chatId) {
+        try {
+            if (!this._workspaceContext) return false;
+            const links = this._workspaceContext.WorkspaceChat
+                .where(r => r.chat_id == $$, chatId)
+                .toList();
+            for (const l of links) {
+                try {
+                    const members = this._workspaceContext.WorkspaceUser
+                        .where(r => r.workspace_id == $$ && r.user_id == $$, l.workspace_id, this._currentUser.id)
+                        .toList();
+                    if (Array.isArray(members) && members.length > 0) return true;
+                } catch (_) { /* ignore */ }
             }
             return false;
         } catch (_) {
@@ -440,9 +501,11 @@ class chatController {
                 });
             }
 
-            // Ensure membership
+            // Ensure membership via direct chat membership OR workspace membership
             if (!this._isCurrentUserMemberOfChat(chat)) {
+                if (!this._isUserMemberOfChatWorkspace(chat.id)) {
                 return this.returnJson({ success: false, error: "Chat not found or access denied" });
+                }
             }
 
             // Get messages for this chat
@@ -519,6 +582,7 @@ class chatController {
             const chatData = {
                 id: chat.id,
                 title: chat.title || 'Untitled Chat',
+                is_workplace_created: (chat.is_workplace_created === true || chat.is_workplace_created === 1),
                 session_id: chat.session_id,
                 total_token_count: chat.total_token_count || 0,
                 created_at: parseInt(chat.created_at),
@@ -566,9 +630,11 @@ class chatController {
                 });
             }
 
-            // Membership check
+            // Membership check (direct or via workspace)
             if (!this._isCurrentUserMemberOfChat(chat)) {
-                return this.returnJson({ success: false, error: "Chat not found or access denied" });
+                if (!this._isUserMemberOfChatWorkspace(chat.id)) {
+                    return this.returnJson({ success: false, error: "Chat not found or access denied" });
+                }
             }
 
             // Update the chat record to set archived flag to true
@@ -613,9 +679,11 @@ class chatController {
                 });
             }
 
-            // Membership check
+            // Membership check (direct or via workspace)
             if (!this._isCurrentUserMemberOfChat(chat)) {
-                return this.returnJson({ success: false, error: "Chat not found or access denied" });
+                if (!this._isUserMemberOfChatWorkspace(chat.id)) {
+                    return this.returnJson({ success: false, error: "Chat not found or access denied" });
+                }
             }
 
             chat.is_deleted = true;

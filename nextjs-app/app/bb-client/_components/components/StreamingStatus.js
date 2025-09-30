@@ -12,7 +12,7 @@ export function StreamingStatus({ isStreaming = false, isDone = false, inline = 
         </>
       ) : (
         <>
-          <div className="h-2 w-2 mr-2 bg-blue-500 rounded-full"></div>
+          <div className="h-2 w-2 mr-2 bg-zinc-500 rounded-full"></div>
           <span>Done</span>
         </>
       )}
