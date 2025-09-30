@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -12,7 +12,7 @@ import { Separator } from '@/components/ui/separator'
 import { Trash2 } from 'lucide-react'
 
 export default function WorkspacesPage(){
-  const svc = new WorkspaceService()
+  const svc = useMemo(() => new WorkspaceService(), [])
   const [q, setQ] = useState('')
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(false)
@@ -43,12 +43,12 @@ export default function WorkspacesPage(){
   const [userSearch, setUserSearch] = useState('')
   const [modelSearch, setModelSearch] = useState('')
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     try { const res = await svc.list({ q }); if (res?.success && Array.isArray(res.workspaces)) setItems(res.workspaces) } catch(_) { setItems([]) } finally { setLoading(false) }
-  }
+  }, [svc, q])
 
-  useEffect(() => { load() }, [load])
+  // Initial and live reload handled by debounced effect below
 
   // Live search as you type (debounced)
   useEffect(() => {
