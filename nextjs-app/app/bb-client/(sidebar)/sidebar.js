@@ -302,7 +302,7 @@ export function SidebarNav(props) {
   const fetchFavorites = async () => {
     try {
       setLoading(true);
-      const base = (await import('@/apiConfig.json')).default.ApiConfig.main;
+      const base = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
       const resp = await fetch(`${base}/bb-chat/api/favorites/list`, { method: 'GET', credentials: 'include' });
       const data = await resp.json();
       if (data?.success) {
@@ -313,7 +313,7 @@ export function SidebarNav(props) {
 
   const fetchRecent = async () => {
     try {
-      const base = (await import('@/apiConfig.json')).default.ApiConfig.main;
+      const base = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
       const resp = await fetch(`${base}/bb-chat/api/chat/recent`, { method: 'GET', credentials: 'include' });
       const data = await resp.json();
       if (data?.success) {
@@ -324,7 +324,7 @@ export function SidebarNav(props) {
 
   const fetchYesterday = async () => {
     try {
-      const base = (await import('@/apiConfig.json')).default.ApiConfig.main;
+      const base = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
       const resp = await fetch(`${base}/bb-chat/api/chat/yesterday`, { method: 'GET', credentials: 'include' });
       const data = await resp.json();
       if (data?.success) {
@@ -335,7 +335,7 @@ export function SidebarNav(props) {
 
   const fetchPreviousWeek = async () => {
     try {
-      const base = (await import('@/apiConfig.json')).default.ApiConfig.main;
+      const base = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
       const resp = await fetch(`${base}/bb-chat/api/chat/sevendays`, { method: 'GET', credentials: 'include' });
       const data = await resp.json();
       if (data?.success) {

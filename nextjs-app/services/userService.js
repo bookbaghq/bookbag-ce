@@ -1,6 +1,7 @@
 'use client';
 
 import api from "../apiConfig.json"
+const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main;
 
 export default class UserService {
     _isLoading = false;
@@ -16,7 +17,7 @@ export default class UserService {
     async create(formData) {
 
         try {
-            var url = `${api.ApiConfig.main}/${api.ApiConfig.users.create.url}`;
+            var url = `${BASE}/${api.ApiConfig.users.create.url}`;
             return await this.ajaxCall(url, api.ApiConfig.users.create.method, JSON.stringify(formData));
         }
         catch (error) {
@@ -28,7 +29,7 @@ export default class UserService {
 
     async updateRoleAll(formData) {
         try {
-            var url = `${api.ApiConfig.main}/${api.ApiConfig.users.updateRoleAll.url}`;
+            var url = `${BASE}/${api.ApiConfig.users.updateRoleAll.url}`;
             return await this.ajaxCall(url, api.ApiConfig.users.updateRoleAll.method, JSON.stringify(formData));
         }
         catch (error) {
@@ -41,7 +42,7 @@ export default class UserService {
     async update(formData) {
 
         try {
-            var url = `${api.ApiConfig.main}/${api.ApiConfig.users.update.url}`;
+            var url = `${BASE}/${api.ApiConfig.users.update.url}`;
             return await this.ajaxCall(url, api.ApiConfig.users.update.method, JSON.stringify(formData));
         }
         catch (error) {
@@ -54,7 +55,7 @@ export default class UserService {
     async delete(data) {
         // make ajax call to get the state
         try {
-            var url = `${api.ApiConfig.main}/${api.ApiConfig.users.delete.url}`;
+            var url = `${BASE}/${api.ApiConfig.users.delete.url}`;
             this.isLoading = true;
             var res = await this.ajaxCall(url, api.ApiConfig.users.delete.method, JSON.stringify(data));
             this.isLoading = false;

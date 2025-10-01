@@ -17,7 +17,7 @@ export default function ChatPage() {
       setLoading(true);
 
       // Call the backend directly to get chat data with messages
-      const backendUrl = (await import('@/apiConfig.json')).default.ApiConfig.main;
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
       // If sign-in is disabled, backend will switch to temp user via cookie
       const response = await fetch(`${backendUrl}/bb-chat/api/chat/${chatId}`, {
         method: 'GET',

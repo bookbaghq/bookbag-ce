@@ -21,8 +21,8 @@ export function ForgetForm({ className, ...props }) {
   if (typeof window !== 'undefined') {
     (async () => {
       try {
-        const backend = (await import('@/apiConfig.json')).default.ApiConfig.main;
-        const sRes = await fetch(`${backend}/bb-user/api/settings/get`, { credentials: 'include' });
+      const base = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
+      const sRes = await fetch(`${base}/bb-user/api/settings/get`, { credentials: 'include' });
         const sJson = await sRes.json();
         const enabled = typeof sJson?.settings?.sign_up_enabled === 'undefined' ? true : !!sJson.settings.sign_up_enabled;
         if (!enabled) {
@@ -47,8 +47,8 @@ export function ForgetForm({ className, ...props }) {
   const formAction = async (formData)  => {
 
     // make a call to the JWT API server first to get a token
-      const backend = (await import('@/apiConfig.json')).default.ApiConfig.main;
-      const res = await fetch(`${backend}/bb-user/api/auth/forgetPassword`,{
+      const base = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
+      const res = await fetch(`${base}/bb-user/api/auth/forgetPassword`,{
         method: "POST",
         body: JSON.stringify(formData),
         headers: { 'Content-Type': 'application/json' }

@@ -13,7 +13,7 @@ export async function GET(request, { params }) {
     }
 
     // Make request to backend to get chat data
-    const backendUrl = (await import('@/apiConfig.json')).default.ApiConfig.main;
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
     console.log('Fetching chat from backend:', `${backendUrl}/bb-chat/api/chat/${chatId}`);
     
     const backendResponse = await fetch(`${backendUrl}/bb-chat/api/chat/${chatId}`, {

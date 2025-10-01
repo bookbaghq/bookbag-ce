@@ -1,11 +1,12 @@
 import api from "../apiConfig.json"
+const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main;
 
 export default class Credentials {
 
     async register(formData){
 
         try{
-            var url = `${api.ApiConfig.main}/${api.ApiConfig.credentials.register.url}`;
+            var url = `${BASE}/${api.ApiConfig.credentials.register.url}`;
            
             return await this.ajaxCall(url , api.ApiConfig.credentials.register.method, JSON.stringify(formData));
         }
@@ -21,7 +22,7 @@ export default class Credentials {
 
         try{
 
-            var url = `${api.ApiConfig.main}/${api.ApiConfig.credentials.login.url}`;
+            var url = `${BASE}/${api.ApiConfig.credentials.login.url}`;
             return await this.ajaxCall(url, api.ApiConfig.credentials.login.method, JSON.stringify(formData));
         }
         catch(error){
@@ -34,7 +35,7 @@ export default class Credentials {
      async forgetPassword(formData){
 
         try{
-            var url = `${api.ApiConfig.main}/${api.ApiConfig.credentials.forgetPassword.url}`;
+            var url = `${BASE}/${api.ApiConfig.credentials.forgetPassword.url}`;
             return await this.ajaxCall(url, api.ApiConfig.credentials.forgetPassword.method, JSON.stringify(formData));
         }
         catch(error){
@@ -47,7 +48,7 @@ export default class Credentials {
     async changePassword(formData){
 
         try{
-            var url = `${api.ApiConfig.main}/${api.ApiConfig.credentials.changePassword.url}`;
+            var url = `${BASE}/${api.ApiConfig.credentials.changePassword.url}`;
             return await this.ajaxCall(url, api.ApiConfig.credentials.changePassword.method, JSON.stringify(formData));
         }
         catch(error){

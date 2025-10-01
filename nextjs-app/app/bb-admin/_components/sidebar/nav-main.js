@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useEffect, useState } from 'react'
 import { ChevronRight } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -23,6 +24,19 @@ import {
 
 export function NavMain({ items }) {
   const pathname = usePathname();
+  const [expanded, setExpanded] = useState(() => {
+    try {
+      const raw = localStorage.getItem('bb-admin:sidebar:expanded');
+      const parsed = raw ? JSON.parse(raw) : {};
+      return (parsed && typeof parsed === 'object') ? parsed : {};
+    } catch (_) {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem('bb-admin:sidebar:expanded', JSON.stringify(expanded)); } catch (_) {}
+  }, [expanded]);
   
   return (
     <SidebarGroup>
@@ -58,7 +72,10 @@ export function NavMain({ items }) {
             <Collapsible
               key={item.title}
               asChild
-              defaultOpen={item.isActive || hasActiveChild}
+              open={expanded[item.title] != null ? !!expanded[item.title] : (item.isActive || hasActiveChild)}
+              onOpenChange={(open) => {
+                setExpanded(prev => ({ ...prev, [item.title]: open }));
+              }}
               className="group/collapsible"
             >
               <SidebarMenuItem>

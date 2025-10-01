@@ -96,28 +96,100 @@ export function useChatController({
     setConversationTokenCount(totalTokens);
   }, [messages]);
 
-  // Fetch context size on page load, model change, and after new messages arrive
-  const fetchContextSizeMemo = useCallback((overrideModelId = null) => {
-    return fetchContextSize(overrideModelId);
-  }, [fetchContextSize]);
+  // Stable helpers and actions
+  const buildModelStorageKey = useCallback((chatId) => {
+    const base = 'bb:selectedModel';
+    return chatId ? `${base}:${chatId}` : base;
+  }, []);
 
+  const tryRestoreSelectedModelForChat = useCallback((models, chatId) => {
+    try {
+      if (typeof window === 'undefined') return;
+      // Prefer chat-specific key; fallback to global
+      const chatKey = buildModelStorageKey(chatId);
+      const globalKey = buildModelStorageKey(null);
+      let savedId = window.localStorage.getItem(chatKey);
+      if (!savedId) savedId = window.localStorage.getItem(globalKey);
+      if (savedId) {
+        const m = models.find(x => String(x.id) === String(savedId));
+        if (m) {
+          const selected = modelService.setSelectedModel(String(savedId));
+          if (selected) {
+            setSelectedModelId(String(savedId));
+            setCurrentModel(selected);
+            setModelLimits(modelService.getModelLimits());
+          }
+        }
+      } else {
+        // No saved selection; keep whatever modelService selected by default
+        if (modelService.getSelectedModelId()) {
+          setSelectedModelId(modelService.getSelectedModelId());
+          setCurrentModel(modelService.getCurrentModel());
+          setModelLimits(modelService.getModelLimits());
+        }
+      }
+    } catch (_) {}
+  }, [buildModelStorageKey]);
+
+  const isWorkspaceCreated = useCallback(async (chatId) => {
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
+      const res = await fetch(`${backendUrl}/bb-chat/api/chat/${chatId}`, { method: 'GET', credentials: 'include' });
+      if (!res.ok) return false;
+      const data = await res.json();
+      return !!(data?.success && data?.chat?.is_workplace_created);
+    } catch (_) {
+      return false;
+    }
+  }, []);
+
+  const initializeModels = useCallback(async () => {
+    try {
+      // Provide chatId and hint if it's workspace-created for scoped filtering
+      modelService.currentChatId = currentChatId;
+      modelService.currentChatIsWorkspace = currentChatId ? await isWorkspaceCreated(currentChatId) : false;
+      const models = await modelService.fetchAvailableModels();
+      setAvailableModels(models);
+      setModelsLoading(modelService.isLoading());
+
+      // Try to restore previously selected model for this chat from localStorage
+      tryRestoreSelectedModelForChat(models, currentChatId);
+    } catch (error) {
+      console.error('Failed to initialize models:', error);
+    }
+  }, [currentChatId, isWorkspaceCreated, tryRestoreSelectedModelForChat]);
+
+  const fetchContextSize = useCallback(async (overrideModelId = null) => {
+    const modelIdToUse = overrideModelId || selectedModelId;
+    if (!modelIdToUse) return;
+
+    setContextLoading(true);
+    setContextError(null);
+
+    try {
+      const info = await contextService.fetchContextSize(currentChatId, inputValue, modelIdToUse);
+      setContextInfo(info);
+    } catch (error) {
+      setContextError(error.message);
+    } finally {
+      setContextLoading(false);
+    }
+  }, [selectedModelId, currentChatId, inputValue]);
+
+  // Fetch context size on page load, model change, and after new messages arrive
   useEffect(() => {
     if (modelLimits && selectedModelId && !isStreaming) {
       const timer = setTimeout(() => {
-        fetchContextSizeMemo();
+        fetchContextSize();
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [selectedModelId, currentChatId, messages.length, isStreaming, modelLimits, fetchContextSizeMemo]);
+  }, [selectedModelId, currentChatId, messages.length, isStreaming, modelLimits, fetchContextSize]);
 
   // Initialize models on mount
-  const initializeModelsMemo = useCallback(() => {
-    return initializeModels();
-  }, [initializeModels]);
-
   useEffect(() => {
-    initializeModelsMemo();
-  }, [initializeModelsMemo]);
+    initializeModels();
+  }, [initializeModels]);
 
   // Auto-scroll to bottom when new messages arrive if the user is already at bottom
   useEffect(() => {
@@ -197,55 +269,6 @@ export function useChatController({
   };
 
 
-  async function initializeModels() {
-    try {
-      // Provide chatId and hint if it's workspace-created for scoped filtering
-      modelService.currentChatId = currentChatId;
-      modelService.currentChatIsWorkspace = currentChatId ? await isWorkspaceCreated(currentChatId) : false;
-      const models = await modelService.fetchAvailableModels();
-      setAvailableModels(models);
-      setModelsLoading(modelService.isLoading());
-
-      // Try to restore previously selected model for this chat from localStorage
-      tryRestoreSelectedModelForChat(models, currentChatId);
-    } catch (error) {
-      console.error('Failed to initialize models:', error);
-    }
-  }
-  const buildModelStorageKey = (chatId) => {
-    const base = 'bb:selectedModel';
-    return chatId ? `${base}:${chatId}` : base;
-  };
-
-  const tryRestoreSelectedModelForChat = (models, chatId) => {
-    try {
-      if (typeof window === 'undefined') return;
-      // Prefer chat-specific key; fallback to global
-      const chatKey = buildModelStorageKey(chatId);
-      const globalKey = buildModelStorageKey(null);
-      let savedId = window.localStorage.getItem(chatKey);
-      if (!savedId) savedId = window.localStorage.getItem(globalKey);
-      if (savedId) {
-        const m = models.find(x => String(x.id) === String(savedId));
-        if (m) {
-          const selected = modelService.setSelectedModel(String(savedId));
-          if (selected) {
-            setSelectedModelId(String(savedId));
-            setCurrentModel(selected);
-            setModelLimits(modelService.getModelLimits());
-          }
-        }
-      } else {
-        // No saved selection; keep whatever modelService selected by default
-        if (modelService.getSelectedModelId()) {
-          setSelectedModelId(modelService.getSelectedModelId());
-          setCurrentModel(modelService.getCurrentModel());
-          setModelLimits(modelService.getModelLimits());
-        }
-      }
-    } catch (_) {}
-  };
-
   // Restore selection when chat changes and models are already loaded
   useEffect(() => {
     if (availableModels && availableModels.length > 0) {
@@ -255,17 +278,7 @@ export function useChatController({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentChatId]);
 
-  const isWorkspaceCreated = async (chatId) => {
-    try {
-      const backendUrl = (await import('@/apiConfig.json')).default.ApiConfig.main;
-      const res = await fetch(`${backendUrl}/bb-chat/api/chat/${chatId}`, { method: 'GET', credentials: 'include' });
-      if (!res.ok) return false;
-      const data = await res.json();
-      return !!(data?.success && data?.chat?.is_workplace_created);
-    } catch (_) {
-      return false;
-    }
-  };
+  // isWorkspaceCreated moved above as useCallback
 
   // Keep local title in sync when header saves and broadcasts
   useEffect(() => {
@@ -284,22 +297,7 @@ export function useChatController({
   }, [currentChatId]);
 
 
-  async function fetchContextSize(overrideModelId = null) {
-    const modelIdToUse = overrideModelId || selectedModelId;
-    if (!modelIdToUse) return;
-
-    setContextLoading(true);
-    setContextError(null);
-
-    try {
-      const info = await contextService.fetchContextSize(currentChatId, inputValue, modelIdToUse);
-      setContextInfo(info);
-    } catch (error) {
-      setContextError(error.message);
-    } finally {
-      setContextLoading(false);
-    }
-  }
+  // fetchContextSize moved above as useCallback
 
   const handleModelSelection = (modelId) => {
     const selectedModel = modelService.setSelectedModel(modelId);

@@ -68,7 +68,7 @@ export default function MyModelsPage() {
     const load = async () => {
       try {
         setLoading(true)
-        const url = new URL(`${api.ApiConfig.main}/bb-models/api/models`)
+      const url = new URL(`${(process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main)}/bb-models/api/models`)
         const res = await fetch(url.toString(), { credentials: 'include' })
         const data = await res.json()
         if (!stop && data?.success && Array.isArray(data.models)) {

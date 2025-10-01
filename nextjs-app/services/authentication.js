@@ -1,6 +1,7 @@
 'use client';
 
  import api from "../apiConfig.json" 
+ const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main;
 
  export default class Authentication{
    
@@ -8,7 +9,7 @@
     async logout(){
         // make ajax call to get the state
         try{
-            var url = `${api.ApiConfig.main}/${api.ApiConfig.credentials.logout.url}`;
+            var url = `${BASE}/${api.ApiConfig.credentials.logout.url}`;
             this.isLoading = true;
             var res =  await this.ajaxCall(url, api.ApiConfig.credentials.logout.method);
             this.isLoading = false;
@@ -51,7 +52,7 @@
         try {
             this.isLoading = true;
             
-            var url = `${api.ApiConfig.main}/${api.ApiConfig.auth.currentUser.url}`;
+            var url = `${BASE}/${api.ApiConfig.auth.currentUser.url}`;
             var res =  await this.ajaxCall(url, api.ApiConfig.auth.currentUser.method);
             this.isLoading = false;
 

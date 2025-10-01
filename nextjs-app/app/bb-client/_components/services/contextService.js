@@ -3,6 +3,7 @@
  * Handles context size calculation, model limits, and auto-trimming
  */
 import api from "../../../../apiConfig.json";
+const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main;
 
 /**
  * Context Service class to manage chat context and model limits
@@ -30,7 +31,7 @@ export class ContextService {
     this.contextError = null;
 
     try {
-      const response = await fetch(`${api.ApiConfig.main}/${api.ApiConfig.message.getContextSize.url}`, {
+      const response = await fetch(`${BASE}/${api.ApiConfig.message.getContextSize.url}`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json'
@@ -142,7 +143,7 @@ export class ModelService {
   async fetchAvailableModels() {
     try {
       this.modelsLoading = true;
-      const backendUrl = api.ApiConfig.main;
+      const backendUrl = BASE;
 
       // If chat is workspace-created, fetch allowed model IDs and filter; else return full list
       let allowedModelIds = null;

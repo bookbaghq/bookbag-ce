@@ -1,6 +1,7 @@
 'use client';
 
 import api from "../apiConfig.json";
+const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main;
 
 export default class WorkspaceService {
     _isLoading = false;
@@ -14,55 +15,55 @@ export default class WorkspaceService {
     }
 
     async list(params = {}){
-        const url = new URL(`${api.ApiConfig.main}/bb-workspace/api/workspace`);
+        const url = new URL(`${BASE}/bb-workspace/api/workspace`);
         if (params.q) url.searchParams.set('q', String(params.q));
         return await this.ajax(url.toString(), 'GET');
     }
 
     async my(){
-        const url = `${api.ApiConfig.main}/bb-workspace/api/my`;
+        const url = `${BASE}/bb-workspace/api/my`;
         return await this.ajax(url, 'GET');
     }
 
     async listChats(workspaceId){
-        const url = new URL(`${api.ApiConfig.main}/bb-workspace/api/workspace/chats`);
+        const url = new URL(`${BASE}/bb-workspace/api/workspace/chats`);
         url.searchParams.set('id', String(workspaceId));
         return await this.ajax(url.toString(), 'GET');
     }
 
     async get(id){
-        const url = new URL(`${api.ApiConfig.main}/bb-workspace/api/workspace/get`);
+        const url = new URL(`${BASE}/bb-workspace/api/workspace/get`);
         url.searchParams.set('id', String(id));
         return await this.ajax(url.toString(), 'GET');
     }
 
     async create(payload){
-        const url = `${api.ApiConfig.main}/bb-workspace/api/workspace/create`;
+        const url = `${BASE}/bb-workspace/api/workspace/create`;
         return await this.ajax(url, 'POST', payload);
     }
 
     async update(payload){
-        const url = `${api.ApiConfig.main}/bb-workspace/api/workspace/update`;
+        const url = `${BASE}/bb-workspace/api/workspace/update`;
         return await this.ajax(url, 'POST', payload);
     }
 
     async remove(id){
-        const url = `${api.ApiConfig.main}/bb-workspace/api/workspace/delete`;
+        const url = `${BASE}/bb-workspace/api/workspace/delete`;
         return await this.ajax(url, 'POST', { id });
     }
 
     async assignUsers(id, users){
-        const url = `${api.ApiConfig.main}/bb-workspace/api/workspace/assign-users`;
+        const url = `${BASE}/bb-workspace/api/workspace/assign-users`;
         return await this.ajax(url, 'POST', { id, users });
     }
 
     async assignModels(id, models){
-        const url = `${api.ApiConfig.main}/bb-workspace/api/workspace/assign-models`;
+        const url = `${BASE}/bb-workspace/api/workspace/assign-models`;
         return await this.ajax(url, 'POST', { id, models });
     }
 
     async createWorkspaceChat(workspaceId, title = 'thread'){
-        const url = `${api.ApiConfig.main}/bb-workspace/api/workspace/chat/create`;
+        const url = `${BASE}/bb-workspace/api/workspace/chat/create`;
         return await this.ajax(url, 'POST', { workspace_id: workspaceId, title });
     }
 }

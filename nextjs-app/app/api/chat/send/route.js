@@ -24,7 +24,7 @@ export async function POST(request) {
           let doneSent = false;
           try {
             // Make a request to the existing backend messageController
-            const backendUrl = (await import('@/apiConfig.json')).default.ApiConfig.main;
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
             const backendResponse = await fetch(`${backendUrl}/bb-chat/api/message/sendUserStreaming`, {
               method: 'POST',
               headers: {
@@ -182,7 +182,7 @@ export async function POST(request) {
     } else {
       // Non-streaming response - also call backend
       try {
-        const backendUrl = (await import('@/apiConfig.json')).default.ApiConfig.main;
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
         const backendResponse = await fetch(`${backendUrl}/bb-chat/api/message/sendUser`, {
           method: 'POST',
           headers: {

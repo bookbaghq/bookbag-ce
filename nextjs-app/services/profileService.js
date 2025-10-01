@@ -1,6 +1,7 @@
 'use client';
 
  import api from "../apiConfig.json" 
+ const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main;
 
 export default  class ProfileService{
     _isLoading = false;
@@ -31,7 +32,7 @@ export default  class ProfileService{
         // make ajax call to get the state
         try{
            
-            var url = `${api.ApiConfig.main}/${api.ApiConfig.profile.profile.url}${data.id}`;
+            var url = `${BASE}/${api.ApiConfig.profile.profile.url}${data.id}`;
             this.isLoading = true;
             var res =  await this.ajaxCallGet(url, api.ApiConfig.profile.profile.method);
             this.isLoading = false;
@@ -61,7 +62,7 @@ export default  class ProfileService{
         // make ajax call to get the state
         try{
            
-            var url = `${api.ApiConfig.main}/${api.ApiConfig.profile.myprofile.url}`;
+            var url = `${BASE}/${api.ApiConfig.profile.myprofile.url}`;
             this.isLoading = true;
             var res =  await this.ajaxCallGet(url, api.ApiConfig.profile.myprofile.method);
             this.isLoading = false;
@@ -91,7 +92,7 @@ export default  class ProfileService{
         // make ajax call to get the state
         try{
          
-            var url = `${api.ApiConfig.main}/${api.ApiConfig.profile.list.url}`;
+            var url = `${BASE}/${api.ApiConfig.profile.list.url}`;
             this.isLoading = true;
             var mainURL =  this.appendObjectToQueryString(url, data);
             var res =  await this.ajaxCallGet(mainURL, api.ApiConfig.profile.list.method);
@@ -140,7 +141,7 @@ export default  class ProfileService{
 
     async saveMyProfile(payload){
         try{
-            var url = `${api.ApiConfig.main}/bb-user/api/profile/save`;
+            var url = `${BASE}/bb-user/api/profile/save`;
             var res = await fetch(url, {
                 credentials: 'include',
                 method: 'POST',

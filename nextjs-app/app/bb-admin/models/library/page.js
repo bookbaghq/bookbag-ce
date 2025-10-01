@@ -40,7 +40,7 @@ export default function ModelLibraryPage() {
       try {
         setProviderError('')
         const path = provider === 'grok' ? '/bb-models/api/grok/models' : '/bb-models/api/oa/models'
-        const url = new URL(`${api.ApiConfig.main}${path}`)
+        const url = new URL(`${(process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main)}${path}`)
         const res = await fetch(url.toString(), { credentials: 'include' })
         const data = await res.json()
         if (!stop) {
@@ -294,7 +294,7 @@ function InstallCreateForm({ provider = 'oa', initialName = '', onCreated, regis
     let stop = false
     const loadProfiles = async () => {
       try {
-        const res = await fetch(`${api.ApiConfig.main}/bb-models/api/profiles/list`, { credentials: 'include' })
+        const res = await fetch(`${(process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main)}/bb-models/api/profiles/list`, { credentials: 'include' })
         const data = await res.json()
         if (!stop && Array.isArray(data?.profiles)) setProfiles(data.profiles)
       } catch(_) {}
@@ -317,7 +317,7 @@ function InstallCreateForm({ provider = 'oa', initialName = '', onCreated, regis
     try {
       const payload = { modelId: name, title: name, description, server_url: serverUrl, api_key: apiKey, profileId: profileId ? parseInt(profileId, 10) : undefined, context_size: cs }
       const endpoint = provider === 'grok' ? '/bb-models/api/grok/install' : '/bb-models/api/oa/install'
-      const res = await fetch(`${api.ApiConfig.main}${endpoint}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const res = await fetch(`${(process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main)}${endpoint}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const data = await res.json()
       if (!data?.success) throw new Error(data?.error || `Failed to install ${provider === 'grok' ? 'Grok' : 'OpenAI'} model`)
       if (onCreated) onCreated(data.model)

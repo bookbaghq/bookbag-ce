@@ -13,7 +13,7 @@ export default function WorkspaceEditPage(){
   const params = useParams()
   const router = useRouter()
   const id = useMemo(() => { try { return parseInt(params?.id, 10) } catch(_) { return null } }, [params])
-  const svc = new WorkspaceService()
+  const svc = useMemo(() => new WorkspaceService(), [])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [name, setName] = useState('')
@@ -31,10 +31,11 @@ export default function WorkspaceEditPage(){
       if (!id) { setLoading(false); return }
       try {
         setLoading(true)
+        const BASE = (process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main)
         const [ws, us, ms] = await Promise.all([
           svc.get(id),
-          fetch(`${api.ApiConfig.main}/bb-user/api/profile/all`, { credentials: 'include' }).then(r => r.json()).catch(() => ({})),
-          fetch(`${api.ApiConfig.main}/bb-models/api/models`, { credentials: 'include' }).then(r => r.json()).catch(() => ({})),
+          fetch(`${BASE}/bb-user/api/profile/all`, { credentials: 'include' }).then(r => r.json()).catch(() => ({})),
+          fetch(`${BASE}/bb-models/api/models`, { credentials: 'include' }).then(r => r.json()).catch(() => ({})),
         ])
         if (!stop && ws?.success && ws.workspace) {
           const w = ws.workspace

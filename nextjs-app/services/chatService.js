@@ -1,6 +1,7 @@
 'use client';
 
 import api from "../apiConfig.json";
+const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main;
 
 export default class ChatService {
     _isLoading = false;
@@ -31,7 +32,7 @@ export default class ChatService {
     }
 
     async adminSearchChats({ q = '', userIds = [], limit = 50 } = {}) {
-        const base = `${api.ApiConfig.main}/${api.ApiConfig.chat.adminSearch.url}`;
+        const base = `${BASE}/${api.ApiConfig.chat.adminSearch.url}`;
         const url = this.appendObjectToQueryString(base, {
             q,
             userIds: Array.isArray(userIds) ? userIds.join(',') : userIds,
@@ -42,25 +43,25 @@ export default class ChatService {
 
     async adminGetChatById(chatId) {
         const path = api.ApiConfig.chat.adminGetById.url.replace(':chatId', encodeURIComponent(String(chatId)));
-        const url = `${api.ApiConfig.main}/${path}`;
+        const url = `${BASE}/${path}`;
         return await this.ajaxCallGet(url, api.ApiConfig.chat.adminGetById.method);
     }
 
   async deleteChat(chatId) {
     const path = api.ApiConfig.chat.delete.url.replace(':chatId', encodeURIComponent(String(chatId)));
-    const url = `${api.ApiConfig.main}/${path}`;
+    const url = `${BASE}/${path}`;
     return await this.ajaxCall(url, api.ApiConfig.chat.delete.method);
   }
 
   async adminCreateChat({ title, userIds }) {
-    const url = `${api.ApiConfig.main}/${api.ApiConfig.chat.adminCreate.url}`;
+    const url = `${BASE}/${api.ApiConfig.chat.adminCreate.url}`;
     const payload = JSON.stringify({ title, userIds });
     return await this.ajaxCall(url, api.ApiConfig.chat.adminCreate.method, payload);
   }
 
   async adminDeleteChat(chatId) {
     const path = api.ApiConfig.chat.adminDelete.url.replace(':chatId', encodeURIComponent(String(chatId)));
-    const url = `${api.ApiConfig.main}/${path}`;
+    const url = `${BASE}/${path}`;
     return await this.ajaxCall(url, api.ApiConfig.chat.adminDelete.method);
   }
 
