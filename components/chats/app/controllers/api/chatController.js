@@ -132,16 +132,16 @@ class chatController {
                 .toList();
 
             const recentChats = [];
-            for (const m of memberships) {
-                try {
-                    const chat = this._chatContext.Chat
-                        .where(c => c.id == $$ && c.updated_at >= $$ && (c.is_archived == $$ || c.is_archived == null), m.chat_id, startOfToday.toString(), false)
-                        .single();
-                    if (chat) {
-                        recentChats.push(chat);
-                    }
-                } catch (_) { /* ignore per-chat errors */ }
-            }
+	            for (const m of memberships) {
+	                try {
+	                    const chat = this._chatContext.Chat
+	                        .where(c => c.id == $$ && c.updated_at >= $$ && c.is_archived == $$ && c.is_deleted == $$, m.chat_id, startOfToday.toString(), 0, 0)
+	                        .single();
+	                    if (chat) {
+	                        recentChats.push(chat);
+	                    }
+	                } catch (_) { /* ignore per-chat errors */ }
+	            }
 
             recentChats.sort((a, b) => parseInt(b.updated_at) - parseInt(a.updated_at));
             recentChats.splice(20);
@@ -179,16 +179,16 @@ class chatController {
                 .toList();
 
             const yesterdayChats = [];
-            for (const m of memberships) {
-                try {
-                    const chat = this._chatContext.Chat
-                        .where(c => c.id == $$ && c.updated_at >= $$ && c.updated_at < $$ && (c.is_archived == $$ || c.is_archived == null), m.chat_id, startOfYesterday.toString(), endOfYesterday.toString(), 0)
-                        .single();
-                    if (chat) {
-                        yesterdayChats.push(chat);
-                    }
-                } catch (_) { /* ignore per-chat errors */ }
-            }
+	            for (const m of memberships) {
+	                try {
+	                    const chat = this._chatContext.Chat
+	                        .where(c => c.id == $$ && c.updated_at >= $$ && c.updated_at < $$ && c.is_archived == $$ && c.is_deleted == $$, m.chat_id, startOfYesterday.toString(), endOfYesterday.toString(), 0, 0)
+	                        .single();
+	                    if (chat) {
+	                        yesterdayChats.push(chat);
+	                    }
+	                } catch (_) { /* ignore per-chat errors */ }
+	            }
 
             yesterdayChats.sort((a, b) => parseInt(b.updated_at) - parseInt(a.updated_at));
             yesterdayChats.splice(20);
@@ -227,16 +227,16 @@ class chatController {
                 .toList();
 
             const weekChats = [];
-            for (const m of memberships) {
-                try {
-                    const chat = this._chatContext.Chat
-                        .where(c => c.id == $$ && c.updated_at >= $$ && c.updated_at < $$ && c.is_archived == $$ , m.chat_id, startOfWeek.toString(), startOfYesterday.toString(), 0)
-                        .single();
-                    if (chat) {
-                        weekChats.push(chat);
-                    }
-                } catch (_) { /* ignore per-chat errors */ }
-            }
+	            for (const m of memberships) {
+	                try {
+	                    const chat = this._chatContext.Chat
+	                        .where(c => c.id == $$ && c.updated_at >= $$ && c.updated_at < $$ && c.is_archived == $$ && c.is_deleted == $$, m.chat_id, startOfWeek.toString(), startOfYesterday.toString(), 0, 0)
+	                        .single();
+	                    if (chat) {
+	                        weekChats.push(chat);
+	                    }
+	                } catch (_) { /* ignore per-chat errors */ }
+	            }
 
             weekChats.sort((a, b) => parseInt(b.updated_at) - parseInt(a.updated_at));
             weekChats.splice(30);
@@ -274,16 +274,16 @@ class chatController {
                 .toList();
 
             const chatsForUser = [];
-            for (const m of memberships) {
-                try {
-                    const chat = this._chatContext.Chat
-                        .where(c => c.id == $$ && c.is_archived == $$ && c.is_deleted == $$, m.chat_id, 0, 0)
-                        .single();
-                    if (chat && !(chat.is_admin_created === true || chat.is_admin_created === 1)) {
-                        chatsForUser.push(chat);
-                    }
-                } catch (_) { /* ignore per-chat errors */ }
-            }
+	            for (const m of memberships) {
+	                try {
+	                    const chat = this._chatContext.Chat
+	                        .where(c => c.id == $$ && c.is_archived == $$ && c.is_deleted == $$, m.chat_id, 0, 0)
+	                        .single();
+	                    if (chat && !(chat.is_admin_created === true || chat.is_admin_created === 1)) {
+	                        chatsForUser.push(chat);
+	                    }
+	                } catch (_) { /* ignore per-chat errors */ }
+	            }
 
             const sortedChats = chatsForUser
                 .sort((a, b) => parseInt(b.updated_at) - parseInt(a.updated_at));
@@ -402,14 +402,14 @@ class chatController {
                 .toList();
 
             const candidateChats = [];
-            for (const m of memberships) {
-                try {
-                    const chat = this._chatContext.Chat
-                        .where(c => c.id == $$ && c.is_archived == $$ && c.is_deleted === $$ , m.chat_id, 0, 0)
-                        .single();
-                    if (chat) candidateChats.push(chat);
-                } catch (_) { /* ignore */ }
-            }
+	            for (const m of memberships) {
+	                try {
+	                    const chat = this._chatContext.Chat
+	                        .where(c => c.id == $$ && c.is_archived == $$ && c.is_deleted == $$ , m.chat_id, 0, 0)
+	                        .single();
+	                    if (chat) candidateChats.push(chat);
+	                } catch (_) { /* ignore */ }
+	            }
 
             const matchingChats = candidateChats
                 .sort((a, b) => parseInt(b.updated_at) - parseInt(a.updated_at))
@@ -490,9 +490,9 @@ class chatController {
                 });
             }
 
-            const chat = this._chatContext.Chat
-                .where(c => c.id == $$, chatId)
-                .single();
+	            const chat = this._chatContext.Chat
+	                .where(c => c.id == $$ && c.is_archived == $$ && c.is_deleted == $$, chatId, 0, 0)
+	                .single();
 
             if (!chat) {
                 return this.returnJson({
