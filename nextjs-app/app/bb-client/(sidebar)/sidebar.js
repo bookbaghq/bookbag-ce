@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -351,7 +351,7 @@ export function SidebarNav(props) {
     } catch (_) {}
   };
 
-  async function fetchAllThreads() {
+  const fetchAllThreads = useCallback(async () => {
     try {
       setAllThreadsLoading(true);
       const apiUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main}/bb-chat/api/chat/all?limit=20`;
@@ -393,7 +393,7 @@ export function SidebarNav(props) {
     } finally {
       setAllThreadsLoading(false);
     }
-  }
+  }, []);
 
   const fetchAdminChats = async () => {
     try {

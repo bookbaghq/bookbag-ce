@@ -448,7 +448,7 @@ function EditServerModelButton({ model, onUpdated, onError }) {
     loadThinkingStrings();
     loadModel();
     return () => { stop = true }
-  }, [])
+  }, [model.id])
 
   const addThinkingString = async () => {
     if (!thinkingEnd || !thinkingEnd.trim()) return
