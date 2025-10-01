@@ -235,35 +235,63 @@ class chatSocket {
 			try { socket.on('chat:cancel', cancelHandler); } catch (_) {}
 
 			// Generate streaming response
-			let responseBuffer = '';
+			let lastDisplayBuffer = '';
+			let lastThinkingBufferSent = '';
+			let lastThinkingEndTime = null;
 			let lastTokenCount = 0;
 			let generationResult;
 			try {
 				const tokenCallback = async (chunk) => {
 					try {
-						// Accumulate full text and compute simple stats
+						// Process chunk through thinking detection first to derive clean display buffer
 						if (typeof chunk === 'string' && chunk.length > 0) {
-							responseBuffer += chunk;
+							let result = null;
+							try { result = await thinkingService.processChunk(chunk); } catch (_) { result = null; }
+							const displayBuffer = (result && typeof result.responseBuffer === 'string') ? result.responseBuffer : (lastDisplayBuffer || '');
+							const thinkingBuffer = (result && typeof result.thinkingBuffer === 'string') ? result.thinkingBuffer : '';
+							const thinkingStartTime = (result && typeof result.thinkingStartTime !== 'undefined') ? result.thinkingStartTime : null;
+							const thinkingEndTime = (result && typeof result.thinkingEndTime !== 'undefined') ? result.thinkingEndTime : null;
+
+							// Compute thinking delta relative to last sent buffer
+							let thinkingDelta = '';
+							if (thinkingBuffer) {
+								if (thinkingBuffer.startsWith(lastThinkingBufferSent)) {
+									thinkingDelta = thinkingBuffer.slice(lastThinkingBufferSent.length);
+								} else {
+									// Reset or divergence; send full current buffer as a new segment
+									thinkingDelta = thinkingBuffer;
+								}
+								lastThinkingBufferSent = thinkingBuffer;
+							}
+
 							const elapsedSec = Math.max(0.001, (Date.now() - generationStartTime) / 1000);
-							const tokenCount = Math.ceil(responseBuffer.length / 4);
+							const tokenCount = Math.ceil(displayBuffer.length / 4);
 							const tps = tokenCount > 0 ? +(tokenCount / elapsedSec).toFixed(2) : null;
 
-							// Emit enriched aiChunk event expected by frontend
+							// Emit enriched aiChunk with clean fullText and thinking extras
+							const extraFields = { responseBuffer: displayBuffer };
+							if (thinkingBuffer) extraFields.thinkingBuffer = thinkingBuffer;
+							if (thinkingDelta) extraFields.thinkingDelta = thinkingDelta;
+							if (thinkingStartTime !== null) extraFields.thinkingStartTime = thinkingStartTime;
+							if (thinkingEndTime !== null && thinkingEndTime !== lastThinkingEndTime) {
+								extraFields.thinkingEndTime = thinkingEndTime;
+								lastThinkingEndTime = thinkingEndTime;
+							}
 							this.streamingService.sendAIChunk(
 								socket,
 								chunk,
 								aiMessageId,
-								responseBuffer,
+								displayBuffer,
 								tps,
 								tokenCount,
-								null
+								extraFields
 							);
 
-							// Persist incremental clean content (hybrid throttle/debounce inside service)
+							// Persist incremental CLEAN assistant content (non-thinking only)
 							try {
 								await persistenceService.saveIncrementalAssistantContent(
 									aiMessageId,
-									responseBuffer,
+									displayBuffer,
 									tokenCount,
 									tps,
 									thinkingService.getDetectedSectionsCount ? thinkingService.getDetectedSectionsCount() : 0,
@@ -271,10 +299,8 @@ class chatSocket {
 									lastTokenCount
 								);
 								lastTokenCount = tokenCount;
+								lastDisplayBuffer = displayBuffer;
 							} catch (_) {}
-
-							// Forward chunk to thinking detection service
-							try { await thinkingService.processChunk(chunk); } catch (_) {}
 						}
 					} catch (_) {}
 				};
@@ -299,10 +325,38 @@ class chatSocket {
 				return;
 			}
 
-            // Finalize: persist trailing update, send completion event, and close stream
+			// Finalize: persist trailing update, send final clean chunk, completion event, and close stream
 			try {
-                // Ensure DB reflects the final full response before completion
-                try { if (typeof persistenceService.flushPendingStreamingUpdate === 'function') { await persistenceService.flushPendingStreamingUpdate(aiMessageId); } } catch (_) {}
+				// Ensure DB reflects the final full CLEAN response before completion
+				try {
+					const finalDisplay = String(lastDisplayBuffer || '');
+					const finalElapsedSec = Math.max(0.001, (Date.now() - generationStartTime) / 1000);
+					const finalTokens = Math.ceil(finalDisplay.length / 4);
+					const finalTps = finalTokens > 0 ? +(finalTokens / finalElapsedSec).toFixed(2) : null;
+					await persistenceService.saveIncrementalAssistantContent(
+						aiMessageId,
+						finalDisplay,
+						finalTokens,
+						finalTps,
+						0,
+						generationStartTime,
+						0
+					);
+				} catch (_) {}
+
+				// Emit a final aiChunk carrying the final CLEAN fullText for UI sync
+				try {
+					this.streamingService.sendAIChunk(
+						socket,
+						'__STREAM_END__',
+						aiMessageId,
+						String(lastDisplayBuffer || ''),
+						null,
+						null,
+						{ responseBuffer: String(lastDisplayBuffer || '') }
+					);
+				} catch (_) {}
+				try { if (typeof persistenceService.flushPendingStreamingUpdate === 'function') { await persistenceService.flushPendingStreamingUpdate(aiMessageId); } } catch (_) {}
 				try { if (typeof persistenceService.updateMessageStatus === 'function') { await persistenceService.updateMessageStatus(aiMessageId, 'completed', { finishedAt: Date.now() }); } } catch (_) {}
 				let finalAiMessage = null;
 				try { finalAiMessage = await persistenceService.getMessageById(aiMessageId); } catch (_) {}

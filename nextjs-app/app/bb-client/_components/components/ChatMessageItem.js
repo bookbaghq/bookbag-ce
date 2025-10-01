@@ -11,6 +11,10 @@ import { Bot, User } from "lucide-react";
 import { getMessageTokenCount, getMessageMaxTokens } from "../tools/tokenUtils";
 import { Spinner } from "@/components/spinner";
 import { cn } from "@/lib/utils";
+import { createLiveThinkingComponent } from './LiveThinking';
+import { createLiveResponseComponent } from './LiveResponse';
+import { ThinkingBuffer } from './ThinkingBuffer';
+import { ThinkingBubbleHost } from './ThinkingBubbleHost';
 
 // Helper: parse timestamps defensively
 const parseTimestamp = (timestamp) => {
@@ -67,6 +71,8 @@ export class ChatMessageItem extends React.Component {
 
   render() {
     const { message, isUser, isStreamingCurrentMessage } = this.props;
+    const LiveThinking = createLiveThinkingComponent(React);
+    const LiveResponse = createLiveResponseComponent(React);
     const messageDate = parseTimestamp(message.createdAt);
     const messageTime = messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const hasAssistantContent = !!(message?.content && String(message.content).trim().length);
@@ -96,6 +102,24 @@ export class ChatMessageItem extends React.Component {
           {/* Message Content */}
           {!isUser ? (
             <>
+              {/* Simple bubble host API (event-driven) */}
+              <ThinkingBubbleHost messageId={message.id} />
+
+              {/* Persisted thinking sections for refresh */}
+              {Array.isArray(message.thinkingSections) && message.thinkingSections.length > 0 && (
+                <div className="flex flex-col gap-3 mb-3">
+                  {message.thinkingSections.map((sec, idx) => (
+                    <ThinkingBuffer
+                      key={`${message.id}-think-${idx}`}
+                      isShowingThinking={false}
+                      thinkingContent={sec?.content || ''}
+                      thinkingStartTime={sec?.startTime || sec?.start_time || null}
+                      thinkingEndTime={sec?.endTime || sec?.end_time || null}
+                    />
+                  ))}
+                </div>
+              )}
+
               {/* Thinking indicator while awaiting first tokens */}
               {isStreamingCurrentMessage && !hasAssistantContent && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
@@ -103,15 +127,28 @@ export class ChatMessageItem extends React.Component {
                   <span>Thinking…</span>
                 </div>
               )}
-              {hasAssistantContent && (
-                <>
+
+              {/* Live Response buffer or persisted content */}
+              {(() => {
+                const persisted = message.content?.trim?.() || '';
+                if (!persisted) {
+                  return (
+                    <div className="p-0">
+                      <LiveResponse messageId={message.id} />
+                    </div>
+                  );
+                }
+                return (
                   <Card className="p-4 relative group/message">
                     <div className="whitespace-pre-wrap text-left">
-                      {message.content?.trim?.() || ''}
+                      {persisted}
                     </div>
                   </Card>
-                  {/* Stats pills: tokens, TPS, model */}
-                  <div className="mt-2 flex justify-start gap-2">
+                );
+              })()}
+
+              {/* Stats pills: tokens, TPS, model */}
+              <div className="mt-2 flex justify-start gap-2">
                     {/* Tokens pill */}
                     {(() => {
                       const tokenCount = getMessageTokenCount(message);
@@ -144,8 +181,6 @@ export class ChatMessageItem extends React.Component {
                     })()}
                   </div>
                 </>
-              )}
-            </>
           ) : (
             <Card className="p-4 relative group/message ml-auto bg-primary text-primary-foreground">
               <div className="whitespace-pre-wrap text-left">

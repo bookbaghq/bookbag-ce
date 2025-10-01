@@ -9,6 +9,8 @@ import { contextService, modelService } from '../services/contextService';
 import { apiService } from '../services/apiService';
 import { calculateConversationTokenCount, preprocessInput } from '../tools/tokenUtils';
 import { createFrontendStreamingService } from '../services/frontendStreamingService';
+import { bindBusForMessage } from '../services/uiStreamStore';
+import { thinkingBubbleManager } from '../services/thinkingBubbleManager';
 
 export function useChatController({
   initialChatId = null,
@@ -53,6 +55,7 @@ export function useChatController({
   const currentChatIdRef = useRef(currentChatId);
   const frontendStreamingServiceRef = useRef(null);
   const responseSaveRef = useRef({ timerId: null, lastSavedLength: 0, pendingContent: '', generationStartTime: 0, lastUpdateTime: 0, messageId: null });
+  const thinkingTrackRef = useRef(new Map()); // Map<messageId, { lastSent: string, lastEnd: number|null }>
   const messagesContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
   const isUserAtBottomRef = useRef(true);
@@ -377,6 +380,7 @@ export function useChatController({
 
   const handleStreamProcessing = async (reader, decoder, aiMessageId, response) => {
     let buffer = '';
+    let currentId = aiMessageId;
     try {
       while (true) {
         const { done, value } = await reader.read();
@@ -392,6 +396,42 @@ export function useChatController({
           if (data === '[TIMEOUT]') { break; }
           try {
             const parsed = JSON.parse(data);
+            // Simple bubble tracking based on growing thinkingBuffer
+            try {
+              const mid = String((parsed && (parsed.messageId || parsed.realMessageId)) || aiMessageId);
+              const trackMap = thinkingTrackRef.current;
+              const track = trackMap.get(mid) || { lastSent: '', lastEnd: null };
+              const tb = (typeof parsed.thinkingDelta === 'string') ? parsed.thinkingDelta : (typeof parsed.thinkingBuffer === 'string' ? parsed.thinkingBuffer : null);
+              
+              if (tb) {
+                let delta = (typeof parsed.thinkingDelta === 'string') ? parsed.thinkingDelta : (tb.startsWith(track.lastSent) ? tb.slice(track.lastSent.length) : tb);
+                if (delta && delta.trim()) {
+                  thinkingBubbleManager.add(mid, delta, (typeof parsed.thinkingStartTime === 'number') ? parsed.thinkingStartTime : Date.now(), (typeof parsed.thinkingEndTime === 'number') ? parsed.thinkingEndTime : null);
+                }
+                if (typeof parsed.thinkingDelta !== 'string') {
+                  track.lastSent = tb;
+                } else {
+                  track.lastSent = track.lastSent + parsed.thinkingDelta;
+                }
+                trackMap.set(mid, track);
+              }
+              if (typeof parsed.thinkingEndTime === 'number') {
+                if (parsed.thinkingEndTime !== track.lastEnd) {
+                  thinkingBubbleManager.end(mid, parsed.thinkingEndTime);
+                  track.lastEnd = parsed.thinkingEndTime;
+                  trackMap.set(mid, track);
+                }
+              }
+            } catch (e) { console.error('[THINKING ERROR]', e); }
+            // Map temp placeholder id to real message id when backend provides it
+            try {
+              const incomingId = parsed?.messageId || parsed?.realMessageId || (parsed?.finalMessage && parsed.finalMessage.id) || null;
+              if (incomingId && String(incomingId) !== String(currentId)) {
+                setMessages(prev => prev.map(msg => (String(msg.id) === String(currentId) ? { ...msg, id: incomingId } : msg)));
+                currentId = String(incomingId);
+                try { bindBusForMessage(String(currentId)); } catch (_) {}
+              }
+            } catch (_) {}
             // If backend streamed an error payload, surface it in the modal and stop updating content
             if (parsed && parsed.type === 'error') {
               try {
@@ -422,11 +462,11 @@ export function useChatController({
                 : null;
             if (latestContent !== null) {
               setMessages(prev => {
-                const hasAi = prev.some(m => String(m.id) === String(aiMessageId));
+                const hasAi = prev.some(m => String(m.id) === String(currentId));
                 if (!hasAi) {
                   // First tokens: insert the AI card now
                   const aiCard = {
-                    id: aiMessageId,
+                    id: currentId,
                     content: latestContent,
                     role: 'assistant',
                     createdAt: Date.now(),
@@ -435,7 +475,7 @@ export function useChatController({
                   return [...prev, aiCard];
                 }
                 return prev.map(msg => {
-                  if (String(msg.id) !== String(aiMessageId)) return msg;
+                  if (String(msg.id) !== String(currentId)) return msg;
                   const current = String(msg.content || '');
                   const incoming = String(latestContent);
                   // Never regress content length at end or during stream; keep the longest
@@ -449,7 +489,7 @@ export function useChatController({
               const incomingCount = (typeof parsed.tokenCount === 'number') ? (Number(parsed.tokenCount) || 0) : null;
               const incomingTps = (typeof parsed.tps === 'number') ? parsed.tps : null;
               setMessages(prev => prev.map(msg => {
-                if (String(msg.id) !== String(aiMessageId)) return msg;
+                if (String(msg.id) !== String(currentId)) return msg;
                 const nextTokenCount = (incomingCount !== null)
                   ? Math.max(
                       typeof msg.token_count === 'number' ? msg.token_count : 0,
@@ -464,11 +504,30 @@ export function useChatController({
               }));
             }
 
+            // Forward to frontend streaming service to publish thinking/response events
+            try {
+              if (frontendStreamingServiceRef.current && typeof frontendStreamingServiceRef.current.processToken === 'function') {
+                const incomingId = parsed?.messageId || parsed?.realMessageId || null;
+                frontendStreamingServiceRef.current.processToken({
+                  token: (typeof parsed.chunk === 'string') ? parsed.chunk : '',
+                  tps: (typeof parsed.tps === 'number') ? parsed.tps : null,
+                  tokenCount: (typeof parsed.tokenCount === 'number') ? parsed.tokenCount : null,
+                  messageId: incomingId || currentId,
+                  responseBuffer: (typeof parsed.fullText === 'string') ? parsed.fullText : (typeof parsed.responseBuffer === 'string') ? parsed.responseBuffer : undefined,
+                  thinkingBuffer: (typeof parsed.thinkingBuffer === 'string' || Array.isArray(parsed.thinkingBuffer) || (parsed.thinkingBuffer && typeof parsed.thinkingBuffer === 'object')) ? parsed.thinkingBuffer : undefined,
+                  thinkingStartTime: (typeof parsed.thinkingStartTime === 'number') ? parsed.thinkingStartTime : undefined,
+                  thinkingEndTime: (typeof parsed.thinkingEndTime === 'number') ? parsed.thinkingEndTime : undefined
+                });
+              }
+            } catch (_) {}
+
+            // Bubble management is handled above (lines 400-442) - no duplicate logic needed here
+
             // Apply final message payload if backend emits completion with final fields
             if (parsed && parsed.type === 'aiMessageComplete' && parsed.finalMessage) {
               const fm = parsed.finalMessage || {};
               setMessages(prev => prev.map(msg => {
-                if (String(msg.id) !== String(aiMessageId)) return msg;
+                if (String(msg.id) !== String(currentId)) return msg;
                 const current = String(msg.content || '');
                 const finalContent = (typeof fm.content === 'string') ? fm.content : current;
                 // Guard: do not overwrite longer in-memory content with shorter final payload
@@ -482,6 +541,9 @@ export function useChatController({
                   meta: { ...(msg.meta || {}), model: fm.model || (msg.meta && msg.meta.model) }
                 };
               }));
+              // Signal finalize to the UI event bus
+              try { if (frontendStreamingServiceRef.current) { frontendStreamingServiceRef.current.processToken({ token: '__STREAM_END__', messageId: currentId }); } } catch (_) {}
+              try { thinkingBubbleManager.end(currentId, Date.now()); } catch (_) {}
             }
           } catch (_) {
             // ignore bad line
@@ -493,6 +555,7 @@ export function useChatController({
     }
     // Do not mutate content on end; only stop streaming state
     await handleStreamCompletion(aiMessageId, true);
+    try { if (frontendStreamingServiceRef.current) { frontendStreamingServiceRef.current.processToken({ token: '__STREAM_END__', messageId: aiMessageId }); } } catch (_) {}
     return aiMessageId;
   };
 
@@ -624,6 +687,7 @@ export function useChatController({
           
           
         });
+        try { bindBusForMessage(String(aiMessage.id)); } catch (_) {}
 
         
 

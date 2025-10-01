@@ -10,6 +10,7 @@ function getDefaultState(messageId) {
     id: String(messageId),
     // thinking
     thinkingContent: '',
+    thinkingSegments: [], // [{ content, startTime, endTime, isShowing }]
     thinkingStartTime: null,
     thinkingEndTime: null,
     isThinkingShowing: false,
@@ -94,6 +95,22 @@ export function bindBusForMessage(messageId) {
       stateById.set(key, getDefaultState(key));
       emit(key);
     });
+    const unsubThinkingSegment = uiEventBus.subscribe(key, 'thinkingSegment', ({ content, startTime, endTime }) => {
+      const s = ensureState(key);
+      const segment = {
+        content: content || '',
+        startTime: typeof startTime === 'number' ? startTime : Date.now(),
+        endTime: typeof endTime === 'number' ? endTime : null,
+        isShowing: true
+      };
+      s.thinkingSegments = Array.isArray(s.thinkingSegments) ? [...s.thinkingSegments, segment] : [segment];
+      // Maintain summary fields for compatibility
+      s.thinkingContent = segment.content;
+      s.thinkingStartTime = segment.startTime;
+      s.thinkingEndTime = segment.endTime;
+      s.isThinkingShowing = true;
+      emit(key);
+    });
     const unsubThinking = uiEventBus.subscribe(key, 'thinking', ({ content, startTime, endTime }) => {
       const s = ensureState(key);
       s.thinkingContent = content || '';
@@ -121,9 +138,14 @@ export function bindBusForMessage(messageId) {
       s.isDone = true;
       // Hide live thinking, keep persisted sections to render separately
       s.isThinkingShowing = false;
+      // Mark last segment as ended
+      if (Array.isArray(s.thinkingSegments) && s.thinkingSegments.length > 0) {
+        const last = s.thinkingSegments[s.thinkingSegments.length - 1];
+        s.thinkingSegments[s.thinkingSegments.length - 1] = { ...last, isShowing: false, endTime: last.endTime ?? Date.now() };
+      }
       emit(key);
     });
-    binding.unsubs = [unsubReset, unsubThinking, unsubResponse, unsubTokens, unsubFinalize];
+    binding.unsubs = [unsubReset, unsubThinkingSegment, unsubThinking, unsubResponse, unsubTokens, unsubFinalize];
   }
   binding.refCount += 1;
   busBindings.set(key, binding);

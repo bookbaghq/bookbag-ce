@@ -24,6 +24,9 @@ export class FrontendStreamingService {
         // uiCallbacks will be assigned by the owning component
         this.uiCallbacks = null;
 
+        // Track last thinking piece to avoid duplicates
+        this._lastThinkingPiece = '';
+
         try {
             const { uiEventBus } = require('./uiEventBus');
             this.bus = uiEventBus;
@@ -204,8 +207,21 @@ export class FrontendStreamingService {
     }
 
     thinkingBufferUpdate(fulltext, sectionStartTime, sectionEndTime){
-        // set the thinking buffer
-        this.thinkingBuffer = fulltext; // this is the thinking buffer
+        // Normalize incoming piece
+        const piece = (typeof fulltext === 'string') ? fulltext : '';
+        if (!piece) {
+            return;
+        }
+        // Avoid duplicate appends when the same segment is delivered repeatedly
+        if (this._lastThinkingPiece === piece) {
+            // still publish to keep times up to date if provided
+        } else {
+            this._lastThinkingPiece = piece;
+            // Append new piece to existing thinking buffer with spacing
+            this.thinkingBuffer = this.thinkingBuffer
+                ? `${this.thinkingBuffer}\n\n${piece}`
+                : piece;
+        }
         // Initialize start time if not already set
         if (!this.startTime) {
             this.startTime = sectionStartTime || Date.now();
@@ -214,6 +230,9 @@ export class FrontendStreamingService {
         this.endTime = (typeof sectionEndTime === 'number') ? sectionEndTime : null;
         try { console.log('[FES] thinkingBufferUpdate', { messageId: this.messageId, len: (this.thinkingBuffer || '').length, startTime: this.startTime, endTime: this.endTime }); } catch (_) {}
         if (this.bus) {
+            // Publish a per-segment event so UI can append a new bubble
+            this.bus.publish(this.messageId, 'thinkingSegment', { content: piece, startTime: this.startTime, endTime: this.endTime });
+            // Maintain backward-compatible aggregate event as well
             this.bus.publish(this.messageId, 'thinking', { content: this.thinkingBuffer, startTime: this.startTime, endTime: this.endTime });
         }
     }

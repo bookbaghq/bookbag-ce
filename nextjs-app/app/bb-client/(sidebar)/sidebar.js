@@ -317,7 +317,14 @@ export function SidebarNav(props) {
       const resp = await fetch(`${base}/bb-chat/api/chat/recent`, { method: 'GET', credentials: 'include' });
       const data = await resp.json();
       if (data?.success) {
-        setChatData(prev => ({ ...prev, recent: data.chats || [] }));
+        // Deduplicate by id keeping the first occurrence
+        const seen = new Set();
+        const unique = [];
+        for (const c of (data.chats || [])) {
+          const id = c && c.id != null ? String(c.id) : null;
+          if (id && !seen.has(id)) { seen.add(id); unique.push(c); }
+        }
+        setChatData(prev => ({ ...prev, recent: unique }));
       }
     } catch (_) {}
   };
@@ -366,8 +373,15 @@ export function SidebarNav(props) {
             updated_at: chat.updated_at
           }));
           
-          // Preserve backend ordering; no client-side sorting
-          setAllThreads(formattedThreads);
+          // Deduplicate by id while preserving order
+          const seen = new Set();
+          const uniqueThreads = [];
+          for (const t of formattedThreads) {
+            const id = t && t.id != null ? String(t.id) : null;
+            if (id && !seen.has(id)) { seen.add(id); uniqueThreads.push(t); }
+          }
+          // Preserve backend ordering; no client-side sorting beyond de-dup
+          setAllThreads(uniqueThreads);
         } else {
           console.warn('⚠️ All threads API returned success: false', data);
         }
@@ -925,7 +939,7 @@ export function SidebarNav(props) {
                 <div className="space-y-1 mt-1">
                   {chatData.recent.map(chat => (
                     <div 
-                      key={chat.id}
+                      key={`recent-${chat.id}-${chat.updated_at ?? chat.timestamp ?? ''}`}
                       className={`rounded-md overflow-hidden mx-2 mb-2 cursor-pointer transition-colors ${
                         isChatActive(chat.id) 
                           ? 'dark:bg-gray-800/60 bg-zinc-200/60 border-l-2 border-zinc-400 dark:border-gray-600' 
@@ -976,7 +990,7 @@ export function SidebarNav(props) {
                 <div className="space-y-1 mt-1">
                   {chatData.yesterday.map(chat => (
                     <div 
-                      key={chat.id}
+                      key={`y-${chat.id}-${chat.updated_at ?? chat.timestamp ?? ''}`}
                       className={`rounded-md overflow-hidden mx-2 mb-2 cursor-pointer transition-colors ${
                         isChatActive(chat.id) 
                           ? 'dark:bg-gray-800/60 bg-zinc-200/60 border-l-2 border-zinc-400 dark:border-gray-600' 
@@ -1027,7 +1041,7 @@ export function SidebarNav(props) {
                 <div className="space-y-1 mt-1">
                   {chatData.previousWeek.map(chat => (
                     <div 
-                      key={chat.id}
+                      key={`pw-${chat.id}-${chat.updated_at ?? chat.timestamp ?? ''}`}
                       className={`rounded-md overflow-hidden mx-2 mb-2 cursor-pointer transition-colors ${
                         isChatActive(chat.id) 
                           ? 'dark:bg-gray-800/60 bg-zinc-200/60 border-l-2 border-zinc-400 dark:border-gray-600' 
@@ -1085,7 +1099,7 @@ export function SidebarNav(props) {
                 ) : allThreads.length > 0 ? (
                   allThreads.map(thread => (
                     <div 
-                      key={thread.id}
+                      key={`all-${thread.id}`}
                       className="flex items-center justify-between rounded-md mx-2 mb-2 w-full"
                       style={isChatActive(thread.id) ? { backgroundColor: 'rgba(57, 58, 59, 0.5)' } : {}}
                       onMouseEnter={() => setHoveredThread(`all:${thread.id}`)}
