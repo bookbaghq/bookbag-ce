@@ -26,8 +26,7 @@ module.exports = {
       watch: false,
       max_memory_restart: '1G',
       env: {
-        NODE_ENV: 'development',
-        NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080'
+        NODE_ENV: 'development'
       },
       error_file: '../log/pm2-frontend-dev-error.log',
       out_file: '../log/pm2-frontend-dev-out.log',
