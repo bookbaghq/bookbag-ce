@@ -9,7 +9,31 @@ This guide covers deploying Bookbag CE to a production server using PM2.
 - Your server configured with proper firewall rules
 - Domain/subdomain configured (optional)
 
-## Deployment Steps
+## Quick Deploy (Recommended)
+
+Use the interactive deploy script. It installs deps, builds (prod), wires env, updates CORS, and starts via PM2 if available.
+
+```bash
+npm run deploy
+```
+
+When prompted:
+- Select mode: 1) Development (hot reload) or 2) Production (optimized build)
+- Enter backend URL without trailing slash, e.g.:
+  - http://YOUR_SERVER_IP:8080
+
+What the script does:
+- Exports NEXT_PUBLIC_BACKEND_URL for the frontend and trims any trailing slash
+- Adds your frontend origin (http://YOUR_SERVER_IP:3000) to `config/initializers/cors.json`
+- Installs deps for backend and frontend
+- Builds the Next.js app in production mode
+- Starts services via PM2 (with `--update-env`) or in foreground if PM2 is not installed
+
+Notes:
+- Frontend requires NEXT_PUBLIC_BACKEND_URL; there is no fallback. If missing/invalid, the app will error
+- WebSocket warnings for `/_next/webpack-hmr` in development are harmless (hot reload channel)
+
+## Manual Deployment Steps
 
 ### 1. Clone and Install Dependencies
 
@@ -29,16 +53,20 @@ cd ..
 
 ### 2. Configure Environment Variables
 
-**Backend Configuration:**
-- JWT secrets will auto-generate on first run
-- Update database settings in `config/environments/env.production.json` if needed
+If you use `npm run deploy`, this is handled for you. For manual setups:
 
-**Frontend Configuration:**
+**Backend Configuration:**
+- JWT secrets auto-generate on first run
+- Update DB in `config/environments/env.production.json` if needed
+
+**Frontend Configuration (required):**
 ```bash
-# Set backend URL (replace with your server URL)
+# Set backend URL (NO trailing slash)
 export NEXT_PUBLIC_BACKEND_URL=http://your-server-ip:8080
-# OR for domain:
-export NEXT_PUBLIC_BACKEND_URL=https://api.yourdomain.com
+```
+Optional (local dev): create `nextjs-app/.env.local` with:
+```env
+NEXT_PUBLIC_BACKEND_URL=http://your-server-ip:8080
 ```
 
 ### 3. Build Frontend
@@ -54,8 +82,10 @@ cd ..
 **Option A: Use PM2 Ecosystem File (Recommended)**
 
 ```bash
-# Start all services
-pm2 start ecosystem.config.js
+# Start all services (choose dev or prod file as needed)
+pm2 start ecosystem.prod.config.js   # production
+# or
+pm2 start ecosystem.dev.config.js    # development (hot reload)
 
 # View status
 pm2 status
@@ -70,9 +100,9 @@ pm2 logs
 # Start backend
 pm2 start server.js --name "bookbag-backend" -- master=production
 
-# Start frontend
+# Start frontend (ensure env provided)
 cd nextjs-app
-pm2 start npm --name "bookbag-frontend" -- start
+NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL pm2 start npm --name "bookbag-frontend" -- start
 cd ..
 
 # Save PM2 configuration
