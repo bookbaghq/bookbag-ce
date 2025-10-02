@@ -285,13 +285,6 @@ export function SidebarNav(props) {
     } catch (_) {}
   }, []);
 
-  // Auto-fetch threads if All Threads section is expanded on page load
-  useEffect(() => {
-    if (expandedSections.allThreads && allThreads.length === 0) {
-      fetchAllThreads();
-    }
-  }, [expandedSections.allThreads, allThreads.length, fetchAllThreads]);
-
   // Expand section when active chat changes
   useEffect(() => {
     if (activeChatId && chatData) {
@@ -394,6 +387,13 @@ export function SidebarNav(props) {
       setAllThreadsLoading(false);
     }
   }, []);
+
+  // Auto-fetch threads if All Threads section is expanded on page load
+  useEffect(() => {
+    if (expandedSections.allThreads && allThreads.length === 0) {
+      fetchAllThreads();
+    }
+  }, [expandedSections.allThreads, allThreads.length, fetchAllThreads]);
 
   const fetchAdminChats = async () => {
     try {

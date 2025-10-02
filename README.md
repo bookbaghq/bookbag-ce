@@ -81,43 +81,76 @@ email: admin@bookbag.work
 password: admin
 ```
 
-3) Start the backend (Master.js)
-```bash
-# from the repo root
-# master=development selects config/environments/env.development.json
-master=development node server.js
-```
-Backend default: http://127.0.0.1:8080
+3) **Quick Start - Deploy Everything (Recommended)**
 
-4) Start the frontend (Next.js)
 ```bash
-cd nextjs-app
+# Run the interactive deployment script
+npm run deploy
+```
+
+The script will ask you:
+1. **Deployment mode:** Development (1) or Production (2)
+2. **Backend URL:** If not already set (e.g., `http://localhost:8080` for local, or `http://YOUR_SERVER_IP:8080` for servers)
+
+The deploy script automatically:
+- ✅ Detects PM2 (uses it if available, works without it)
+- ✅ Installs all dependencies (backend + frontend)
+- ✅ Builds frontend (production mode only)
+- ✅ Auto-generates JWT secrets if needed
+- ✅ Starts both backend and frontend
+
+**Backend:** http://127.0.0.1:8080  
+**Frontend:** http://localhost:3000 (redirects to `/bb-auth/login`)
+
+**Optional: Set backend URL beforehand (skip the prompt):**
+```bash
+# For local development
+export NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
+npm run deploy
+
+# For production server
+export NEXT_PUBLIC_BACKEND_URL=http://YOUR_SERVER_IP:8080
+npm run deploy
+```
+
+**JWT Secrets:** Automatically generated on first run. Stored in `config/environments/env.development.json` or `env.production.json`.
+
+---
+
+4) **Alternative: Manual Setup (Advanced)**
+
+**Option A: Simple Development (Two Terminals)**
+```bash
+# Terminal 1: Backend (Development mode)
 npm run dev
+
+# Terminal 2: Frontend
+cd nextjs-app && npm run dev
 ```
 
-5) Run frontend (Next.js) and backend (Master.js) Development
+**Option B: With PM2 (Server Deployments)**
 ```bash
-# install concurrently tool (easiest for local dev)
-npm install -g concurrently
-# then run servers
-concurrently  "MASTER=development node server.js" "cd nextjs-app && npm run dev"
-```
-
-6) Run frontend (Next.js) and backend (Master.js) Production
-```bash
-# install PM2 (for long running / production)
+# Install PM2 globally (one-time)
 npm install -g pm2
-# run command inside root application folder
-pm2 start server.js --name backend --env MASTER=development
-# go into nextjs app folder
-cd nextjs-app
-# then run servers
-pm2 start npm --name "frontend" -- run dev
 
-pm2 ls
+# Deploy with PM2
+npm run deploy:dev    # Development mode
+npm run deploy:prod   # Production mode
+
+# Manage PM2 processes
+npm run pm2:status    # View status
+npm run pm2:logs      # View logs
+npm run pm2:restart   # Restart all
+npm run pm2:stop      # Stop all
 ```
 
-Frontend default: http://localhost:3000 (root redirects to `/bb-auth/login`).
+---
+
+**📚 For detailed guides, see:**
+- `QUICKSTART-SERVER.md` - Quick server deployment
+- `DEPLOYMENT.md` - Complete deployment documentation
+- `DEPLOY-MODES.md` - Development vs Production explained
+- `NO-PM2-GUIDE.md` - Running locally without PM2
 
 ### MySQL configuration (test/prod)
 Use separate `host` and `port` keys (avoid `"localhost:3306"`). Example:

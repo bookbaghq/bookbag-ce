@@ -1,7 +1,24 @@
 {
-  "name": "bookbag",
-  "version": "0.0.6",
+  "name": "bookbag-ce",
+  "version": "0.0.8",
   "private": true,
+  "scripts": {
+    "init-jwt": "node scripts/init-jwt-secrets.js",
+    "dev": "master=development node server.js",
+    "prod": "master=production node server.js",
+    "deploy": "bash deploy.sh",
+    "start:backend": "master=production node server.js",
+    "start:backend:dev": "master=development node server.js",
+    "deploy:dev": "pm2 start ecosystem.dev.config.js",
+    "deploy:prod": "pm2 start ecosystem.prod.config.js",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:start:dev": "pm2 start ecosystem.dev.config.js",
+    "pm2:start:prod": "pm2 start ecosystem.prod.config.js",
+    "pm2:stop": "pm2 stop all",
+    "pm2:restart": "pm2 restart all",
+    "pm2:logs": "pm2 logs",
+    "pm2:status": "pm2 status"
+  },
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "content-type": "^1.0.5",
