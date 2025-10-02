@@ -49,13 +49,24 @@ Write-Host ""
 
 # Get backend URL from environment or prompt
 if ([string]::IsNullOrWhiteSpace($env:NEXT_PUBLIC_BACKEND_URL)) {
-    $BACKEND_URL = Read-Host "Enter your backend URL (e.g., http://your-server-ip:8080)"
-    $env:NEXT_PUBLIC_BACKEND_URL = $BACKEND_URL
+    $BACKEND_URL = Read-Host "Enter your backend URL (e.g., http://your-server-ip:8080) [default: http://127.0.0.1:8080]"
+    if ([string]::IsNullOrWhiteSpace($BACKEND_URL)) {
+        # Use default if nothing entered
+        $env:NEXT_PUBLIC_BACKEND_URL = "http://127.0.0.1:8080"
+    } else {
+        $env:NEXT_PUBLIC_BACKEND_URL = $BACKEND_URL
+    }
 }
 
 # Ensure URL has http:// or https://
 if ($env:NEXT_PUBLIC_BACKEND_URL -notmatch '^https?://') {
-    $env:NEXT_PUBLIC_BACKEND_URL = "http://$($env:NEXT_PUBLIC_BACKEND_URL)"
+    # Only add http:// if there's actual content
+    if (-not [string]::IsNullOrWhiteSpace($env:NEXT_PUBLIC_BACKEND_URL)) {
+        $env:NEXT_PUBLIC_BACKEND_URL = "http://$($env:NEXT_PUBLIC_BACKEND_URL)"
+    } else {
+        # Fallback to default if somehow empty
+        $env:NEXT_PUBLIC_BACKEND_URL = "http://127.0.0.1:8080"
+    }
 }
 
 Write-Host "📦 Backend URL: $($env:NEXT_PUBLIC_BACKEND_URL)" -ForegroundColor Blue

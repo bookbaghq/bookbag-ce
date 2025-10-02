@@ -56,14 +56,25 @@ echo ""
 
 # Get backend URL from environment or prompt
 if [ -z "$NEXT_PUBLIC_BACKEND_URL" ]; then
-    echo -n "Enter your backend URL (e.g., http://your-server-ip:8080): "
+    echo -n "Enter your backend URL (e.g., http://your-server-ip:8080) [default: http://127.0.0.1:8080]: "
     read BACKEND_URL
-    export NEXT_PUBLIC_BACKEND_URL=$BACKEND_URL
+    if [ -z "$BACKEND_URL" ]; then
+        # Use default if nothing entered
+        export NEXT_PUBLIC_BACKEND_URL="http://127.0.0.1:8080"
+    else
+        export NEXT_PUBLIC_BACKEND_URL=$BACKEND_URL
+    fi
 fi
 
-# Ensure URL has http:// or https://
+# Ensure URL has http:// or https:// (skip if already has it)
 if [[ ! "$NEXT_PUBLIC_BACKEND_URL" =~ ^https?:// ]]; then
-    export NEXT_PUBLIC_BACKEND_URL="http://$NEXT_PUBLIC_BACKEND_URL"
+    # Only add http:// if there's actual content after it would be added
+    if [ -n "$NEXT_PUBLIC_BACKEND_URL" ]; then
+        export NEXT_PUBLIC_BACKEND_URL="http://$NEXT_PUBLIC_BACKEND_URL"
+    else
+        # Fallback to default if somehow empty
+        export NEXT_PUBLIC_BACKEND_URL="http://127.0.0.1:8080"
+    fi
 fi
 
 echo -e "${BLUE}📦 Backend URL: $NEXT_PUBLIC_BACKEND_URL${NC}"
