@@ -1,7 +1,8 @@
 'use client';
 
  import api from "../apiConfig.json" 
- const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main;
+ import getBackendBaseUrl from "../lib/backendUrl";
+ const BASE = getBackendBaseUrl();
 
  export default class Authentication{
    

@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import api from '@/apiConfig.json'
+import getBackendBaseUrl from '@/lib/backendUrl'
 
 export default function LoginGuard() {
   const router = useRouter()
@@ -11,7 +12,8 @@ export default function LoginGuard() {
     let cancelled = false
     const check = async () => {
       try {
-        const res = await fetch(`${api.ApiConfig.main}/${api.ApiConfig.credentials.canLogin.url}`, {
+        const base = getBackendBaseUrl()
+        const res = await fetch(`${base}/${api.ApiConfig.credentials.canLogin.url}`, {
           credentials: 'include',
           cache: 'no-store'
         })

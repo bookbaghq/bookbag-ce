@@ -7,6 +7,7 @@ import authentication from "../../services/authentication";
 import { useEffect, useState } from 'react';
 import { redirect } from "next/navigation";
 import api from '@/apiConfig.json'
+import getBackendBaseUrl from '@/lib/backendUrl'
 
 import {
   SidebarInset,
@@ -35,7 +36,8 @@ export default function ClientLayout({ children }) {
       // Check settings to decide sign-in requirement
       let signInEnabled = true;
       try {
-        const res = await fetch(`${api.ApiConfig.main}/${api.ApiConfig.settings.get.url}`, { credentials: 'include' });
+        const base = getBackendBaseUrl()
+        const res = await fetch(`${base}/${api.ApiConfig.settings.get.url}`, { credentials: 'include' });
         const data = await res.json();
         signInEnabled = data?.settings?.sign_in_enabled !== false;
       } catch(_) {}
