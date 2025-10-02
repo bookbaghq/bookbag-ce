@@ -124,7 +124,7 @@ echo ""
 # Step 3: Build frontend (only for production)
 if [ "$BUILD_REQUIRED" = true ]; then
     echo -e "${BLUE}🏗️  Building frontend...${NC}"
-    npm run build
+    NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL npm run build
     echo -e "${GREEN}✅ Frontend built successfully${NC}"
     cd ..
 else
@@ -147,7 +147,7 @@ if [ "$USE_PM2" = true ]; then
     echo ""
 
     echo -e "${BLUE}🚀 Starting services with PM2 (${MODE} mode)...${NC}"
-    pm2 start $CONFIG_FILE
+    NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL pm2 start $CONFIG_FILE --update-env
     echo -e "${GREEN}✅ Services started in ${MODE} mode${NC}"
     echo ""
 
@@ -184,7 +184,7 @@ else
         
         # Start frontend in foreground
         cd nextjs-app
-        npm run dev
+        NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL npm run dev
     else
         echo -e "${YELLOW}Starting in production mode (foreground processes)${NC}"
         echo -e "${YELLOW}Press Ctrl+C to stop${NC}"
@@ -200,7 +200,7 @@ else
         
         # Start frontend in foreground
         cd nextjs-app
-        npm start
+        NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL npm start
     fi
 fi
 
