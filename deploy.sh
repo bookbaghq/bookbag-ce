@@ -66,6 +66,9 @@ if [ -z "$NEXT_PUBLIC_BACKEND_URL" ]; then
     fi
 fi
 
+# Remove trailing slashes from backend URL
+export NEXT_PUBLIC_BACKEND_URL="${NEXT_PUBLIC_BACKEND_URL%/}"
+
 # Ensure URL has http:// or https:// (skip if already has it)
 if [[ ! "$NEXT_PUBLIC_BACKEND_URL" =~ ^https?:// ]]; then
     # Only add http:// if there's actual content after it would be added

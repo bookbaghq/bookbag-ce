@@ -1,6 +1,6 @@
 {
   "ApiConfig": {
-    "main" : "http://147.182.251.85:8080",
+    "main" : "http://127.0.0.1:8080",
     "auth": {
         "currentUser" : {
             "url" : "bb-user/api/auth/currentuser",

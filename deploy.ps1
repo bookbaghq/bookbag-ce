@@ -58,6 +58,9 @@ if ([string]::IsNullOrWhiteSpace($env:NEXT_PUBLIC_BACKEND_URL)) {
     }
 }
 
+# Remove trailing slashes from backend URL
+$env:NEXT_PUBLIC_BACKEND_URL = $env:NEXT_PUBLIC_BACKEND_URL.TrimEnd('/')
+
 # Ensure URL has http:// or https://
 if ($env:NEXT_PUBLIC_BACKEND_URL -notmatch '^https?://') {
     # Only add http:// if there's actual content
