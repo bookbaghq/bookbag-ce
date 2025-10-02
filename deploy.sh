@@ -56,13 +56,42 @@ echo ""
 
 # Get backend URL from environment or prompt
 if [ -z "$NEXT_PUBLIC_BACKEND_URL" ]; then
-    echo -e "${YELLOW}⚠️  NEXT_PUBLIC_BACKEND_URL not set${NC}"
     echo -n "Enter your backend URL (e.g., http://your-server-ip:8080): "
     read BACKEND_URL
     export NEXT_PUBLIC_BACKEND_URL=$BACKEND_URL
 fi
 
+# Ensure URL has http:// or https://
+if [[ ! "$NEXT_PUBLIC_BACKEND_URL" =~ ^https?:// ]]; then
+    export NEXT_PUBLIC_BACKEND_URL="http://$NEXT_PUBLIC_BACKEND_URL"
+fi
+
 echo -e "${BLUE}📦 Backend URL: $NEXT_PUBLIC_BACKEND_URL${NC}"
+
+# Update CORS configuration with frontend URL
+FRONTEND_ORIGIN=$(echo $NEXT_PUBLIC_BACKEND_URL | sed -E 's|:[0-9]+|:3000|')
+echo -e "${BLUE}🔒 Updating CORS configuration...${NC}"
+
+if [ -f "config/initializers/cors.json" ]; then
+    # Check if origin already exists
+    if grep -q "\"$FRONTEND_ORIGIN\"" config/initializers/cors.json; then
+        echo -e "${GREEN}✅ CORS already configured for: $FRONTEND_ORIGIN${NC}"
+    else
+        # Add origin using Node.js (more reliable than sed/jq)
+        node -e "
+        const fs = require('fs');
+        const origin = process.argv[1];
+        const config = JSON.parse(fs.readFileSync('config/initializers/cors.json', 'utf8'));
+        if (!Array.isArray(config.origin)) config.origin = [];
+        if (!config.origin.includes(origin)) {
+            config.origin.push(origin);
+        }
+        fs.writeFileSync('config/initializers/cors.json', JSON.stringify(config, null, 4));
+        " "$FRONTEND_ORIGIN" 2>/dev/null && echo -e "${GREEN}✅ CORS updated: Added $FRONTEND_ORIGIN to whitelist${NC}" || echo -e "${YELLOW}⚠️  Could not update CORS automatically${NC}"
+    fi
+else
+    echo -e "${YELLOW}⚠️  CORS config not found at config/initializers/cors.json${NC}"
+fi
 echo ""
 
 # Step 1: Install backend dependencies

@@ -16,11 +16,19 @@ Bookbag is a full‑stack AI chat and admin platform with:
 - Admin tools for users, models, mail, media, and chats
 
 ### Core features
-- Chat client with streaming responses and “thinking” UI
-- Admin dashboard: users, models, mail, media, chats
-- Model library and server model management (OpenAI‑compatible, Grok)
-- Auth flows (login, register, reset) under `bb-auth/*`
-- Mail logs, templates, SMTP settings
+- **Chat client** with streaming responses and "thinking" UI
+- **Admin dashboard** for users, models, mail, media, and chats
+- **Model library** and server model management (OpenAI‑compatible, Grok)
+- **Authentication flows** (login, register, reset) under `bb-auth/*`
+- **Mail system** with logs, templates, and SMTP settings
+
+### Deployment features (New!)
+- 🚀 **One-command deployment** - `npm run deploy` (all platforms)
+- 🔐 **Auto JWT secrets** - No manual configuration needed
+- 🌐 **Auto CORS setup** - Frontend URL automatically whitelisted
+- 🖥️ **Cross-platform** - Windows (PowerShell), macOS, Linux (Bash)
+- 📦 **PM2 optional** - Works with or without process manager
+- ⚡ **Smart defaults** - Auto-adds protocols, prevents duplicates
 
 ## Editions
 Bookbag follows an open‑core model similar in spirit to other platforms:
@@ -47,11 +55,17 @@ For product information, demos, and services, please contact the Bookbag team. R
 ## Requirements
 - Node.js 18+ (Node 20+ recommended)
 - npm 9+
+- Optional: PM2 for production process management (`npm install -g pm2`)
 - Optional databases:
   - SQLite (default in development)
   - MySQL 8+ (for test/production examples)
 
-Supported OS: macOS/Linux/Windows (Node.js supported platforms). See `config/environments/*.json` for environment‑specific settings.
+**Supported OS:** 
+- ✅ Windows (PowerShell script)
+- ✅ macOS (Bash script)
+- ✅ Linux (Bash script)
+
+See `config/environments/*.json` for environment‑specific settings.
 
 ## Installation (Bash Commands)
 The recommended way to run Bookbag for development is the node‑native setup:
@@ -83,9 +97,16 @@ password: admin
 
 3) **Quick Start - Deploy Everything (Recommended)**
 
+**macOS/Linux:**
 ```bash
 # Run the interactive deployment script
 npm run deploy
+```
+
+**Windows (PowerShell):**
+```powershell
+# Run the Windows deployment script
+npm run deploy:windows
 ```
 
 The script will ask you:
@@ -96,13 +117,19 @@ The deploy script automatically:
 - ✅ Detects PM2 (uses it if available, works without it)
 - ✅ Installs all dependencies (backend + frontend)
 - ✅ Builds frontend (production mode only)
-- ✅ Auto-generates JWT secrets if needed
+- ✅ **Auto-generates JWT secrets** if needed (no manual setup!)
+- ✅ **Auto-configures CORS** (adds frontend URL to whitelist)
+- ✅ Auto-adds `http://` protocol if missing
+- ✅ Prevents duplicate CORS entries
 - ✅ Starts both backend and frontend
 
-**Backend:** http://127.0.0.1:8080  
-**Frontend:** http://localhost:3000 (redirects to `/bb-auth/login`)
+**Access:**
+- **Backend:** http://127.0.0.1:8080  
+- **Frontend:** http://localhost:3000 (redirects to `/bb-auth/login`)
 
 **Optional: Set backend URL beforehand (skip the prompt):**
+
+**macOS/Linux:**
 ```bash
 # For local development
 export NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
@@ -113,7 +140,21 @@ export NEXT_PUBLIC_BACKEND_URL=http://YOUR_SERVER_IP:8080
 npm run deploy
 ```
 
-**JWT Secrets:** Automatically generated on first run. Stored in `config/environments/env.development.json` or `env.production.json`.
+**Windows (PowerShell):**
+```powershell
+# For local development
+$env:NEXT_PUBLIC_BACKEND_URL="http://localhost:8080"
+npm run deploy:windows
+
+# For production server
+$env:NEXT_PUBLIC_BACKEND_URL="http://YOUR_SERVER_IP:8080"
+npm run deploy:windows
+```
+
+**Automatic Features:**
+- **JWT Secrets:** Auto-generated on first run, stored in `config/environments/env.*.json`
+- **CORS Configuration:** Auto-updated in `config/initializers/cors.json` based on backend URL
+- **Protocol Handling:** Auto-adds `http://` if you enter just `IP:PORT`
 
 ---
 
@@ -146,11 +187,29 @@ npm run pm2:stop      # Stop all
 
 ---
 
-**📚 For detailed guides, see:**
-- `QUICKSTART-SERVER.md` - Quick server deployment
+**📚 Documentation & Guides:**
+- `QUICKSTART-SERVER.md` - Quick server deployment guide
 - `DEPLOYMENT.md` - Complete deployment documentation
 - `DEPLOY-MODES.md` - Development vs Production explained
 - `NO-PM2-GUIDE.md` - Running locally without PM2
+- `DEPLOY-SCRIPT-INFO.md` - Deploy script details (Bash & PowerShell)
+- `CORS-SETUP.md` - CORS configuration guide
+- `scripts/README.md` - JWT secrets initialization
+
+**🛠️ Utility Commands:**
+```bash
+# Initialize/regenerate JWT secrets manually
+npm run init-jwt
+
+# Update CORS whitelist manually
+npm run update-cors http://your-frontend-url:3000
+
+# PM2 process management
+npm run pm2:status    # View running processes
+npm run pm2:logs      # View logs
+npm run pm2:restart   # Restart all
+npm run pm2:stop      # Stop all
+```
 
 ### MySQL configuration (test/prod)
 Use separate `host` and `port` keys (avoid `"localhost:3306"`). Example:

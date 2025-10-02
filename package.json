@@ -1,12 +1,14 @@
 {
   "name": "bookbag-ce",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "private": true,
   "scripts": {
     "init-jwt": "node scripts/init-jwt-secrets.js",
+    "update-cors": "node scripts/update-cors.js",
     "dev": "master=development node server.js",
     "prod": "master=production node server.js",
     "deploy": "bash deploy.sh",
+    "deploy:windows": "powershell -ExecutionPolicy Bypass -File deploy.ps1",
     "start:backend": "master=production node server.js",
     "start:backend:dev": "master=development node server.js",
     "deploy:dev": "pm2 start ecosystem.dev.config.js",
