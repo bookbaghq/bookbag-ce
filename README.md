@@ -70,7 +70,7 @@ See `config/environments/*.json` for environment‑specific settings.
 ## Installation (Bash Commands)
 The recommended way to run Bookbag for development is the node‑native setup:
 
-1) Install dependencies
+1) Setup Database Migrations
 ```bash
 # install Masterrecord
 npm install -g masterrecord
@@ -80,22 +80,31 @@ masterrecord enable-migrations-all
 master=development masterrecord update-database-all
 # run migrations production
 master=production masterrecord update-database-all
-# from the repo root
-npm install
-#then
-cd nextjs-app && npm install
-# running two servers in node js
- 
 ```
 
-2) Credentials
+2) Quick Deploy (Recommended)
+```bash
+# One command installs deps, configures, builds (prod), and starts services
+npm run deploy
+```
+
+3) Manual Install (Alternative)
+```bash
+
+# from the repo root
+npm install
+# then
+cd nextjs-app && npm install
+```
+
+4) Credentials
 ```bash
 # password and email - please update after first use
 email: admin@bookbag.work
 password: admin
 ```
 
-3) **Quick Start - Deploy Everything (Recommended)**
+5) **Quick Start - Deploy Everything (Recommended)**
 
 **macOS/Linux:**
 ```bash
@@ -111,12 +120,12 @@ npm run deploy:windows
 
 The script will ask you:
 1. **Deployment mode:** Development (1) or Production (2)
-2. **Backend URL:** If not already set (e.g., `http://localhost:8080` for local, or `http://YOUR_SERVER_IP:8080` for servers)
+2. **Backend URL:** If not already set (NO trailing slash), e.g. `http://localhost:8080` (local) or `http://YOUR_SERVER_IP:8080` (server)
 
 The deploy script automatically:
 - ✅ Detects PM2 (uses it if available, works without it)
 - ✅ Installs all dependencies (backend + frontend)
-- ✅ Builds frontend (production mode only)
+- ✅ Builds frontend (production mode only; dev mode runs hot reload and ignores prior builds)
 - ✅ **Auto-generates JWT secrets** if needed (no manual setup!)
 - ✅ **Auto-configures CORS** (adds frontend URL to whitelist)
 - ✅ Auto-adds `http://` protocol if missing
@@ -158,7 +167,7 @@ npm run deploy:windows
 
 ---
 
-4) **Alternative: Manual Setup (Advanced)**
+6) **Alternative: Manual Setup (Advanced)**
 
 **Option A: Simple Development (Two Terminals)**
 ```bash
