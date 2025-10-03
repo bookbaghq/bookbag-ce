@@ -83,8 +83,10 @@ class authService {
                                 : (master.requestList && master.requestList.response) ? master.requestList.response
                                 : null;
                             if (resp) {
-                                // Default to Lax for dev; callers can set cross-site headers where needed
-                                master.sessions.setCookie('temp_user_id', String(tempUserId), resp, { path: '/', secure: true, sameSite: 'None', httpOnly: true, maxAge: 24 * 60 * 6 * 1000});
+                                const originHeader = (req && req.headers && req.headers.origin) ? String(req.headers.origin) : '';
+                                const isHttps = originHeader.startsWith('https://');
+                                const cookieOptions = { path: '/', httpOnly: true, maxAge: 24 * 60 * 6 * 1000, secure: !!isHttps, sameSite: isHttps ? 'None' : 'Lax' };
+                                master.sessions.setCookie('temp_user_id', String(tempUserId), resp, cookieOptions);
                             }
                         } catch (_) {}
                     }
