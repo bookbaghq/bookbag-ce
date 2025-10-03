@@ -33,6 +33,15 @@ const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
 const SidebarContext = React.createContext(null)
 
+// Optional context accessor that does not throw
+function useOptionalSidebar() {
+  try {
+    return React.useContext(SidebarContext)
+  } catch (_) {
+    return null
+  }
+}
+
 function useSidebar() {
   const context = React.useContext(SidebarContext)
   if (!context) {
@@ -160,7 +169,7 @@ function Sidebar({
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0"
+          className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden"
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE
@@ -171,14 +180,15 @@ function Sidebar({
             <SheetTitle>Sidebar</SheetTitle>
             <SheetDescription>Displays the mobile sidebar.</SheetDescription>
           </SheetHeader>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-2 top-2"
-            onClick={() => setOpenMobile(false)}
-            aria-label="Close Sidebar">
-            <X className="h-4 w-4" />
-          </Button>
+          <div className="absolute right-2 top-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setOpenMobile(false)}
+              aria-label="Close Sidebar">
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
           <div className="flex h-full w-full flex-col">{children}</div>
         </SheetContent>
       </Sheet>
@@ -492,11 +502,13 @@ function SidebarMenuButton({
   ...props
 }) {
   const Comp = asChild ? Slot : "button"
-  const { isMobile, state, setOpenMobile } = useSidebar()
+  const ctx = useOptionalSidebar()
+  const isMobile = !!ctx?.isMobile
+  const setOpenMobile = ctx?.setOpenMobile
 
   const handleClick = (e) => {
     try { onClick?.(e) } catch(_) {}
-    if (isMobile) {
+    if (isMobile && typeof setOpenMobile === 'function') {
       try { setOpenMobile(false) } catch(_) {}
     }
   }
