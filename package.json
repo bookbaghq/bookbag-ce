@@ -1,6 +1,6 @@
 {
   "name": "bookbag-ce",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "private": true,
   "scripts": {
     "init-jwt": "node scripts/init-jwt-secrets.js",

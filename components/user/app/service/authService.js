@@ -185,8 +185,8 @@ class authService {
     }
 
     findAuthByEmail(email, context) {
-
-        var auth = context.User.raw(`select * from User where email = '${email}'`).single();
+        // Case-insensitive email lookup
+        var auth = context.User.raw(`select * from User where lower(email) = lower('${email}')`).single();
         if (auth === null) {
             return false;
         } else {

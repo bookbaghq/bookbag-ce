@@ -233,7 +233,10 @@ class credentialsController{
                 }
             } catch (_) {}
             
-            var authObj = req.authService.authenticate(req.params.formData.email, req.params.formData.password, req.userContext, req);
+            // Normalize email to be case-insensitive for authentication
+            const email = String(req.params?.formData?.email || '').trim();
+            const normalizedEmail = email.toLowerCase();
+            var authObj = req.authService.authenticate(normalizedEmail, req.params.formData.password, req.userContext, req);
 
             if(authObj.isvalid === false){
                 // return view with message not user
