@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import api from '@/apiConfig.json'
+import { getBackendBaseUrl } from '@/lib/backendUrl';
 
 export default function SettingsPage() {
   // State for settings
@@ -23,7 +24,8 @@ export default function SettingsPage() {
     const loadSettings = async () => {
       setIsLoading(true);
       try {
-        const res = await fetch(`${api.ApiConfig.main}/${api.ApiConfig.settings.get.url}`, { credentials: 'include' });
+        const BASE = getBackendBaseUrl();
+        const res = await fetch(`${BASE}/${api.ApiConfig.settings.get.url}`, { credentials: 'include' });
         const data = await res.json();
         if (data?.success && data.settings) {
           setSettings({
@@ -57,7 +59,8 @@ export default function SettingsPage() {
   const handleSaveSettings = async () => {
     setIsSaving(true);
     try {
-      const res = await fetch(`${api.ApiConfig.main}/${api.ApiConfig.settings.save.url}`, {
+      const BASE = getBackendBaseUrl();
+      const res = await fetch(`${BASE}/${api.ApiConfig.settings.save.url}`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
