@@ -4,10 +4,24 @@
 
   
         logout(obj){
-            master.sessions.deleteCookie("login", obj.response,  { path: '/', secure: true, sameSite: 'None', httpOnly: true, maxAge: 24 * 60 * 6 * 1000});
-            return this.returnJson({
-                message: "logged out"
-            });
+            // Align cookie attributes with how they were set during login
+            try{
+                const origin = (obj.request && obj.request.headers && obj.request.headers.origin) ? String(obj.request.headers.origin) : '';
+                const isHttps = origin.startsWith('https://');
+                const cookieOptions = {
+                    path: '/',
+                    httpOnly: true,
+                    // Use same attributes as setCookie so browsers will delete it
+                    secure: !!isHttps,
+                    sameSite: isHttps ? 'None' : 'Lax'
+                };
+                // Explicitly set maxAge to 0 and also set an expired date for broad compatibility
+                master.sessions.deleteCookie("login", obj.response, { ...cookieOptions, maxAge: 0, expires: new Date(0).toUTCString() });
+            }catch(_){
+                // Fallback delete
+                master.sessions.deleteCookie("login", obj.response, { path: '/' });
+            }
+            return this.returnJson({ message: "logged out" });
         }
 
         currentUser(obj){
