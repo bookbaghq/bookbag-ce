@@ -505,6 +505,7 @@ function SidebarMenuButton({
   const ctx = useOptionalSidebar()
   const isMobile = !!ctx?.isMobile
   const setOpenMobile = ctx?.setOpenMobile
+  const state = ctx?.state
 
   const handleClick = (e) => {
     try { onClick?.(e) } catch(_) {}
@@ -686,6 +687,7 @@ function SidebarMenuSubButton({
 export {
   Sidebar,
   SidebarContent,
+  SidebarContext,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupAction,
