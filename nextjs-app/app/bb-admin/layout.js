@@ -65,20 +65,18 @@ if (
   }else{
     return (
       <UserProvider initialUserState={currentUserState}>
-        <div>
-          <Header />
-          <div className="h-full flex dark:bg-[#1F1F1F]">
-            <SidebarProvider>
-              <SidebarNav />
-              <SidebarInset className="w-full">
-                <main className="flex-1 h-full overflow-y-auto relative pt-16 group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-svh w-full">
-                  <div className="w-full">
-                    {children}
-                  </div>
-                </main>
-              </SidebarInset>
-            </SidebarProvider>
-          </div>
+        <div className="h-full flex dark:bg-[#1F1F1F]">
+          <SidebarProvider>
+            <Header />
+            <SidebarNav />
+            <SidebarInset className="w-full">
+              <main className="flex-1 h-full overflow-y-auto relative pt-16 group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-svh w-full">
+                <div className="w-full">
+                  {children}
+                </div>
+              </main>
+            </SidebarInset>
+          </SidebarProvider>
         </div>
       </UserProvider>
     );

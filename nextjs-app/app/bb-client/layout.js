@@ -76,21 +76,18 @@ export default function ClientLayout({ children }) {
       else{
         
           return (
-              <div >
-                  <Header />
+              <div>
                   <div className="h-full flex dark:bg-[#1F1F1F]" style={{ ['--sidebar-width']: '4rem' }}>
                     <SidebarProvider>
+                      <Header />
                       <SidebarNav />
                       <SidebarInset>
                         <main className="flex-1 h-full overflow-y-auto relative pt-16 group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-svh w-full">
                           {children}
                         </main>
-                        
                       </SidebarInset>
                     </SidebarProvider>
-                
                   </div>
-              
               </div>
             );
         }
