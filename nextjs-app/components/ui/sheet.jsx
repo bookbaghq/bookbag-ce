@@ -15,7 +15,14 @@ const Sheet = ({ children, defaultOpen = false, open: controlledOpen, onOpenChan
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen)
   const isControlled = typeof controlledOpen === 'boolean'
   const open = isControlled ? controlledOpen : uncontrolledOpen
-  const setOpen = isControlled && typeof onOpenChange === 'function' ? onOpenChange : setUncontrolledOpen
+  
+  const setOpen = React.useCallback((value) => {
+    if (isControlled && typeof onOpenChange === 'function') {
+      onOpenChange(value)
+    } else {
+      setUncontrolledOpen(value)
+    }
+  }, [isControlled, onOpenChange])
 
   return (
     <SheetContext.Provider value={{ open, setOpen, side: "right" }}>
@@ -79,7 +86,7 @@ const SheetOverlay = ({ className, ...props }) => {
   return (
     <div 
       className={cn(
-        "fixed inset-0 z-50 bg-black/80 transition-opacity",
+        "fixed inset-0 z-50 bg-black/80 transition-opacity pointer-events-auto",
         open ? "opacity-100" : "opacity-0 pointer-events-none",
         className
       )} 
@@ -117,6 +124,7 @@ const SheetContent = React.forwardRef(({ side = "right", className, children, ..
       >
         {children}
         <button
+          data-default-close
           onClick={() => setOpen(false)}
           className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
         >

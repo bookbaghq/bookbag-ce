@@ -1,6 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { Settings } from "lucide-react"
 import Link from "next/link"
 import {
   DropdownMenu,
@@ -17,7 +18,9 @@ export function DropdownMenuLoggedIn() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="cursor-pointer">Menu</Button>
+        <Button variant="outline" className="cursor-pointer" aria-label="Settings">
+          <Settings className="h-4 w-4" />
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56">
       

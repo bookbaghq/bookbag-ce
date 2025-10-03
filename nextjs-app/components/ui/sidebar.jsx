@@ -2,7 +2,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva } from "class-variance-authority";
-import { PanelLeftIcon, X } from "lucide-react"
+import { Menu, X } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -169,7 +169,7 @@ function Sidebar({
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden"
+          className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>button:not([data-default-close])]:hidden"
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE
@@ -250,16 +250,15 @@ function SidebarTrigger({
     <Button
       data-sidebar="trigger"
       data-slot="sidebar-trigger"
-      variant="ghost"
-      size="icon"
-      className={cn("size-7", className)}
+      variant="outline"
+      className={cn("cursor-pointer", className)}
+      aria-label="Menu"
       onClick={(event) => {
         try { onClick?.(event) } catch(_) {}
         try { ctx?.toggleSidebar?.() } catch(_) {}
       }}
       {...props}>
-      <PanelLeftIcon />
-      <span className="sr-only">Toggle Sidebar</span>
+      <Menu className="h-4 w-4" />
     </Button>
   );
 }
@@ -665,6 +664,9 @@ function SidebarMenuSubButton({
   ...props
 }) {
   const Comp = asChild ? Slot : "a"
+  const ctx = useOptionalSidebar()
+  const isMobile = !!ctx?.isMobile
+  const setOpenMobile = ctx?.setOpenMobile
 
   return (
     <Comp
@@ -680,6 +682,12 @@ function SidebarMenuSubButton({
         "group-data-[collapsible=icon]:hidden",
         className
       )}
+      onClick={(e) => {
+        try { props?.onClick?.(e) } catch(_) {}
+        if (isMobile && typeof setOpenMobile === 'function') {
+          try { setOpenMobile(false) } catch(_) {}
+        }
+      }}
       {...props} />
   );
 }
