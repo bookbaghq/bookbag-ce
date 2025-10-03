@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import api from '@/apiConfig.json'
+import getBackendBaseUrl from '@/lib/backendUrl'
 import { Trash2 } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
@@ -56,7 +57,8 @@ export default function ModelsSettingsPage() {
   const load = async () => {
     setError('')
     try {
-      const url = `${api.ApiConfig.main}/bb-models/api/settings/get`
+      const BASE = getBackendBaseUrl()
+      const url = `${BASE}/bb-models/api/settings/get`
       const res = await fetch(url, { method: 'GET', credentials: 'include' })
       const data = await res.json()
       if (data?.success && data.settings) { 
@@ -90,7 +92,8 @@ export default function ModelsSettingsPage() {
   }
   const loadProfiles = async () => {
     try {
-      const res = await fetch(`${api.ApiConfig.main}/bb-models/api/profiles/list`, { credentials: 'include' })
+      const BASE = getBackendBaseUrl()
+      const res = await fetch(`${BASE}/bb-models/api/profiles/list`, { credentials: 'include' })
       const data = await res.json()
       if (data?.success && Array.isArray(data.profiles)) setProfiles(data.profiles)
     } catch (_) {}
@@ -100,7 +103,8 @@ export default function ModelsSettingsPage() {
 
   const deleteProfile = async (id) => {
     try {
-      const res = await fetch(`${api.ApiConfig.main}/bb-models/api/profiles/delete`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+      const BASE = getBackendBaseUrl()
+      const res = await fetch(`${BASE}/bb-models/api/profiles/delete`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
       const data = await res.json()
       if (data?.success) {
         if (activeProfile && activeProfile.id === id) {
@@ -127,7 +131,8 @@ export default function ModelsSettingsPage() {
 
   const loadRuleTypes = async () => {
     try {
-      const res = await fetch(`${api.ApiConfig.main}/bb-models/api/pfrules/types`, { credentials: 'include' })
+      const BASE = getBackendBaseUrl()
+      const res = await fetch(`${BASE}/bb-models/api/pfrules/types`, { credentials: 'include' })
       const data = await res.json()
       if (data?.success) {
         const filtered = (data.types || []).filter(t => {
@@ -142,7 +147,8 @@ export default function ModelsSettingsPage() {
   const loadProfileRules = async (pid) => {
     if (!pid) { setRules([]); return }
     try {
-      const url = new URL(`${api.ApiConfig.main}/bb-models/api/pfrules/by-profile`)
+      const BASE = getBackendBaseUrl()
+      const url = new URL(`${BASE}/bb-models/api/pfrules/by-profile`)
       url.searchParams.set('profileId', pid)
       const res = await fetch(url.toString(), { credentials: 'include' })
       const data = await res.json()
@@ -161,7 +167,8 @@ export default function ModelsSettingsPage() {
     setSaved(false)
     setError('')
     try {
-      const url = `${api.ApiConfig.main}/bb-models/api/settings/save`
+      const BASE = getBackendBaseUrl()
+      const url = `${BASE}/bb-models/api/settings/save`
       const res = await fetch(url, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ openai_api_key: oaToken, grok_api_key: grokToken }) })
       const data = await res.json()
       if (data?.success) setSaved(true)
@@ -190,7 +197,8 @@ export default function ModelsSettingsPage() {
     setProfileError('')
     try {
       const payload = { id: editingProfileId, name: profileName, description: profileDescription }
-      const url = editingProfileId ? `${api.ApiConfig.main}/bb-models/api/profiles/update` : `${api.ApiConfig.main}/bb-models/api/profiles/create`
+      const BASE = getBackendBaseUrl()
+      const url = editingProfileId ? `${BASE}/bb-models/api/profiles/update` : `${BASE}/bb-models/api/profiles/create`
       const res = await fetch(url, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const data = await res.json()
       if (!data?.success) throw new Error(data?.error || 'Failed to save profile')

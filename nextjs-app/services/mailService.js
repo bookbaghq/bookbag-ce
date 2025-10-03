@@ -1,6 +1,8 @@
 "use client";
 
 import api from "../apiConfig.json";
+import getBackendBaseUrl from "../lib/backendUrl";
+const BASE = getBackendBaseUrl();
 
 export default class MailService {
     _isLoading = false;
@@ -9,38 +11,38 @@ export default class MailService {
     set isLoading(v) { this._isLoading = v; }
 
     async getSettings() {
-        const url = `${api.ApiConfig.main}/${api.ApiConfig.mail.settingsGet.url}`;
+        const url = `${BASE}/${api.ApiConfig.mail.settingsGet.url}`;
         return await this.ajaxGet(url, api.ApiConfig.mail.settingsGet.method);
     }
 
     async saveSettings(payload) {
-        const url = `${api.ApiConfig.main}/${api.ApiConfig.mail.settingsSave.url}`;
+        const url = `${BASE}/${api.ApiConfig.mail.settingsSave.url}`;
         return await this.ajax(url, api.ApiConfig.mail.settingsSave.method, JSON.stringify(payload));
     }
 
     async listSmtp() {
-        const url = `${api.ApiConfig.main}/${api.ApiConfig.mail.smtpList.url}`;
+        const url = `${BASE}/${api.ApiConfig.mail.smtpList.url}`;
         return await this.ajaxGet(url, api.ApiConfig.mail.smtpList.method);
     }
 
     async saveSmtp(conn) {
-        const url = `${api.ApiConfig.main}/${api.ApiConfig.mail.smtpSave.url}`;
+        const url = `${BASE}/${api.ApiConfig.mail.smtpSave.url}`;
         return await this.ajax(url, api.ApiConfig.mail.smtpSave.method, JSON.stringify(conn));
     }
 
     async deleteSmtp(id) {
         const path = api.ApiConfig.mail.smtpDelete.url.replace(':id', encodeURIComponent(String(id)));
-        const url = `${api.ApiConfig.main}/${path}`;
+        const url = `${BASE}/${path}`;
         return await this.ajax(url, api.ApiConfig.mail.smtpDelete.method);
     }
 
     async getLogs() {
-        const url = `${api.ApiConfig.main}/${api.ApiConfig.mail.logs.url}`;
+        const url = `${BASE}/${api.ApiConfig.mail.logs.url}`;
         return await this.ajaxGet(url, api.ApiConfig.mail.logs.method);
     }
 
     async getLogsPage({ page = 1, limit = 50, status, q, to, provider } = {}) {
-        const urlObj = new URL(`${api.ApiConfig.main}/${api.ApiConfig.mail.logs.url}`);
+        const urlObj = new URL(`${BASE}/${api.ApiConfig.mail.logs.url}`);
         urlObj.searchParams.set('page', String(page));
         urlObj.searchParams.set('limit', String(limit));
         if (status) urlObj.searchParams.set('status', status);
@@ -52,23 +54,23 @@ export default class MailService {
 
     async deleteLog(id) {
         const path = api.ApiConfig.mail.logsDelete?.url?.replace(':id', encodeURIComponent(String(id))) || `bb-mail/api/logs/${encodeURIComponent(String(id))}`;
-        const url = `${api.ApiConfig.main}/${path}`;
+        const url = `${BASE}/${path}`;
         const method = api.ApiConfig.mail.logsDelete?.method || 'delete';
         return await this.ajax(url, method);
     }
 
     async sendTest({ toEmail, subject, text, html }) {
-        const url = `${api.ApiConfig.main}/${api.ApiConfig.mail.sendTest.url}`;
+        const url = `${BASE}/${api.ApiConfig.mail.sendTest.url}`;
         return await this.ajax(url, api.ApiConfig.mail.sendTest.method, JSON.stringify({ toEmail, subject, text, html }));
     }
 
     async send(payload) {
-        const url = `${api.ApiConfig.main}/${api.ApiConfig.mail.send.url}`;
+        const url = `${BASE}/${api.ApiConfig.mail.send.url}`;
         return await this.ajax(url, api.ApiConfig.mail.send.method, JSON.stringify(payload));
     }
 
     async getGeneralSettings() {
-        const url = `${api.ApiConfig.main}/${api.ApiConfig.mail.settingsGet.url}`;
+        const url = `${BASE}/${api.ApiConfig.mail.settingsGet.url}`;
         return await this.ajaxGet(url, api.ApiConfig.mail.settingsGet.method);
     }
 

@@ -24,6 +24,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog'
 import api from '@/apiConfig.json'
+import getBackendBaseUrl from '@/lib/backendUrl'
 
 export default function MyModelsPage() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -68,7 +69,8 @@ export default function MyModelsPage() {
     const load = async () => {
       try {
         setLoading(true)
-      const url = new URL(`${(process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main)}/bb-models/api/models`)
+      const BASE = getBackendBaseUrl()
+      const url = new URL(`${BASE}/bb-models/api/models`)
         const res = await fetch(url.toString(), { credentials: 'include' })
         const data = await res.json()
         if (!stop && data?.success && Array.isArray(data.models)) {
@@ -118,7 +120,8 @@ export default function MyModelsPage() {
   const confirmDelete = async () => {
     if (!modelToDelete) return
     try {
-      const url = `${api.ApiConfig.main}/bb-models/api/model/delete`
+      const BASE = getBackendBaseUrl()
+      const url = `${BASE}/bb-models/api/model/delete`
       const res = await fetch(url, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: modelToDelete.id }) })
       const data = await res.json()
       if (data?.success) {
@@ -133,7 +136,8 @@ export default function MyModelsPage() {
 
   const togglePublish = async (model) => {
     try {
-      const url = `${api.ApiConfig.main}/bb-models/api/models/publish`
+      const BASE = getBackendBaseUrl()
+      const url = `${BASE}/bb-models/api/models/publish`
       const res = await fetch(url, {
         method: 'POST',
         credentials: 'include',
@@ -411,11 +415,12 @@ function EditServerModelButton({ model, onUpdated, onError }) {
   useEffect(() => {
     let stop = false
     const loadProfiles = async () => {
-      try { const res = await fetch(`${api.ApiConfig.main}/bb-models/api/profiles/list`, { credentials: 'include' }); const data = await res.json(); if (!stop && data?.success && Array.isArray(data.profiles)) setProfiles(data.profiles) } catch(_) {}
+      try { const BASE = getBackendBaseUrl(); const res = await fetch(`${BASE}/bb-models/api/profiles/list`, { credentials: 'include' }); const data = await res.json(); if (!stop && data?.success && Array.isArray(data.profiles)) setProfiles(data.profiles) } catch(_) {}
     }
     const loadThinkingStrings = async () => {
       try {
-        const url = new URL(`${api.ApiConfig.main}/bb-models/api/thinking-strings/list`)
+        const BASE = getBackendBaseUrl()
+        const url = new URL(`${BASE}/bb-models/api/thinking-strings/list`)
         url.searchParams.set('model_id', String(model.id))
         const res = await fetch(url.toString(), { credentials: 'include' })
         const data = await res.json()
@@ -424,7 +429,8 @@ function EditServerModelButton({ model, onUpdated, onError }) {
     }
     const loadModel = async () => {
       try {
-        const url = new URL(`${api.ApiConfig.main}/bb-models/api/models/get`)
+        const BASE = getBackendBaseUrl()
+        const url = new URL(`${BASE}/bb-models/api/models/get`)
         url.searchParams.set('id', String(model.id))
         const res = await fetch(url.toString(), { credentials: 'include' })
         const data = await res.json()
@@ -454,7 +460,8 @@ function EditServerModelButton({ model, onUpdated, onError }) {
     if (!thinkingEnd || !thinkingEnd.trim()) return
     try {
       const payload = { model_id: model.id, start_word: thinkingStart || '', end_word: thinkingEnd.trim() }
-      const res = await fetch(`${api.ApiConfig.main}/bb-models/api/thinking-strings/add`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const BASE = getBackendBaseUrl()
+      const res = await fetch(`${BASE}/bb-models/api/thinking-strings/add`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const data = await res.json()
       if (data?.success && data.item) {
         setThinkingItems(prev => [...prev, data.item])
@@ -465,7 +472,8 @@ function EditServerModelButton({ model, onUpdated, onError }) {
 
   const removeThinkingString = async (id) => {
     try {
-      const res = await fetch(`${api.ApiConfig.main}/bb-models/api/thinking-strings/delete`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+      const BASE = getBackendBaseUrl()
+      const res = await fetch(`${BASE}/bb-models/api/thinking-strings/delete`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
       const data = await res.json()
       if (data?.success) setThinkingItems(prev => prev.filter(i => i.id !== id))
     } catch(_) {}
@@ -483,7 +491,8 @@ function EditServerModelButton({ model, onUpdated, onError }) {
     if (nextErrors.serverUrl || nextErrors.profileId || nextErrors.contextSize) { setSaving(false); return }
     try {
       const payload = { id: model.id, name, description, server_url: serverUrl, api_key: apiKey, profile_id: profileId ? parseInt(profileId, 10) : undefined, auto_trim_on: !!autoTrimOn, context_size: cs, prompt_template: promptTemplate, system_prompt: systemPrompt }
-      const res = await fetch(`${api.ApiConfig.main}/bb-models/api/models/update`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const BASE = getBackendBaseUrl()
+      const res = await fetch(`${BASE}/bb-models/api/models/update`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const data = await res.json()
       if (!data?.success) throw new Error(data?.error || 'Failed to update model')
       if (onUpdated) onUpdated(data.model || { id: model.id, name, description, server_url: serverUrl, api_key: apiKey, profile_id: profileId ? parseInt(profileId, 10) : null, auto_trim_on: !!autoTrimOn, context_size: cs, system_prompt: systemPrompt })
@@ -642,14 +651,16 @@ function VllmCreateForm({ onCreated, registerSubmit, onSavingChange }) {
     let stop = false
     const loadProfiles = async () => {
       try {
-        const res = await fetch(`${api.ApiConfig.main}/bb-models/api/profiles/list`, { credentials: 'include' })
+        const BASE = getBackendBaseUrl()
+        const res = await fetch(`${BASE}/bb-models/api/profiles/list`, { credentials: 'include' })
         const data = await res.json()
         if (!stop && data?.success && Array.isArray(data.profiles)) setProfiles(data.profiles)
       } catch(_) {}
     }
     const loadTemplates = async () => {
       try {
-        const url = new URL(`${api.ApiConfig.main}/bb-models/api/prompt-templates/list`)
+        const BASE = getBackendBaseUrl()
+        const url = new URL(`${BASE}/bb-models/api/prompt-templates/list`)
         const res = await fetch(url.toString(), { credentials: 'include' })
         const data = await res.json()
         if (!stop && data?.success) {
@@ -700,7 +711,8 @@ function VllmCreateForm({ onCreated, registerSubmit, onSavingChange }) {
         system_prompt: systemPrompt,
         thinking_strings: Array.isArray(thinkingItems) ? thinkingItems.filter(i => (i?.end_word || '').trim().length > 0).map(i => ({ start_word: i.start_word || '', end_word: i.end_word.trim() })) : []
       }
-      const res = await fetch(`${api.ApiConfig.main}/bb-models/api/models/create-vllm`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const BASE = getBackendBaseUrl()
+      const res = await fetch(`${BASE}/bb-models/api/models/create-vllm`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const data = await res.json()
       if (!data?.success) throw new Error(data?.error || 'Failed to create vLLM model')
       if (onCreated && data.model) onCreated(data.model)
