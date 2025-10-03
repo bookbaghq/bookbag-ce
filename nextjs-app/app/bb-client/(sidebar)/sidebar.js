@@ -27,6 +27,7 @@ import {
   SidebarHeader,
   SidebarFooter
 } from "@/components/ui/sidebar";
+import { useSidebar } from "@/components/ui/sidebar";
 
 import {
   DropdownMenu,
@@ -128,6 +129,7 @@ const navigationData = {
 
 export function SidebarNav(props) {
   const pathname = usePathname();
+  const { isMobile, setOpenMobile } = useSidebar();
   const [activeNavItem, setActiveNavItem] = useState(null);
   const [activeChatId, setActiveChatId] = useState(null);
   const [expandedSections, setExpandedSections] = useState(() => {
@@ -464,11 +466,13 @@ export function SidebarNav(props) {
     } else {
       setActiveNavItem(itemId);
     }
+    try { if (isMobile) setOpenMobile(false); } catch(_) {}
   };
 
   const handleChatClick = (chat) => {
     // Navigate to chat with ID
     window.location.href = `/bb-client/${chat.id}`;
+    try { if (isMobile) setOpenMobile(false); } catch(_) {}
   };
 
   const toggleSection = (section) => {

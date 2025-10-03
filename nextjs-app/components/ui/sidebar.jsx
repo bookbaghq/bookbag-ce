@@ -244,7 +244,7 @@ function SidebarTrigger({
   onClick,
   ...props
 }) {
-  const { toggleSidebar } = useSidebar()
+  const ctx = useOptionalSidebar()
 
   return (
     <Button
@@ -254,8 +254,8 @@ function SidebarTrigger({
       size="icon"
       className={cn("size-7", className)}
       onClick={(event) => {
-        onClick?.(event)
-        toggleSidebar()
+        try { onClick?.(event) } catch(_) {}
+        try { ctx?.toggleSidebar?.() } catch(_) {}
       }}
       {...props}>
       <PanelLeftIcon />
