@@ -62,7 +62,7 @@ class userController{
             user.Auth.temp_access_token = refreshToken;
             req.userContext.saveChanges();
 
-            master.sessions.setCookie("login", user.Auth.temp_access_token, req.response);
+            // DO NOT set cookie here - admin should remain logged in as themselves, not as the new user
             
             // Send welcome email if requested (template-based, concise)
             try {

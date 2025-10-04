@@ -82,6 +82,12 @@ fi
 
 echo -e "${BLUE}📦 Backend URL: $NEXT_PUBLIC_BACKEND_URL${NC}"
 
+# Ensure JWT secrets are initialized before starting services
+echo -e "${BLUE}🔐 Initializing JWT secrets...${NC}"
+npm run init-jwt
+echo -e "${GREEN}✅ JWT secrets ensured${NC}"
+echo ""
+
 # Update CORS configuration with frontend URL
 FRONTEND_ORIGIN=$(echo $NEXT_PUBLIC_BACKEND_URL | sed -E 's|:[0-9]+|:3000|')
 echo -e "${BLUE}🔒 Updating CORS configuration...${NC}"
