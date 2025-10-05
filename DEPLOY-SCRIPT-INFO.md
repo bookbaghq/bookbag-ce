@@ -22,7 +22,7 @@ The script performs these tasks automatically:
 ### 3. **Asks for Backend URL**
 - Prompts for your backend URL
 - Auto-adds `http://` if missing
-- Example: `147.182.251.85:8080` → `http://147.182.251.85:8080`
+- Example: `your-domian.com:8080` → `your-domian.com:8080`
 
 ### 4. **Auto-Configures CORS**
 - Calculates frontend URL (port 3000)
@@ -188,9 +188,9 @@ Enter your choice (1 or 2) [default: 2]: 2
 
 Enter your backend URL (e.g., http://your-server-ip:8080): 147.182.251.85:8080
 
-📦 Backend URL: http://147.182.251.85:8080
+📦 Backend URL: http://your-server-ip:8080
 🔒 Updating CORS configuration...
-✅ CORS updated: Added http://147.182.251.85:3000 to whitelist
+✅ CORS updated: Added http://your-server-ip:8080 to whitelist
 
 📦 Installing backend dependencies...
 ✅ Backend dependencies installed

@@ -3,6 +3,7 @@ module.exports = {
     {
       name: 'bookbag-backend',
       script: 'server.js',
+      cwd: './',
       instances: 1,
       autorestart: true,
       watch: false,

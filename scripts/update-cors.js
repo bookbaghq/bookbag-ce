@@ -6,7 +6,7 @@ const path = require('path');
 /**
  * Update CORS configuration with frontend origin
  * Usage: node scripts/update-cors.js <frontend-url>
- * Example: node scripts/update-cors.js http://147.182.251.85:3000
+ * Example: node scripts/update-cors.js
  */
 
 const frontendUrl = process.argv[2];
@@ -14,7 +14,7 @@ const frontendUrl = process.argv[2];
 if (!frontendUrl) {
   console.error('❌ Error: Please provide frontend URL');
   console.log('Usage: node scripts/update-cors.js <frontend-url>');
-  console.log('Example: node scripts/update-cors.js http://147.182.251.85:3000');
+  console.log('Example: node scripts/update-cors.js');
   process.exit(1);
 }
 
