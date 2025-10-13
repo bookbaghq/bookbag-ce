@@ -60,6 +60,7 @@ class workspaceController {
             return this.returnJson({ success: false, error: error.message });
         }
     }
+
     async list(obj){
         try{
             const q = String(obj?.params?.query?.q || '').toLowerCase();

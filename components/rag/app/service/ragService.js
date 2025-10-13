@@ -1,35 +1,36 @@
+const { RecursiveCharacterTextSplitter } = require('@langchain/textsplitters');
+const EmbeddingService = require('./embeddingService');
+
 /**
  * RAGService - Retrieval-Augmented Generation Service
  *
  * Handles:
- * - Document chunking (breaking large documents into searchable pieces)
- * - Embedding generation (converting text to vector representations)
+ * - Document chunking (LangChain text splitters for smart chunking)
+ * - Embedding generation (local @xenova/transformers - no API calls)
  * - Vector similarity search (finding relevant chunks for queries)
  * - Integration with chat/LLM systems
  *
- * Uses OpenAI's text-embedding-3-small model for embeddings
- * Stores embeddings in LanceDB for fast ANN search
- * Stores metadata in MySQL/SQLite
+ * Architecture:
+ * - Chunking: @langchain/textsplitters (RecursiveCharacterTextSplitter)
+ * - Embeddings: @xenova/transformers (all-MiniLM-L6-v2, 384 dims)
+ * - Storage: SQLite (CE) or MySQL (EE) for metadata + embeddings
+ * - No external APIs required - fully local and offline capable
  */
 class RAGService {
-    constructor(context, openaiApiKey = null) {
+    constructor(context) {
         this.context = context;
 
-        // Initialize OpenAI client if available
-        this.openaiClient = null;
-        this.apiKey = openaiApiKey || process.env.OPENAI_API_KEY;
+        // Initialize local embedding service
+        this.embeddingService = new EmbeddingService();
 
-        if (this.apiKey) {
-            try {
-                const { OpenAI } = require('openai');
-                this.openaiClient = new OpenAI({ apiKey: this.apiKey });
-            } catch (error) {
-                console.warn('⚠️  OpenAI package not found. Install with: npm install openai');
-            }
-        }
+        // Initialize text splitter with smart chunking
+        this.textSplitter = new RecursiveCharacterTextSplitter({
+            chunkSize: 500,
+            chunkOverlap: 50, // Overlap to preserve context across boundaries
+            separators: ['\n\n', '\n', '. ', '! ', '? ', ', ', ' ', '']
+        });
 
-        // Initialize LanceDB vector store
-        this.vectorStore = require('./vectorStore');
+        console.log('✅ RAGService initialized with local embeddings');
     }
 
     /**
@@ -58,49 +59,28 @@ class RAGService {
     }
 
     /**
-     * Chunk text into smaller pieces for embedding
+     * Chunk text into smaller pieces using LangChain's RecursiveCharacterTextSplitter
+     * This provides smarter chunking than naive character splitting
      * @param {string} text - Full document text
-     * @param {number} approxChunkSize - Approximate characters per chunk
-     * @returns {string[]} - Array of text chunks
+     * @returns {Promise<string[]>} - Array of text chunks
      */
-    chunkText(text, approxChunkSize = 500) {
+    async chunkText(text) {
         if (!text || typeof text !== 'string') {
             return [];
         }
 
-        // Split by paragraphs (double newline)
-        const paragraphs = text.split(/\n{2,}/);
-        const chunks = [];
-        let buffer = '';
-
-        for (const paragraph of paragraphs) {
-            const trimmedPara = paragraph.trim();
-            if (!trimmedPara) continue;
-
-            // If adding this paragraph would exceed chunk size and buffer has content
-            if ((buffer + trimmedPara).length > approxChunkSize && buffer) {
-                chunks.push(buffer.trim());
-                buffer = '';
-            }
-
-            buffer += trimmedPara + '\n\n';
+        try {
+            const chunks = await this.textSplitter.splitText(text);
+            return chunks;
+        } catch (error) {
+            console.error('❌ Error chunking text:', error);
+            // Fallback to simple splitting
+            return this.simpleSplitBySize(text, 500);
         }
-
-        // Add remaining buffer
-        if (buffer.trim()) {
-            chunks.push(buffer.trim());
-        }
-
-        // If no chunks created (text might not have double newlines), split by size
-        if (chunks.length === 0 && text.trim()) {
-            return this.simpleSplitBySize(text, approxChunkSize);
-        }
-
-        return chunks;
     }
 
     /**
-     * Simple split by character count (fallback for texts without paragraph breaks)
+     * Simple split by character count (fallback for errors)
      * @param {string} text - Text to split
      * @param {number} chunkSize - Characters per chunk
      * @returns {string[]} - Array of chunks
@@ -114,22 +94,13 @@ class RAGService {
     }
 
     /**
-     * Generate embedding vector for text using OpenAI
+     * Generate embedding vector for text using local Xenova transformers
      * @param {string} text - Text to embed
-     * @returns {Promise<number[]>} - Embedding vector
+     * @returns {Promise<number[]>} - Embedding vector (384 dimensions)
      */
     async generateEmbedding(text) {
-        if (!this.openaiClient) {
-            throw new Error('OpenAI client not initialized. Set OPENAI_API_KEY environment variable.');
-        }
-
         try {
-            const response = await this.openaiClient.embeddings.create({
-                model: 'text-embedding-3-small',
-                input: text
-            });
-
-            return response.data[0].embedding;
+            return await this.embeddingService.embed(text);
         } catch (error) {
             console.error('❌ Error generating embedding:', error.message);
             throw new Error(`Failed to generate embedding: ${error.message}`);
@@ -137,8 +108,7 @@ class RAGService {
     }
 
     /**
-     * Ingest a document: chunk it and store metadata
-     * Embeddings will be generated on-demand during search
+     * Ingest a document: chunk it, generate embeddings, and store everything
      * @param {object} params - Document parameters
      * @param {number} [params.chatId] - Chat ID (optional - will be set later if not provided)
      * @param {string} [params.tenantId] - Tenant/user ID (optional - kept for legacy)
@@ -170,17 +140,26 @@ class RAGService {
         const documentId = document.id;
         console.log(`   ✓ Created document record: ID ${documentId}`);
 
-        // Chunk the text and store chunks (without embeddings)
-        const chunks = this.chunkText(text, 500);
+        // Chunk the text using LangChain splitter
+        console.log(`   🔪 Chunking text...`);
+        const chunks = await this.chunkText(text);
         console.log(`   ✓ Created ${chunks.length} chunks`);
 
-        // Store chunks in database for later retrieval
+        // Generate embeddings for all chunks in batch
+        console.log(`   🧠 Generating embeddings for ${chunks.length} chunks...`);
+        const startTime = Date.now();
+        const embeddings = await this.embeddingService.embedBatch(chunks);
+        const embeddingTime = Date.now() - startTime;
+        console.log(`   ✓ Generated ${embeddings.length} embeddings in ${embeddingTime}ms`);
+
+        // Store chunks with embeddings in database
         const DocumentChunkModel = require('../models/documentChunk');
         for (let i = 0; i < chunks.length; i++) {
             const chunk = new DocumentChunkModel();
             chunk.document_id = documentId;
             chunk.chunk_index = i;
             chunk.content = chunks[i];
+            chunk.embedding = JSON.stringify(embeddings[i]); // Store as JSON string
             chunk.token_count = chunks[i].length;
             chunk.created_at = Date.now().toString();
             chunk.updated_at = Date.now().toString();
@@ -189,58 +168,88 @@ class RAGService {
         }
         this.context.saveChanges();
 
-        console.log(`   ✅ Document ingestion complete! (${chunks.length} chunks stored)\n`);
+        console.log(`   ✅ Document ingestion complete! (${chunks.length} chunks with embeddings stored)\n`);
 
         return documentId;
     }
 
     /**
-     * Query RAG system: find relevant chunks using LanceDB ANN search
+     * Query RAG system: find relevant chunks using cosine similarity
      * @param {number} chatId - Chat ID
      * @param {string} question - User's question
      * @param {number} k - Number of top results to return
      * @returns {Promise<Array>} - Array of relevant chunks with scores
      */
     async queryRAG(chatId, question, k = 5) {
-        console.log(`\n🔍 RAG QUERY (LanceDB ANN): "${question.substring(0, 50)}..."`);
+        console.log(`\n🔍 RAG QUERY: "${question.substring(0, 50)}..."`);
 
         // Generate embedding for the question
+        console.log(`   🧠 Generating query embedding...`);
         const questionEmbedding = await this.generateEmbedding(question);
-        console.log(`   ✓ Generated question embedding`);
+        console.log(`   ✓ Generated question embedding (${questionEmbedding.length} dims)`);
 
-        // Search LanceDB using ANN
-        const results = await this.vectorStore.searchVectors(chatId, questionEmbedding, k);
-        console.log(`   ✓ LanceDB returned ${results.length} results`);
+        // Get all documents for this chat
+        const documents = this.context.Document
+            .where(d => d.chat_id == $$, chatId)
+            .toList();
 
-        // Get document metadata from database for enrichment
-        const documentIds = [...new Set(results.map(r => r.document_id))];
-
-        // Get all documents and filter in JavaScript (Master Record ORM doesn't support .includes() in where())
-        const allDocuments = this.context.Document.toList();
-        const documents = allDocuments.filter(d => documentIds.includes(d.id));
-
-        const documentMap = {};
-        for (const doc of documents) {
-            documentMap[doc.id] = doc;
+        if (documents.length === 0) {
+            console.log(`   ⚠️  No documents found for chat ${chatId}`);
+            return [];
         }
 
-        // Format results
-        const scoredChunks = results.map(result => ({
-            chunkId: result.chunk_id,
-            documentId: result.document_id,
-            documentTitle: documentMap[result.document_id]?.title || 'Unknown',
-            chunkIndex: result.chunk_index || 0,
-            content: result.content,
-            score: 1 - (result._distance || 0), // Convert distance to similarity
-            tokenCount: result.token_count || 0
-        }));
+        console.log(`   📚 Found ${documents.length} documents in knowledge base`);
 
-        console.log(`   ✅ Found ${scoredChunks.length} relevant chunks`);
-        if (scoredChunks.length > 0) {
-            console.log(`   📈 Top score: ${scoredChunks[0].score.toFixed(4)}`);
+        // Get all chunks for these documents
+        const documentIds = documents.map(d => d.id);
+        const allChunks = this.context.DocumentChunk.toList();
+        const chunks = allChunks.filter(c => documentIds.includes(c.document_id));
+
+        console.log(`   📄 Processing ${chunks.length} chunks...`);
+
+        // Calculate similarity for each chunk
+        const scoredChunks = [];
+        for (const chunk of chunks) {
+            if (!chunk.embedding) {
+                console.warn(`   ⚠️  Chunk ${chunk.id} has no embedding, skipping`);
+                continue;
+            }
+
+            try {
+                // Parse the embedding from JSON
+                const chunkEmbedding = JSON.parse(chunk.embedding);
+
+                // Calculate cosine similarity
+                const similarity = this.cosineSimilarity(questionEmbedding, chunkEmbedding);
+
+                // Find the document for this chunk
+                const document = documents.find(d => d.id === chunk.document_id);
+
+                scoredChunks.push({
+                    chunkId: chunk.id,
+                    documentId: chunk.document_id,
+                    documentTitle: document?.title || 'Unknown',
+                    chunkIndex: chunk.chunk_index,
+                    content: chunk.content,
+                    score: similarity,
+                    tokenCount: chunk.token_count
+                });
+            } catch (error) {
+                console.error(`   ❌ Error processing chunk ${chunk.id}:`, error.message);
+            }
         }
 
-        return scoredChunks;
+        // Sort by similarity score (highest first) and take top k
+        scoredChunks.sort((a, b) => b.score - a.score);
+        const topResults = scoredChunks.slice(0, k);
+
+        console.log(`   ✅ Found ${topResults.length} relevant chunks`);
+        if (topResults.length > 0) {
+            console.log(`   📈 Top score: ${topResults[0].score.toFixed(4)}`);
+            console.log(`   📉 Lowest score: ${topResults[topResults.length - 1].score.toFixed(4)}`);
+        }
+
+        return topResults;
     }
 
     /**

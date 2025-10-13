@@ -22,6 +22,10 @@ export default function WorkspacesPage(){
   const [saving, setSaving] = useState(false)
   const [profiles, setProfiles] = useState([])
   const [profileId, setProfileId] = useState('')
+  const [createUsers, setCreateUsers] = useState([])
+  const [createUserSearch, setCreateUserSearch] = useState('')
+  const [createSearchResults, setCreateSearchResults] = useState([])
+  const [createSearchLoading, setCreateSearchLoading] = useState(false)
 
   // Delete confirmation state
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -70,6 +74,38 @@ export default function WorkspacesPage(){
     return () => { stop = true }
   }, [])
 
+  // Debounced user search for create dialog
+  useEffect(() => {
+    if (!createOpen) return
+    const searchQuery = createUserSearch.trim()
+    if (!searchQuery) {
+      setCreateSearchResults([])
+      return
+    }
+
+    setCreateSearchLoading(true)
+    const handle = setTimeout(async () => {
+      try {
+        const res = await fetch(`${api.ApiConfig.main}/bb-user/api/profile/search?q=${encodeURIComponent(searchQuery)}`, { credentials: 'include' })
+        const data = await res.json()
+        if (data.success && Array.isArray(data.users)) {
+          setCreateSearchResults(data.users)
+        } else {
+          setCreateSearchResults([])
+        }
+      } catch (_) {
+        setCreateSearchResults([])
+      } finally {
+        setCreateSearchLoading(false)
+      }
+    }, 300)
+
+    return () => {
+      clearTimeout(handle)
+      setCreateSearchLoading(false)
+    }
+  }, [createUserSearch, createOpen])
+
   const openEdit = async (workspace) => {
     if (!workspace || !workspace.id) return
     setEditId(workspace.id)
@@ -103,49 +139,72 @@ export default function WorkspacesPage(){
     try { await svc.update({ id: editId, name: editName, description: editDescription, system_prompt: editSystemPrompt, prompt_template: editPromptTemplate }); await load() } finally { setEditLoading(false) }
   }
 
-  const saveUsers = async () => {
-    if (!editId) return
-    const payload = editUsers.map(u => ({ user_id: u.user_id || u.id, role: u.role || 'member' }))
-    await svc.assignUsers(editId, payload)
-    // Refresh workspace users from backend to reflect persisted state
+  const toggleUser = async (u) => {
+    if (!u || !editId) return
+
+    // Update local state first for immediate UI feedback
+    const exists = editUsers.some(x => String(x.user_id || x.id) === String(u.id))
+    const newUsers = exists
+      ? editUsers.filter(x => String(x.user_id || x.id) !== String(u.id))
+      : [...editUsers, { user_id: u.id, role: 'member', name: `${u.first_name || ''} ${u.last_name || ''}`.trim(), email: u.email }]
+
+    setEditUsers(newUsers)
+
+    // Immediately save to database
     try {
+      const payload = newUsers.map(user => ({ user_id: user.user_id || user.id, role: user.role || 'member' }))
+      await svc.assignUsers(editId, payload)
+
+      // Refresh from backend to ensure consistency
       const ws = await svc.get(editId)
       if (ws?.success && ws.workspace && Array.isArray(ws.workspace.users)) {
         setEditUsers(ws.workspace.users)
       }
       await load()
-    } catch (_) {}
+    } catch (error) {
+      // Revert on error
+      setEditUsers(editUsers)
+    }
   }
 
-  const saveModels = async () => {
-    if (!editId) return
-    const payload = editModels.map(m => ({ model_id: m.model_id || m.id }))
-    await svc.assignModels(editId, payload)
+  const toggleCreateUser = (u) => {
+    if (!u) return
+    setCreateUsers(prev => {
+      const exists = prev.some(x => String(x.user_id || x.id) === String(u.id))
+      if (exists) return prev.filter(x => String(x.user_id || x.id) !== String(u.id))
+      // Handle both camelCase (from search endpoint) and snake_case (from all endpoint)
+      const firstName = u.firstName || u.first_name || ''
+      const lastName = u.lastName || u.last_name || ''
+      return [...prev, { user_id: u.id, role: 'member', name: `${firstName} ${lastName}`.trim(), email: u.email }]
+    })
+  }
+
+  const toggleModel = async (m) => {
+    if (!m || !editId) return
+
+    // Update local state first for immediate UI feedback
+    const exists = editModels.some(x => String(x.model_id || x.id) === String(m.id))
+    const newModels = exists
+      ? editModels.filter(x => String(x.model_id || x.id) !== String(m.id))
+      : [...editModels, { model_id: m.id, name: m.name }]
+
+    setEditModels(newModels)
+
+    // Immediately save to database
     try {
+      const payload = newModels.map(model => ({ model_id: model.model_id || model.id }))
+      await svc.assignModels(editId, payload)
+
+      // Refresh from backend to ensure consistency
       const ws = await svc.get(editId)
       if (ws?.success && ws.workspace && Array.isArray(ws.workspace.models)) {
         setEditModels(ws.workspace.models)
       }
       await load()
-    } catch (_) {}
-  }
-
-  const toggleUser = (u) => {
-    if (!u) return
-    setEditUsers(prev => {
-      const exists = prev.some(x => String(x.user_id || x.id) === String(u.id))
-      if (exists) return prev.filter(x => String(x.user_id || x.id) !== String(u.id))
-      return [...prev, { user_id: u.id, role: 'member', name: `${u.first_name || ''} ${u.last_name || ''}`.trim(), email: u.email }]
-    })
-  }
-
-  const toggleModel = (m) => {
-    if (!m) return
-    setEditModels(prev => {
-      const exists = prev.some(x => String(x.model_id || x.id) === String(m.id))
-      if (exists) return prev.filter(x => String(x.model_id || x.id) !== String(m.id))
-      return [...prev, { model_id: m.id, name: m.name }]
-    })
+    } catch (error) {
+      // Revert on error
+      setEditModels(editModels)
+    }
   }
 
   const openDelete = (workspace) => {
@@ -199,12 +258,12 @@ export default function WorkspacesPage(){
       </div>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>New Workspace</DialogTitle>
             <DialogDescription>Create a new workspace.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-4">
             <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
             <Input placeholder="Description (optional)" value={description} onChange={(e) => setDescription(e.target.value)} />
             <div>
@@ -216,15 +275,110 @@ export default function WorkspacesPage(){
                 ))}
               </select>
             </div>
+
+            <Separator />
+
+            <div className="space-y-3">
+              <div className="text-sm font-medium">Assign Users (optional)</div>
+              <Input
+                placeholder="Search users by name or email"
+                value={createUserSearch}
+                onChange={(e) => setCreateUserSearch(e.target.value)}
+              />
+
+              {createUsers.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-xs text-muted-foreground">Selected Users:</div>
+                  <div className="flex flex-wrap gap-2">
+                    {createUsers.map(sel => (
+                      <span key={`create-sel-${sel.user_id || sel.id}`} className="inline-flex items-center gap-1 rounded-md border bg-background shadow-xs h-7 px-2 text-xs">
+                        {(sel.name && sel.name.trim()) ? sel.name : (sel.email || String(sel.user_id || sel.id))}
+                        <button
+                          type="button"
+                          className="ml-1 rounded border px-1 hover:bg-accent hover:text-accent-foreground"
+                          title="Remove"
+                          onClick={() => toggleCreateUser({ id: sel.user_id || sel.id })}
+                        >×</button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {createUserSearch.trim() && (
+                <div className="relative">
+                  <div className="absolute left-0 right-0 top-0 border rounded bg-background shadow-lg max-h-48 overflow-y-auto z-10">
+                    {createSearchLoading && (
+                      <div className="text-sm text-muted-foreground text-center py-2">Loading...</div>
+                    )}
+                    {!createSearchLoading && createSearchResults.filter(u => {
+                      const already = createUsers.some(x => String(x.user_id || x.id) === String(u.id));
+                      return !already;
+                    }).map(u => {
+                      // Handle both camelCase (from search endpoint) and snake_case (from all endpoint)
+                      const userName = u.userName || u.user_name || ''
+                      return (
+                        <div
+                          key={`create-u-find-${u.id}`}
+                          className="flex items-center justify-between px-3 py-2 text-sm hover:bg-accent cursor-pointer border-b last:border-b-0"
+                          onClick={() => toggleCreateUser(u)}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium truncate">{userName || u.email}</div>
+                            <div className="text-xs text-muted-foreground truncate">{u.email}</div>
+                          </div>
+                          <button
+                            type="button"
+                            className="inline-flex items-center justify-center rounded-md border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground h-7 px-2 text-sm ml-2"
+                            title="Add user"
+                            onClick={(e) => { e.stopPropagation(); toggleCreateUser(u); }}
+                          >+</button>
+                        </div>
+                      )
+                    })}
+                    {!createSearchLoading && createSearchResults.filter(u => {
+                      const already = createUsers.some(x => String(x.user_id || x.id) === String(u.id));
+                      return !already;
+                    }).length === 0 && (
+                      <div className="text-sm text-muted-foreground text-center py-2">No users found</div>
+                    )}
+                  </div>
+                  {/* Spacer to prevent content overlap */}
+                  <div className="h-2"></div>
+                </div>
+              )}
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => {
+              setCreateOpen(false);
+              setName('');
+              setDescription('');
+              setProfileId('');
+              setCreateUsers([]);
+              setCreateUserSearch('');
+            }}>Cancel</Button>
             <Button disabled={!name || saving} onClick={async () => {
               setSaving(true)
-              try { const payload = { name, description };
+              try {
+                const payload = { name, description };
                 if (profileId) payload.profile_id = parseInt(profileId, 10);
-                const res = await svc.create(payload); if (res?.success) { setCreateOpen(false); setName(''); setDescription(''); setProfileId(''); await load(); } }
-              catch(_){}
+                const res = await svc.create(payload);
+                if (res?.success && res.id) {
+                  // Assign users if any were selected
+                  if (createUsers.length > 0) {
+                    const userPayload = createUsers.map(u => ({ user_id: u.user_id || u.id, role: u.role || 'member' }));
+                    await svc.assignUsers(res.id, userPayload);
+                  }
+                  setCreateOpen(false);
+                  setName('');
+                  setDescription('');
+                  setProfileId('');
+                  setCreateUsers([]);
+                  setCreateUserSearch('');
+                  await load();
+                }
+              } catch(_){}
               finally { setSaving(false) }
             }}>{saving ? 'Creating…' : 'Create'}</Button>
           </DialogFooter>
@@ -302,7 +456,6 @@ export default function WorkspacesPage(){
                 </div>
               ))}
             </div>
-            <div className="flex justify-end"><Button onClick={saveUsers}>Save Users</Button></div>
           </div>
           <Separator />
           <div className="space-y-3">
@@ -349,7 +502,6 @@ export default function WorkspacesPage(){
                 </div>
               ))}
             </div>
-            <div className="flex justify-end"><Button onClick={saveModels}>Save Models</Button></div>
           </div>
         </div>
         <SheetFooter />

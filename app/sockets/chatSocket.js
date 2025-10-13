@@ -6,6 +6,10 @@ const ModelService = require(`${master.root}/components/chats/app/service/modelS
 const llmConfigService = require("../../components/models/app/service/llmConfigService");
 const errorService = require(`${master.root}/app/service/errorService`);
 
+// RAG imports - load once at module level for efficiency
+const RAGContext = require(`${master.root}/components/rag/app/models/ragContext`);
+const RAGService = require(`${master.root}/components/rag/app/service/ragService`);
+
 class chatSocket {
 
 	constructor(dependencies) {
@@ -205,6 +209,94 @@ class chatSocket {
 				return;
 			}
 
+			// 🧠 RAG Integration: Query knowledge base before calling LLM
+			let ragContext = '';
+			let ragQueryText = ''; // Store the original query text for later use
+			try {
+				// Initialize RAG service (using module-level imports for efficiency)
+				const ragCtx = new RAGContext();
+				const ragService = new RAGService(ragCtx);
+
+				// Get the user's last message to use as the query (reverse find is faster for long histories)
+				const lastUserMessage = [...messageHistory].reverse().find(m => m.role === 'user');
+				if (lastUserMessage && lastUserMessage.content) {
+					ragQueryText = lastUserMessage.content; // Save the query text
+					console.log(`🔍 RAG: Querying knowledge base for chat ${chatId}...`);
+					console.log(`🔍 RAG: Query text: "${ragQueryText}"`);
+
+					// Query the knowledge base (top 5 most relevant chunks)
+					const results = await ragService.queryRAG(parseInt(chatId, 10), ragQueryText, 5);
+
+					if (results && results.length > 0) {
+						console.log(`✅ RAG: Found ${results.length} relevant chunks (top score: ${results[0].score.toFixed(4)})`);
+
+						// Build context string from retrieved documents
+						ragContext = ragService.buildContextString(results);
+
+						console.log(`📚 RAG: Context length: ${ragContext.length} characters`);
+					} else {
+						console.log(`ℹ️  RAG: No relevant documents found for this query`);
+					}
+				}
+			} catch (ragErr) {
+				// Non-fatal: if RAG fails, continue without it
+				console.warn('⚠️  RAG query failed (non-fatal):', ragErr.message);
+			}
+
+			// Inject RAG context with STRONG grounding instructions if available
+			if (ragContext) {
+				// ✅ FIX 1: Strengthen system instruction with mandatory language
+				const existingSystemPrompt = this.modelConfig.system_prompt || '';
+				const systemPromptWithContext = `${existingSystemPrompt}
+
+--- Retrieved Knowledge Base Context ---
+${ragContext}
+--- End of Retrieved Context ---
+
+**CRITICAL INSTRUCTIONS:**
+You MUST answer the user's question **only** using the information contained between the "Retrieved Knowledge Base Context" markers above.
+- If the answer is present there, return it directly and concisely.
+- If it is NOT present, reply EXACTLY: "I don't know based on the provided documents."
+- Do NOT answer from your own knowledge or speculate beyond the retrieved context.
+- Do NOT ask clarifying questions.
+- Respond directly based ONLY on the retrieved context.`;
+
+				// Inject or update system message in history
+				const systemMsgIndex = messageHistory.findIndex(m => m.role === 'system');
+				if (systemMsgIndex >= 0) {
+					// Append to existing system message rather than replacing it
+					messageHistory[systemMsgIndex].content = systemPromptWithContext;
+				} else {
+					// Prepend system message with RAG context
+					messageHistory.unshift({ role: 'system', content: systemPromptWithContext });
+				}
+
+				// ✅ FIX 2 & 3: Inject retrieved context directly into the user message for stronger grounding
+				// Use bulletproof injection that safely finds and modifies the last user message
+				const lastUserMsg = [...messageHistory].reverse().find(m => m.role === 'user');
+
+				if (lastUserMsg && typeof lastUserMsg.content === 'string' && lastUserMsg.content.trim()) {
+					// Create strongly grounded user message with context + mandatory instructions
+					// Fallback to original content if ragQueryText is missing
+					const userQuestion = ragQueryText || lastUserMsg.content;
+
+					const groundedUserMessage = `Context from Knowledge Base:
+
+${ragContext || '[NO CONTEXT FOUND]'}
+
+Instructions: Answer the following question ONLY using the context provided above. If the answer is not in the context, reply: "I don't know based on the provided documents."
+
+Question: ${userQuestion}`;
+
+					lastUserMsg.content = groundedUserMessage;
+					console.log(`✅ RAG: Context injected into both system prompt AND user message for maximum grounding`);
+					console.log(`✅ RAG: Final grounded user message (first 300 chars):`, groundedUserMessage.slice(0, 300) + "...");
+				} else {
+					console.warn(`⚠️  No valid user message found. Skipping user message injection.`);
+					console.log(`✅ RAG: Context injected into system prompt only (${ragContext.split('\n').length} lines)`);
+				}
+			}
+
 			// Apply server-side auto-trim if enabled and model defines a real context_size
 			try {
 				const hasContextRule = Number(this.modelConfig?.context_size || 0) > 0;
@@ -304,6 +396,20 @@ class chatSocket {
 						}
 					} catch (_) {}
 				};
+
+				// 🔧 CRITICAL FIX: Remove the current AI placeholder message from history
+				// The createAssistantMessageOnStreamStart() creates a placeholder with "-" content
+				// which confuses the LLM if included in the message history
+				messageHistory = messageHistory.filter(msg => {
+					// Keep all non-assistant messages
+					if (msg.role !== 'assistant') return true;
+					// Keep assistant messages that have real content (not just the placeholder)
+					return msg.content && msg.content.trim() && msg.content.trim() !== '-';
+				});
+
+				// 📨 DEBUG: Log the final message history being sent to the LLM
+				console.log("📨 FINAL MESSAGE HISTORY SENT TO LLM (after filtering placeholder):");
+				console.log(JSON.stringify(messageHistory, null, 2));
 
 				generationResult = await this.modelService._generateViaOpenAICompatible(
 					messageHistory,

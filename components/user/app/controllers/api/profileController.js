@@ -147,43 +147,34 @@ class profileController{
     // fuzzy search users (admin)
     search(obj){
         try{
-            const q = (obj.params.query.q || '').toLowerCase().trim();
-            const limit = parseInt(obj.params.limit) || 20;
+            const q = (obj.params.query.q || '').trim();
+            const limit = parseInt(obj.params.query.limit || obj.params.limit) || 20;
 
             if (!q || q.length < 2){
                 return this.returnJson({ success: true, users: [], total: 0 });
             }
 
-            // Basic fuzzy-ish search (LIKE) on user_name, first/last name, email
-            // ORM is in-memory-esque; filter mapping accordingly
-            const allUsers = obj.userContext.User
+            const pattern = `%${q}%`;
+
+            // Use ORM's .like() method for database-level LIKE queries
+            // Search across user_name, email, first_name, last_name
+            let query = obj.userContext.User;
+
+            // Build query with OR conditions using .where() with .like()
+            query = query.where(u => u.user_name.like($$) || u.email.like($$) || u.first_name.like($$) || u.last_name.like($$), pattern, pattern, pattern, pattern);
+
+            const results = query
                 .orderByDescending(r => r.created_at)
+                .take(limit)
                 .toList();
 
-            const matches = [];
-            for (const u of allUsers){
-                const first = String(u.first_name || '').toLowerCase();
-                const last = String(u.last_name || '').toLowerCase();
-                const userName = String(u.user_name || '').toLowerCase();
-                const email = String(u.email || '').toLowerCase();
-
-                if (
-                    userName.includes(q) ||
-                    email.includes(q) ||
-                    (`${first} ${last}`.trim()).includes(q) ||
-                    first.includes(q) ||
-                    last.includes(q)
-                ){
-                    matches.push({
-                        id: u.id,
-                        userName: u.user_name,
-                        email: u.email,
-                        firstName: u.first_name,
-                        lastName: u.last_name
-                    });
-                }
-                if (matches.length >= limit) break;
-            }
+            const matches = results.map(u => ({
+                id: u.id,
+                userName: u.user_name,
+                email: u.email,
+                firstName: u.first_name,
+                lastName: u.last_name
+            }));
 
             return this.returnJson({ success: true, users: matches, total: matches.length });
         }

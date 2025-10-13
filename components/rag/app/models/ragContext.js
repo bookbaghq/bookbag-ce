@@ -2,7 +2,7 @@
 var masterrecord = require('masterrecord');
 const Document = require('./document');
 const DocumentChunk = require('./documentChunk');
-
+const Settings = require('./settings');
 /**
  * RAG Context - Database context for RAG operations
  *
