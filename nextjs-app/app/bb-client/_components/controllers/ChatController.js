@@ -141,7 +141,7 @@ export function useChatController({
       const res = await fetch(`${backendUrl}/bb-chat/api/chat/${chatId}`, { method: 'GET', credentials: 'include' });
       if (!res.ok) return false;
       const data = await res.json();
-      return !!(data?.success && data?.chat?.is_workplace_created);
+      return !!(data?.success && data?.chat?.is_workspace_created);
     } catch (_) {
       return false;
     }
@@ -695,12 +695,13 @@ export function useChatController({
       setStreamingStats({ tokenCount: 0, tps: null, elapsed: 0 });
 
 
-      
+
       const response = await apiService.startAIStreamingResponse(
         null,
-        userMessage.id, 
+        userMessage.id,
         selectedModelId,
         {
+          chatId: userMessage.chatId || currentChatId,
           noThinking: noThinking,
           // backend decides trimming via model.auto_trim_on
           signal: abortControllerRef.current.signal,

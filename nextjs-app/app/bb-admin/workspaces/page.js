@@ -9,7 +9,7 @@ import WorkspaceService from '@/services/workspaceService'
 import api from '@/apiConfig.json'
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Separator } from '@/components/ui/separator'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Upload, File, Database } from 'lucide-react'
 
 export default function WorkspacesPage(){
   const svc = useMemo(() => new WorkspaceService(), [])
@@ -46,6 +46,13 @@ export default function WorkspacesPage(){
   const [allModels, setAllModels] = useState([])
   const [userSearch, setUserSearch] = useState('')
   const [modelSearch, setModelSearch] = useState('')
+
+  // Knowledge Base state
+  const [kbDocuments, setKbDocuments] = useState([])
+  const [kbStats, setKbStats] = useState({ documentCount: 0, chunkCount: 0 })
+  const [kbUploading, setKbUploading] = useState(false)
+  const [kbFiles, setKbFiles] = useState([])
+  const [kbDeleteId, setKbDeleteId] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -128,8 +135,67 @@ export default function WorkspacesPage(){
       }
       if (us && Array.isArray(us.userList)) setAllUsers(us.userList)
       if (ms?.success && Array.isArray(ms.models)) setAllModels(ms.models)
+
+      // Load knowledge base documents
+      await loadKbDocuments(workspace.id)
     } finally {
       setEditLoading(false)
+    }
+  }
+
+  const loadKbDocuments = async (workspaceId) => {
+    if (!workspaceId) return
+    try {
+      const [docs, stats] = await Promise.all([
+        fetch(`${api.ApiConfig.main}/bb-rag/api/rag/list?workspaceId=${workspaceId}`, { credentials: 'include' }).then(r => r.json()),
+        fetch(`${api.ApiConfig.main}/bb-rag/api/rag/stats?workspaceId=${workspaceId}`, { credentials: 'include' }).then(r => r.json())
+      ])
+      if (docs?.success && Array.isArray(docs.documents)) setKbDocuments(docs.documents)
+      if (stats?.success && stats.stats) setKbStats(stats.stats)
+    } catch (err) {
+      console.error('Error loading KB documents:', err)
+    }
+  }
+
+  const handleKbUpload = async (event) => {
+    event.preventDefault()
+    if (!editId || kbFiles.length === 0) return
+
+    setKbUploading(true)
+    try {
+      for (const file of kbFiles) {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('workspaceId', editId)
+        formData.append('title', file.name)
+
+        await fetch(`${api.ApiConfig.main}/bb-rag/api/rag/ingest`, {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'
+        })
+      }
+
+      setKbFiles([])
+      await loadKbDocuments(editId)
+    } catch (err) {
+      console.error('Error uploading KB documents:', err)
+    } finally {
+      setKbUploading(false)
+    }
+  }
+
+  const handleKbDelete = async (docId) => {
+    if (!docId) return
+    try {
+      await fetch(`${api.ApiConfig.main}/bb-rag/api/rag/delete/${docId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      })
+      await loadKbDocuments(editId)
+      setKbDeleteId(null)
+    } catch (err) {
+      console.error('Error deleting KB document:', err)
     }
   }
 
@@ -388,27 +454,98 @@ export default function WorkspacesPage(){
 
     {/* Edit Workspace Drawer */}
     <Sheet open={editOpen} onOpenChange={setEditOpen}>
-      <SheetContent side="right" className="w-[420px] sm:w-[560px] flex flex-col">
+      <SheetContent side="right" className="w-[90vw] sm:w-[45vw] sm:max-w-none flex flex-col">
         <SheetHeader>
           <SheetTitle>Edit Workspace</SheetTitle>
           <SheetDescription>Update workspace details, members, and models.</SheetDescription>
         </SheetHeader>
         <div className="py-3 space-y-4 overflow-y-auto">
-          <div className="space-y-3">
-            <Input placeholder="Name" value={editName} onChange={(e) => setEditName(e.target.value)} />
-            <Input placeholder="Description" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <div className="text-sm font-medium mb-2">System Prompt</div>
-                <textarea className="w-full min-h-[120px] p-2 border rounded font-mono text-sm" value={editSystemPrompt} onChange={e => setEditSystemPrompt(e.target.value)} />
+          {/* Top section: Basic Info and Knowledge Base side by side */}
+          <div className="grid grid-cols-2 gap-6">
+            {/* Left column - Basic Info */}
+            <div className="space-y-3">
+              <Input placeholder="Name" value={editName} onChange={(e) => setEditName(e.target.value)} />
+              <Input placeholder="Description" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <div className="text-sm font-medium mb-2">System Prompt</div>
+                  <textarea className="w-full min-h-[120px] p-2 border rounded font-mono text-sm" value={editSystemPrompt} onChange={e => setEditSystemPrompt(e.target.value)} />
+                </div>
+                <div>
+                  <div className="text-sm font-medium mb-2">Prompt Template</div>
+                  <textarea className="w-full min-h-[120px] p-2 border rounded font-mono text-sm" value={editPromptTemplate} onChange={e => setEditPromptTemplate(e.target.value)} />
+                </div>
               </div>
-              <div>
-                <div className="text-sm font-medium mb-2">Prompt Template</div>
-                <textarea className="w-full min-h-[120px] p-2 border rounded font-mono text-sm" value={editPromptTemplate} onChange={e => setEditPromptTemplate(e.target.value)} />
+              <div className="flex justify-end"><Button onClick={saveBasics} disabled={editLoading}>{editLoading ? 'Saving…' : 'Save'}</Button></div>
+            </div>
+
+            {/* Vertical divider */}
+            <div className="relative">
+              <div className="absolute left-0 top-0 bottom-0 w-px bg-border"></div>
+
+              {/* Right column - Knowledge Base */}
+              <div className="pl-6 space-y-3">
+                <div className="text-lg font-semibold flex items-center gap-2">
+                  <Database className="w-5 h-5" />
+                  Knowledge Base
+                  <span className="text-[10px] text-muted-foreground font-normal">(.txt, .md, .html, .pdf, .docx, .csv)</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {kbStats.documentCount} documents, {kbStats.chunkCount} chunks
+                </p>
+
+                {/* Upload Section */}
+                <form onSubmit={handleKbUpload} className="space-y-3">
+                  <Input
+                    type="file"
+                    multiple
+                    accept=".txt,.md,.markdown,.pdf,.docx,.html,.htm,.csv"
+                    onChange={(e) => setKbFiles(Array.from(e.target.files || []))}
+                    className="cursor-pointer"
+                  />
+                  {kbFiles.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="text-xs text-muted-foreground">{kbFiles.length} file(s) selected:</div>
+                      <div className="flex flex-wrap gap-2">
+                        {kbFiles.map((file, idx) => (
+                          <span key={idx} className="inline-flex items-center gap-1 rounded-md border bg-background shadow-xs h-7 px-2 text-xs">
+                            {file.name}
+                          </span>
+                        ))}
+                      </div>
+                      <Button type="submit" disabled={kbUploading} size="sm">
+                        {kbUploading ? 'Uploading...' : 'Upload Files'}
+                      </Button>
+                    </div>
+                  )}
+                </form>
+
+                {/* Document List */}
+                {kbDocuments.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">Documents:</div>
+                    {kbDocuments.map(doc => (
+                      <div key={doc.id} className="flex items-center justify-between border rounded px-2 py-1 text-sm">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium truncate">{doc.title}</div>
+                          <div className="text-xs text-muted-foreground truncate">{doc.filename}</div>
+                        </div>
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-center rounded-md border bg-background shadow-xs hover:bg-destructive hover:text-white h-7 w-7 p-0 text-sm"
+                          title="Delete document"
+                          onClick={() => setKbDeleteId(doc.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-            <div className="flex justify-end"><Button onClick={saveBasics} disabled={editLoading}>{editLoading ? 'Saving…' : 'Save'}</Button></div>
           </div>
+
           <Separator />
           <div className="space-y-3">
             <div className="text-lg font-semibold">Users</div>
@@ -507,6 +644,22 @@ export default function WorkspacesPage(){
         <SheetFooter />
       </SheetContent>
     </Sheet>
+
+    {/* KB Delete Confirmation Dialog */}
+    <Dialog open={!!kbDeleteId} onOpenChange={(open) => !open && setKbDeleteId(null)}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Delete Document</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to delete this document? This action cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setKbDeleteId(null)}>Cancel</Button>
+          <Button variant="destructive" onClick={() => handleKbDelete(kbDeleteId)}>Delete</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
     {/* Delete Confirmation Modal */}
     <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>

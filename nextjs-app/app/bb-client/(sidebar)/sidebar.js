@@ -664,9 +664,9 @@ export function SidebarNav(props) {
   const handleArchiveChat = async (chatId) => {
     try {
       console.log('Archiving chat:', chatId);
-      
+
       // Call PATCH API endpoint
-      const apiUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main}/bb-chat/api/chat/${chatId}/delete`;
+      const apiUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main}/bb-chat/api/chat/${chatId}/archive`;
       const response = await fetch(apiUrl, {
         method: 'PATCH',
         credentials: 'include'
@@ -799,7 +799,7 @@ export function SidebarNav(props) {
                           const chatId = (c && (c.id != null ? c.id : c.chat_id != null ? c.chat_id : null));
                           const keyId = chatId != null ? chatId : `tmp-${idx}`;
                           return (
-                          <div 
+                          <div
                             key={`wsc-${ws.id}-${keyId}`} 
                             className={`flex items-center justify-between rounded-md mx-2 mb-1 w-full ${isChatActive(chatId) ? 'dark:bg-gray-800/60 bg-zinc-200/60 border-l-2 border-zinc-400 dark:border-gray-600' : ''}`}
                             onMouseEnter={() => { if (chatId != null) setHoveredThread(`ws:${ws.id}:${chatId}`); }}

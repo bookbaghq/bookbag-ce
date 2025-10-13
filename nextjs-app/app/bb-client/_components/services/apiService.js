@@ -157,6 +157,7 @@ export class ApiService {
   async startAIStreamingResponse(_aiMessageIdIgnored, userMessageId, modelId, options = {}) {
     try {
       const requestData = {
+        chatId: options.chatId || null,
         userMessageId: userMessageId,
         modelId: modelId,
         noThinking: options.noThinking || false,
