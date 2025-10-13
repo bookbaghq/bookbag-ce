@@ -54,13 +54,29 @@ else
 fi
 echo ""
 
+# Determine primary network IP early (for default URL)
+NETWORK_IP=""
+if command -v ipconfig >/dev/null 2>&1; then
+    NETWORK_IP=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)
+fi
+if [ -z "$NETWORK_IP" ] && command -v hostname >/dev/null 2>&1; then
+    NETWORK_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || true)
+fi
+if [ -z "$NETWORK_IP" ]; then
+    NETWORK_IP=$(ip route get 1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}' || true)
+fi
+if [ -z "$NETWORK_IP" ]; then
+    NETWORK_IP="127.0.0.1"
+fi
+
 # Get backend URL from environment or prompt
 if [ -z "$NEXT_PUBLIC_BACKEND_URL" ]; then
-    echo -n "Enter your backend URL (e.g., http://your-server-ip:8080) [default: http://127.0.0.1:8080]: "
+    DEFAULT_BACKEND_URL="http://${NETWORK_IP}:8080"
+    echo -n "Enter your backend URL (e.g., http://your-server-ip:8080) [default: ${DEFAULT_BACKEND_URL}]: "
     read BACKEND_URL
     if [ -z "$BACKEND_URL" ]; then
-        # Use default if nothing entered
-        export NEXT_PUBLIC_BACKEND_URL="http://127.0.0.1:8080"
+        # Use detected network IP as default
+        export NEXT_PUBLIC_BACKEND_URL="${DEFAULT_BACKEND_URL}"
     else
         export NEXT_PUBLIC_BACKEND_URL=$BACKEND_URL
     fi
@@ -80,7 +96,26 @@ if [[ ! "$NEXT_PUBLIC_BACKEND_URL" =~ ^https?:// ]]; then
     fi
 fi
 
-echo -e "${BLUE}📦 Backend URL: $NEXT_PUBLIC_BACKEND_URL${NC}"
+echo ""
+echo -e "${GREEN}✅ Configured Backend URL: $NEXT_PUBLIC_BACKEND_URL${NC}"
+echo -e "${BLUE}   (This URL will be used by the frontend to connect to the backend)${NC}"
+
+# Derive URLs for display (local and network)
+BACKEND_SCHEME=$(echo "$NEXT_PUBLIC_BACKEND_URL" | sed -E 's#^(https?)://.*#\1#')
+BACKEND_HOSTPORT=$(echo "$NEXT_PUBLIC_BACKEND_URL" | sed -E 's#^https?://([^/]+).*#\1#')
+if [[ "$BACKEND_HOSTPORT" == *:* ]]; then
+    BACKEND_PORT="${BACKEND_HOSTPORT##*:}"
+else
+    if [ "$BACKEND_SCHEME" = "https" ]; then BACKEND_PORT=443; else BACKEND_PORT=80; fi
+fi
+
+# NETWORK_IP already detected earlier, use it here
+BACKEND_LOCAL_URL="http://localhost:${BACKEND_PORT}"
+BACKEND_NETWORK_URL="${BACKEND_SCHEME}://${NETWORK_IP}:${BACKEND_PORT}"
+
+FRONTEND_LOCAL_URL="http://localhost:3000"
+FRONTEND_NETWORK_URL="http://${NETWORK_IP}:3000"
+FRONTEND_LOOPBACK_URL="http://127.0.0.1:3000"
 
 # Ensure JWT secrets are initialized before starting services
 echo -e "${BLUE}🔐 Initializing JWT secrets...${NC}"
@@ -88,27 +123,46 @@ npm run init-jwt
 echo -e "${GREEN}✅ JWT secrets ensured${NC}"
 echo ""
 
-# Update CORS configuration with frontend URL
+# Update CORS configuration with frontend URLs (localhost, loopback, and network)
 FRONTEND_ORIGIN=$(echo $NEXT_PUBLIC_BACKEND_URL | sed -E 's|:[0-9]+|:3000|')
 echo -e "${BLUE}🔒 Updating CORS configuration...${NC}"
 
 if [ -f "config/initializers/cors.json" ]; then
-    # Check if origin already exists
-    if grep -q "\"$FRONTEND_ORIGIN\"" config/initializers/cors.json; then
-        echo -e "${GREEN}✅ CORS already configured for: $FRONTEND_ORIGIN${NC}"
-    else
-        # Add origin using Node.js (more reliable than sed/jq)
-        node -e "
-        const fs = require('fs');
-        const origin = process.argv[1];
-        const config = JSON.parse(fs.readFileSync('config/initializers/cors.json', 'utf8'));
-        if (!Array.isArray(config.origin)) config.origin = [];
-        if (!config.origin.includes(origin)) {
-            config.origin.push(origin);
-        }
-        fs.writeFileSync('config/initializers/cors.json', JSON.stringify(config, null, 4));
-        " "$FRONTEND_ORIGIN" 2>/dev/null && echo -e "${GREEN}✅ CORS updated: Added $FRONTEND_ORIGIN to whitelist${NC}" || echo -e "${YELLOW}⚠️  Could not update CORS automatically${NC}"
-    fi
+    for ORIGIN in "$FRONTEND_ORIGIN" "$FRONTEND_LOCAL_URL" "$FRONTEND_LOOPBACK_URL" "$FRONTEND_NETWORK_URL"; do
+        if [ -n "$ORIGIN" ]; then
+            if grep -q "\"$ORIGIN\"" config/initializers/cors.json; then
+                echo -e "${GREEN}✅ CORS already configured for: $ORIGIN${NC}"
+            else
+                node -e "
+                const fs = require('fs');
+                const origin = process.argv[1];
+                const config = JSON.parse(fs.readFileSync('config/initializers/cors.json', 'utf8'));
+                if (!Array.isArray(config.origin)) config.origin = [];
+                if (!config.origin.includes(origin)) {
+                    config.origin.push(origin);
+                }
+                fs.writeFileSync('config/initializers/cors.json', JSON.stringify(config, null, 4));
+                " "$ORIGIN" 2>/dev/null && echo -e "${GREEN}✅ CORS updated: Added $ORIGIN to whitelist${NC}" || echo -e "${YELLOW}⚠️  Could not update CORS automatically for $ORIGIN${NC}"
+            fi
+
+            # Also add trailing-slash variant for completeness (even though Origin header omits it)
+            ORIGIN_TS="${ORIGIN%/}/"
+            if ! grep -q "\"$ORIGIN_TS\"" config/initializers/cors.json; then
+                node -e "
+                const fs = require('fs');
+                const origin = process.argv[1];
+                const config = JSON.parse(fs.readFileSync('config/initializers/cors.json', 'utf8'));
+                if (!Array.isArray(config.origin)) config.origin = [];
+                if (!config.origin.includes(origin)) {
+                    config.origin.push(origin);
+                }
+                fs.writeFileSync('config/initializers/cors.json', JSON.stringify(config, null, 4));
+                " "$ORIGIN_TS" 2>/dev/null && echo -e "${GREEN}✅ CORS updated: Added $ORIGIN_TS to whitelist${NC}" || echo -e "${YELLOW}⚠️  Could not update CORS automatically for $ORIGIN_TS${NC}"
+            else
+                echo -e "${GREEN}✅ CORS already configured for: $ORIGIN_TS${NC}"
+            fi
+        fi
+    done
 else
     echo -e "${YELLOW}⚠️  CORS config not found at config/initializers/cors.json${NC}"
 fi
@@ -127,7 +181,26 @@ npm install
 echo -e "${GREEN}✅ Frontend dependencies installed${NC}"
 echo ""
 
-# Step 3: Build frontend (only for production)
+# Step 3: Update apiConfig.json with backend URL
+echo -e "${BLUE}🔧 Updating apiConfig.json with backend URL...${NC}"
+node -e "
+const fs = require('fs');
+const backendUrl = process.argv[1];
+const configPath = 'apiConfig.json';
+try {
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    config.ApiConfig.main = backendUrl;
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+    console.log('✅ Updated apiConfig.json: main = ' + backendUrl);
+} catch (error) {
+    console.error('⚠️  Error updating apiConfig.json:', error.message);
+    process.exit(1);
+}
+" "$NEXT_PUBLIC_BACKEND_URL"
+echo -e "${GREEN}✅ API configuration updated${NC}"
+echo ""
+
+# Step 4: Build frontend (only for production)
 if [ "$BUILD_REQUIRED" = true ]; then
     echo -e "${BLUE}🏗️  Building frontend...${NC}"
     NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL npm run build
@@ -139,7 +212,7 @@ else
 fi
 echo ""
 
-# Step 4: Start services
+# Step 5: Start services
 if [ "$USE_PM2" = true ]; then
     # PM2 deployment
     echo -e "${BLUE}🛑 Stopping existing PM2 processes...${NC}"
@@ -179,7 +252,7 @@ else
         echo -e "${YELLOW}Starting in development mode (foreground processes)${NC}"
         echo -e "${YELLOW}Press Ctrl+C to stop${NC}"
         echo ""
-        echo -e "${BLUE}Starting backend on port 8080...${NC}"
+        echo -e "${BLUE}Starting backend on port ${BACKEND_PORT}...${NC}"
         echo -e "${BLUE}Starting frontend on port 3000...${NC}"
         echo ""
         
@@ -187,6 +260,13 @@ else
         master=development node server.js > log/backend.log 2>&1 &
         BACKEND_PID=$!
         echo -e "${GREEN}✅ Backend started (PID: $BACKEND_PID)${NC}"
+        echo ""
+        echo -e "${BLUE}🌐 Access your application:${NC}"
+        echo "   Frontend Local:   $FRONTEND_LOCAL_URL"
+        echo "   Frontend Network: $FRONTEND_NETWORK_URL"
+        echo "   Backend Local:    $BACKEND_LOCAL_URL"
+        echo "   Backend Network:  $BACKEND_NETWORK_URL"
+        echo ""
         
         # Start frontend in foreground
         cd nextjs-app
@@ -195,7 +275,7 @@ else
         echo -e "${YELLOW}Starting in production mode (foreground processes)${NC}"
         echo -e "${YELLOW}Press Ctrl+C to stop${NC}"
         echo ""
-        echo -e "${BLUE}Starting backend on port 8080...${NC}"
+        echo -e "${BLUE}Starting backend on port ${BACKEND_PORT}...${NC}"
         echo -e "${BLUE}Starting frontend on port 3000...${NC}"
         echo ""
         
@@ -203,6 +283,13 @@ else
         master=production node server.js > log/backend.log 2>&1 &
         BACKEND_PID=$!
         echo -e "${GREEN}✅ Backend started (PID: $BACKEND_PID)${NC}"
+        echo ""
+        echo -e "${BLUE}🌐 Access your application:${NC}"
+        echo "   Frontend Local:   $FRONTEND_LOCAL_URL"
+        echo "   Frontend Network: $FRONTEND_NETWORK_URL"
+        echo "   Backend Local:    $BACKEND_LOCAL_URL"
+        echo "   Backend Network:  $BACKEND_NETWORK_URL"
+        echo ""
         
         # Start frontend in foreground
         cd nextjs-app
@@ -231,7 +318,9 @@ fi
 
 echo ""
 echo -e "${BLUE}🌐 Access your application:${NC}"
-echo "   Frontend: http://localhost:3000"
-echo "   Backend:  http://localhost:8080"
+echo "   Frontend Local:   $FRONTEND_LOCAL_URL"
+echo "   Frontend Network: $FRONTEND_NETWORK_URL"
+echo "   Backend Local:    $BACKEND_LOCAL_URL"
+echo "   Backend Network:  $BACKEND_NETWORK_URL"
 echo ""
 

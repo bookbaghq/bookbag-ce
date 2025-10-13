@@ -19,6 +19,8 @@ import {
   LayoutDashboard,
   Users,
   MessageSquare,
+  HardDrive,
+  FolderOpen
 } from "lucide-react"
 
 
@@ -30,9 +32,35 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 
-	
+
 
 export function SidebarNav (props) {
+  const [storageUsage, setStorageUsage] = useState({ mb: 0, quota: 1024, percentUsed: 0 });
+
+  // Fetch storage usage on mount
+  useEffect(() => {
+    fetchStorageUsage();
+  }, []);
+
+  const fetchStorageUsage = async () => {
+    try {
+      const base = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
+      const response = await fetch(`${base}/bb-media/api/media/storage`, {
+        credentials: 'include'
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setStorageUsage({
+          mb: data.mb || 0,
+          quota: data.quota || 1024,
+          percentUsed: data.percentUsed || 0
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching storage usage:', error);
+    }
+  };
 
 
 
@@ -116,6 +144,15 @@ const data = {
       ],
     },
     {
+      title: "Media",
+      url: "#",
+      icon: FolderOpen,
+      items: [
+        { title: "All Media", url: "/bb-admin/media" },
+        { title: "Settings", url: "/bb-admin/media/settings" },
+      ],
+    },
+    {
       title: "Mail",
       url: "#",
       icon: Settings2,
@@ -134,12 +171,19 @@ const data = {
 
 return (
     <>
-    
+
       <Sidebar  collapsible="icon" {...props} className="pt-16">
-        
+
         <SidebarContent>
           <NavMain items={data.navMain} />
         </SidebarContent>
+
+        {/* Storage Footer */}
+        <SidebarFooter className="p-2 border-t">
+          <p className="text-[10px] text-muted-foreground text-center">
+            Storage: {storageUsage.mb.toFixed(2)} / {storageUsage.quota} MB ({storageUsage.percentUsed.toFixed(1)}%)
+          </p>
+        </SidebarFooter>
 
     </Sidebar>
 

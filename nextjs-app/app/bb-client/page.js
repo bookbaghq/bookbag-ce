@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { ModernChatInterface } from './_components/modern-chat-interface';
+import { KnowledgeBaseSidebar } from './_components/components/KnowledgeBaseSidebar';
 
 export default function ClientPage() {
   const [selectedRoom, setSelectedRoom] = useState(null);
@@ -14,7 +15,7 @@ export default function ClientPage() {
       if (event.detail && event.detail.room) {
         const room = event.detail.room;
         setSelectedRoom(room);
-        
+
         // Set chat messages from the room if available
         if (room.messages && Array.isArray(room.messages)) {
           setChatMessages(room.messages);
@@ -33,12 +34,12 @@ export default function ClientPage() {
       name: "Open first room from sidebar",
       unread: 0 // dont know what this does
     };
-    
+
 
       // TODO: click on the first item on the sidebar list when its ready
     // Simulate a room selection event to get default room data
     const simulatedEvent = new CustomEvent('roomSelected', {
-      detail: { 
+      detail: {
         room: defaultRoom
       }
     });
@@ -58,6 +59,9 @@ export default function ClientPage() {
 
   return (
     <div className="flex h-full w-full bg-background overflow-hidden">
+      <KnowledgeBaseSidebar
+        chatId={null}
+      />
       <div className="flex-1 flex flex-col h-full relative">
         <ModernChatInterface />
       </div>

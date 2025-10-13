@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Eye, EyeOff } from "lucide-react";
 import MailService from "@/services/mailService";
+import { toast } from 'sonner';
 
 export default function MailSettingsPage() {
   const service = React.useMemo(() => new MailService(), []);
@@ -120,7 +121,7 @@ export default function MailSettingsPage() {
   }
 
   function copy(text) {
-    try { navigator.clipboard.writeText(text); alert('Copied'); } catch { alert('Copy failed'); }
+    try { navigator.clipboard.writeText(text); toast.success('Copied'); } catch { toast.error('Copy failed'); }
   }
 
   // SMTP helpers

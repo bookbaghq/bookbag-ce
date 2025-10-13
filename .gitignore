@@ -34,3 +34,6 @@ nextjs-app/.env.*.local
 # OS junk
 .DS_Store
 Thumbs.db
+
+# LanceDB vector storage
+storage/vectors/

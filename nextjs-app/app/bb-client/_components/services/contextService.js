@@ -188,14 +188,21 @@ export class ModelService {
           if (allowedModelIds) {
             models = models.filter(m => allowedModelIds.has(String(m.id)));
           }
-          this.availableModels = models;
-          
-          // Set the first model as selected by default (preselect first one)
+
+          // ✨ Add "Auto" option at the top of the list
+          const autoOption = {
+            id: 'auto',
+            name: '🤖 Auto (Smart Selection)',
+            rawName: 'Auto',
+            type: 'auto'
+          };
+          this.availableModels = [autoOption, ...models];
+
+          // Set "Auto" as selected by default
           if (this.availableModels.length > 0 && !this.selectedModelId) {
-            const defaultModel = this.availableModels[0];
-            this.setSelectedModel(defaultModel.id);
+            this.setSelectedModel('auto');
           }
-          
+
           return this.availableModels;
         } else {
           this.availableModels = [];
@@ -223,9 +230,23 @@ export class ModelService {
     if (selectedModel) {
       this.selectedModelId = modelId;
       this.currentModel = selectedModel;
+
+      // Handle "auto" model selection differently
+      if (modelId === 'auto') {
+        // For auto, we don't have specific limits yet
+        // The backend will select the actual model
+        this.modelLimits = {
+          maxTokens: null, // Will be determined by auto-selected model
+          contextSize: 0, // Will be determined by auto-selected model
+          modelName: selectedModel.name,
+          modelId: 'auto'
+        };
+        return selectedModel;
+      }
+
       // Respect per-profile rules: if context_size is missing or 0, do not set a cap
-          // Context size is provided at top-level model field now (not in settings unless explicit rule exists)
-          const rawContextSize = selectedModel.context_size ?? selectedModel.settings?.contextSize;
+      // Context size is provided at top-level model field now (not in settings unless explicit rule exists)
+      const rawContextSize = selectedModel.context_size ?? selectedModel.settings?.contextSize;
       const normalizedContext = (typeof rawContextSize === 'number' && rawContextSize > 0) ? rawContextSize : 0;
       const rawMaxTokens = selectedModel.settings?.max_tokens ?? selectedModel.settings?.maxTokens;
       const normalizedMaxTokens = (typeof rawMaxTokens === 'number' && rawMaxTokens > 0) ? rawMaxTokens : null;

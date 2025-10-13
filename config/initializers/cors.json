@@ -1,5 +1,12 @@
 {
-    "origin": [],
+    "origin": [
+        "http://127.0.0.1:3000",
+        "http://localhost:3000",
+        "http://localhost:8080",
+        "http://192.168.1.173:3000",
+        "http://192.168.1.173:8080",
+        "http://192.168.1.173:3001"
+    ],
     "methods": [
         "GET",
         "HEAD",
@@ -9,8 +16,15 @@
         "PATCH",
         "OPTIONS"
     ],
-    "allowedHeaders": "Content-Type",
-    "exposeHeaders": false,
+    "allowedHeaders": [
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+        "Accept",
+        "Origin",
+        "Cookie"
+    ],
+    "exposeHeaders": ["Set-Cookie"],
     "credentials": true,
-    "maxAge": 90
+    "maxAge": 3600
 }

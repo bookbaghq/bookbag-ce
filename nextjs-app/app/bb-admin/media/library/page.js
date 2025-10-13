@@ -26,6 +26,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   Grid, 
   LayoutGrid, 
@@ -254,6 +264,7 @@ export default function MediaLibraryPage() {
   const [totalStorage, setTotalStorage] = useState("1 GB");
   const [usedStorage, setUsedStorage] = useState("");
   const [uploadPercentage, setUploadPercentage] = useState(0);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     // Calculate total size from mock data
@@ -381,12 +392,17 @@ export default function MediaLibraryPage() {
   // Handle bulk action
   const handleBulkAction = (action) => {
     if (selectedItems.length === 0) return;
-    
-    if (action === "delete" && confirm("Are you sure you want to permanently delete the selected items?")) {
-      // Remove selected items from our media list
-      setMediaItems(prev => prev.filter(item => !selectedItems.includes(item.id)));
-      setSelectedItems([]);
+
+    if (action === "delete") {
+      setDeleteDialogOpen(true);
     }
+  };
+
+  const confirmBulkDelete = () => {
+    // Remove selected items from our media list
+    setMediaItems(prev => prev.filter(item => !selectedItems.includes(item.id)));
+    setSelectedItems([]);
+    setDeleteDialogOpen(false);
   };
 
   // Format file name for display
@@ -709,6 +725,30 @@ export default function MediaLibraryPage() {
           {filteredItems.length} items
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Selected Items</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete {selectedItems.length} selected item{selectedItems.length !== 1 ? 's' : ''}?
+              This action cannot be undone and will permanently remove the file{selectedItems.length !== 1 ? 's' : ''} from storage.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={confirmBulkDelete}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

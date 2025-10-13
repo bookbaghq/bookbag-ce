@@ -85,7 +85,11 @@ class authService {
                             if (resp) {
                                 const originHeader = (req && req.headers && req.headers.origin) ? String(req.headers.origin) : '';
                                 const isHttps = originHeader.startsWith('https://');
-                                const cookieOptions = { path: '/', httpOnly: true, maxAge: 24 * 60 * 6 * 1000, secure: !!isHttps, sameSite: isHttps ? 'None' : 'Lax' };
+                                // For HTTPS: use sameSite: 'None' with secure: true
+                                // For HTTP (dev): omit sameSite to allow cookies across ports on same host
+                                const cookieOptions = isHttps
+                                    ? { path: '/', httpOnly: true, maxAge: 24 * 60 * 6 * 1000, secure: true, sameSite: 'None' }
+                                    : { path: '/', httpOnly: true, maxAge: 24 * 60 * 6 * 1000, secure: false };
                                 master.sessions.setCookie('temp_user_id', String(tempUserId), resp, cookieOptions);
                             }
                         } catch (_) {}

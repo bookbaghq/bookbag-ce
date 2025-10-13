@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   PlusCircle,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   Star,
   MoreHorizontal,
   Trash2,
@@ -49,6 +50,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useSidebarWidth } from "../_components/SidebarWidthContext";
+import { toast } from 'sonner';
 
 // Navigation data structure
 const navigationData = {
@@ -134,6 +137,16 @@ export function SidebarNav(props) {
   const setOpenMobile = sidebarContext?.setOpenMobile;
   const [activeNavItem, setActiveNavItem] = useState(null);
   const [activeChatId, setActiveChatId] = useState(null);
+
+  // Use shared sidebar width context
+  const { sidebarWidth, setSidebarWidth, isCollapsed, setIsCollapsed } = useSidebarWidth();
+
+  const sidebarRef = useRef(null);
+  const resizeRef = useRef(null);
+  const isResizing = useRef(false);
+  const startX = useRef(0);
+  const startWidth = useRef(0);
+
   const [expandedSections, setExpandedSections] = useState(() => {
     // Initialize expanded states from localStorage if available
     let allThreadsExpanded = false;
@@ -193,6 +206,67 @@ export function SidebarNav(props) {
       setActiveChatId(null);
     }
   }, [pathname]);
+
+  // Save collapsed state to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('chatSidebarCollapsed', JSON.stringify(isCollapsed));
+    } catch (_) {}
+  }, [isCollapsed]);
+
+  // Save width to localStorage and update CSS variable
+  useEffect(() => {
+    try {
+      localStorage.setItem('chatSidebarWidth', sidebarWidth.toString());
+    } catch (_) {}
+
+    // Update CSS variable for the layout
+    const actualWidth = isCollapsed ? 64 : sidebarWidth;
+    document.documentElement.style.setProperty('--sidebar-width', `${actualWidth}px`);
+  }, [sidebarWidth, isCollapsed]);
+
+  // Resize functionality
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isResizing.current || isCollapsed) return;
+
+      // Calculate the delta from where we started
+      const deltaX = e.clientX - startX.current;
+      const newWidth = startWidth.current + deltaX;
+
+      // Clamp width between 200px and 600px
+      if (newWidth >= 200 && newWidth <= 600) {
+        setSidebarWidth(newWidth);
+        // Update CSS variable immediately for smooth resizing
+        document.documentElement.style.setProperty('--sidebar-width', `${newWidth}px`);
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (isResizing.current) {
+        isResizing.current = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      }
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isCollapsed, setSidebarWidth]);
+
+  const handleResizeStart = (e) => {
+    e.preventDefault();
+    isResizing.current = true;
+    startX.current = e.clientX;
+    startWidth.current = sidebarWidth;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  };
 
   // Save expanded states to localStorage when they change
   useEffect(() => {
@@ -575,15 +649,15 @@ export function SidebarNav(props) {
           }
         } else {
           console.error('❌ Delete failed:', data.error);
-          alert(`Failed to delete chat: ${data.error}`);
+          toast.error(`Failed to delete chat: ${data.error}`);
         }
       } else {
         console.error('❌ Delete request failed:', response.status, response.statusText);
-        alert('Failed to delete chat. Please try again.');
+        toast.error('Failed to delete chat. Please try again.');
       }
     } catch (error) {
       console.error('Error deleting chat:', error);
-      alert('Failed to delete chat. Please try again.');
+      toast.error('Failed to delete chat. Please try again.');
     }
   };
 
@@ -634,55 +708,79 @@ export function SidebarNav(props) {
           }
         } else {
           console.error('❌ Archive failed:', data.error);
-          alert(`Failed to archive chat: ${data.error}`);
+          toast.error(`Failed to archive chat: ${data.error}`);
         }
       } else {
         console.error('❌ Archive request failed:', response.status, response.statusText);
-        alert('Failed to archive chat. Please try again.');
+        toast.error('Failed to archive chat. Please try again.');
       }
     } catch (error) {
       console.error('Error archiving chat:', error);
-      alert('Failed to archive chat. Please try again.');
+      toast.error('Failed to archive chat. Please try again.');
     }
   };
 
   return (
     <>
-      <SearchModal 
+      <SearchModal
         isOpen={searchModalOpen}
         onClose={() => setSearchModalOpen(false)}
         onChatSelect={handleChatClick}
       />
-      
-      <Sidebar collapsible="icon" {...props} className="bb-fix-sidebar pt-16 dark:bg-black bg-zinc-50 dark:text-gray-300 text-zinc-800 flex flex-col">
+
+      <div
+        ref={sidebarRef}
+        className="relative bb-fix-sidebar pt-16 dark:bg-black bg-zinc-50 dark:text-gray-300 text-zinc-800 flex flex-col border-r transition-all duration-300"
+        style={{
+          width: isCollapsed ? '64px' : `${sidebarWidth}px`,
+        }}
+      >
+      {/* Collapse/Expand Button */}
+      <div className={`absolute top-20 ${isCollapsed ? 'right-2' : 'right-4'} z-10`}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="h-8 w-8 p-0 flex-shrink-0"
+          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+        </Button>
+      </div>
+
       {/* Navigation section at the top - fixed */}
-      <SidebarHeader className="space-y-4 pb-4 flex-shrink-0">
-        <div className="px-2 space-y-0.5">
+      <div className="space-y-4 pb-4 flex-shrink-0 pt-12">
+        <div className={`${isCollapsed ? 'px-2' : 'px-2'} space-y-0.5`}>
           {/* Top nav items from the image */}
           {navigationData.topNav.map(item => (
             <Button
               key={item.id}
               variant="ghost"
-              className={`w-full flex items-center justify-start gap-3 h-auto p-1.5 cursor-pointer ${
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-start gap-3'} h-auto p-1.5 cursor-pointer ${
                 activeNavItem === item.id ? 'dark:bg-gray-800 bg-zinc-200' : 'hover:dark:bg-gray-800/50 hover:bg-zinc-200/50'
               }`}
               onClick={() => handleNavItemClick(item.id)}
+              title={isCollapsed ? item.title : undefined}
             >
-              <item.icon 
-                className={`h-4 w-4 ${item.iconClass || 'dark:text-gray-300 text-zinc-800'}`} 
-                strokeWidth={1.5} 
+              <item.icon
+                className={`h-4 w-4 ${item.iconClass || 'dark:text-gray-300 text-zinc-800'}`}
+                strokeWidth={1.5}
               />
-              <span className="text-sm font-medium dark:text-gray-300 text-zinc-800">
-                {item.title}
-              </span>
+              {!isCollapsed && (
+                <span className="text-sm font-medium dark:text-gray-300 text-zinc-800">
+                  {item.title}
+                </span>
+              )}
             </Button>
           ))}
         </div>
-      </SidebarHeader>
-        
+      </div>
+
       {/* Scrollable chat history section */}
-      <SidebarContent className="px-2 flex-grow overflow-hidden">
+      <div className="px-2 flex-grow overflow-hidden">
         <ScrollArea className="h-full pr-2">
+          {!isCollapsed && (
+            <>
           {/* Workspaces section */}
           {workspaces.length > 0 && (
             <div className="mb-4">
@@ -1128,9 +1226,21 @@ export function SidebarNav(props) {
               </div>
             )}
           </div>
+            </>
+          )}
         </ScrollArea>
-      </SidebarContent>
-    </Sidebar>
+      </div>
+
+      {/* Resize Handle */}
+      {!isCollapsed && (
+        <div
+          ref={resizeRef}
+          onMouseDown={handleResizeStart}
+          className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-500/50 active:bg-blue-500 transition-colors"
+          style={{ touchAction: 'none' }}
+        />
+      )}
+    </div>
     
     {/* Global AlertDialogs outside of scroll containers */}
     {/* Admin Chats modal with search + list */}

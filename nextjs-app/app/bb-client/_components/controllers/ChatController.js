@@ -11,6 +11,7 @@ import { calculateConversationTokenCount, preprocessInput } from '../tools/token
 import { createFrontendStreamingService } from '../services/frontendStreamingService';
 import { bindBusForMessage } from '../services/uiStreamStore';
 import { thinkingBubbleManager } from '../services/thinkingBubbleManager';
+import { toast } from 'sonner';
 
 export function useChatController({
   initialChatId = null,
@@ -578,17 +579,9 @@ export function useChatController({
 
     // Preprocess input to check for spacing issues
     const { text: processedInput, needsSpacing } = preprocessInput(inputValue);
-    
-    // Warn user about poorly formatted input (only on first try)
-    if (needsSpacing && !isRetry) {
-      const shouldContinue = window.confirm(
-        "Your message appears to have words stuck together without spaces. This may result in poor AI responses.\n\nWould you like to add proper spacing, or continue anyway?"
-      );
-      
-      if (!shouldContinue) {
-        return;
-      }
-    }
+
+    // Note: Input preprocessing is handled automatically
+    // Previously showed a confirmation dialog, but now proceeds automatically for better UX
 
     // Create abort controller with timeout
     abortControllerRef.current = new AbortController();
@@ -813,7 +806,7 @@ The request failed due to network issues or the response was too large. This oft
     } else if (action === 'delete' && currentChatId) {
       setDeleteDialogOpen(true);
     } else if ((action === 'archive' || action === 'delete') && !currentChatId) {
-      alert('No chat is currently selected.');
+      toast.error('No chat is currently selected');
     }
   };
 
@@ -828,7 +821,7 @@ The request failed due to network issues or the response was too large. This oft
       } catch (_) {}
       window.location.href = '/bb-client/';
     } else {
-      alert(`Failed to delete chat: ${result.error}`);
+      toast.error(`Failed to delete chat: ${result.error}`);
     }
   };
 
@@ -843,7 +836,7 @@ The request failed due to network issues or the response was too large. This oft
       } catch (_) {}
       window.location.href = '/bb-client/';
     } else {
-      alert(`Failed to archive chat: ${result.error}`);
+      toast.error(`Failed to archive chat: ${result.error}`);
     }
   };
 

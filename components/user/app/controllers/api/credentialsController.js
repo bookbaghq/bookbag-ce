@@ -155,21 +155,14 @@ class credentialsController{
                 }
             } catch (_) {}
 
-            const cookieOptions = (() => {
-                try {
-                    const origin = (req.request && req.request.headers && req.request.headers.origin) ? String(req.request.headers.origin) : '';
-                    const isHttps = origin.startsWith('https://');
-                    return {
-                        path: '/',
-                        httpOnly: true,
-                        maxAge: 24 * 60 * 6 * 1000,
-                        secure: !!isHttps,
-                        sameSite: isHttps ? 'None' : 'Lax'
-                    };
-                } catch (_) {
-                    return { path: '/', httpOnly: true, maxAge: 24 * 60 * 6 * 1000 };
-                }
-            })();
+            // Secure cookie options with proper CORS support
+            const cookieOptions = {
+                path: '/',
+                httpOnly: true,
+                maxAge: 24 * 60 * 60 * 1000,
+                secure: false, // set to true in production with HTTPS
+                sameSite: 'lax' // allows cookies to work across subdomains
+            };
             master.sessions.setCookie("login", user.Auth.temp_access_token, req.response, cookieOptions);
         }
         catch(error){
@@ -264,22 +257,16 @@ class credentialsController{
                 authObj.user.Auth.temp_access_token = refreshToken;
                 req.userContext.saveChanges();
 
-                //("jwt", refreshToken, {httpOnly: true, maxAge: 24 * 60 * 6 * 1000});
-                const cookieOptions = (() => {
-                    try {
-                        const origin = (req.request && req.request.headers && req.request.headers.origin) ? String(req.request.headers.origin) : '';
-                        const isHttps = origin.startsWith('https://');
-                        return {
-                            path: '/',
-                            httpOnly: true,
-                            maxAge: 24 * 60 * 6 * 1000,
-                            secure: !!isHttps,
-                            sameSite: isHttps ? 'None' : 'Lax'
-                        };
-                    } catch (_) {
-                        return { path: '/', httpOnly: true, maxAge: 24 * 60 * 6 * 1000 };
-                    }
-                })();
+                // Secure cookie options with proper CORS support
+                const cookieOptions = {
+                    path: '/',
+                    httpOnly: true,
+                    maxAge: 24 * 60 * 60 * 1000,
+                    secure: false, // set to true in production with HTTPS
+                    sameSite: 'lax' // allows cookies to work across subdomains
+                };
+                console.log('🍪 DEBUG login - Setting cookie with options:', JSON.stringify(cookieOptions, null, 2));
+                console.log('🍪 DEBUG login - Token to set:', refreshToken);
                 master.sessions.setCookie("login", refreshToken, req.response, cookieOptions);
 
                 return this.returnJson({

@@ -1,172 +1,177 @@
 {
   "ApiConfig": {
-    "main" : "http://127.0.0.1:8080",
+    "main": "http://192.168.1.173:8080",
     "auth": {
-        "currentUser" : {
-            "url" : "bb-user/api/auth/currentuser",
-            "method": "get"
-        }
+      "currentUser": {
+        "url": "bb-user/api/auth/currentuser",
+        "method": "get"
+      }
     },
     "settings": {
-        "get": { "url": "bb-user/api/settings/get", "method": "get" },
-        "save": { "url": "bb-user/api/settings/save", "method": "post" }
+      "get": {
+        "url": "bb-user/api/settings/get",
+        "method": "get"
+      },
+      "save": {
+        "url": "bb-user/api/settings/save",
+        "method": "post"
+      }
     },
     "profile": {
-        "uploadAvatar" : {
-            "url" : "bb-user/api/profile/uploadAvatar",
-            "method" : "post"
-        },
-        "profile" : {
-            "url" : "bb-user/api/profile/",
-            "method": "get"
-        },
-         "myprofile" : {
-            "url" : "bb-user/api/myprofile/",
-            "method": "get"
-        },
-        "list" : {
-            "url" : "bb-user/api/profile/all",
-            "method": "get"
-        },
-        "search" : {
-            "url" : "bb-user/api/profile/search",
-            "method": "get"
-        }
+      "uploadAvatar": {
+        "url": "bb-user/api/profile/uploadAvatar",
+        "method": "post"
+      },
+      "profile": {
+        "url": "bb-user/api/profile/",
+        "method": "get"
+      },
+      "myprofile": {
+        "url": "bb-user/api/myprofile/",
+        "method": "get"
+      },
+      "list": {
+        "url": "bb-user/api/profile/all",
+        "method": "get"
+      },
+      "search": {
+        "url": "bb-user/api/profile/search",
+        "method": "get"
+      }
     },
     "users": {
-        "update" : {
-            "url" : "bb-user/api/update",
-            "method": "post"
-        },
-         "delete" : {
-            "url" : "bb-user/api/delete",
-            "method": "delete"
-        },
-         "create" : {
-            "url" : "bb-user/api/create",
-            "method": "post"
-        },
-        "updateRoleAll": {
-            "url": "bb-user/api/updateRoleUsers",
-            "method": "post"
-        }
+      "update": {
+        "url": "bb-user/api/update",
+        "method": "post"
+      },
+      "delete": {
+        "url": "bb-user/api/delete",
+        "method": "delete"
+      },
+      "create": {
+        "url": "bb-user/api/create",
+        "method": "post"
+      },
+      "updateRoleAll": {
+        "url": "bb-user/api/updateRoleUsers",
+        "method": "post"
+      }
     },
     "credentials": {
-        "register" : {
-            "url" : "bb-user/api/auth/register",
-            "method" : "post"
-        },
-        "canRegister" : {
-            "url" : "bb-user/api/auth/can-register",
-            "method": "get"
-        },
-        "login" : {
-            "url" : "bb-user/api/auth/login",
-            "method": "post"
-        },
-        "canLogin" : {
-            "url" : "bb-user/api/auth/can-login",
-            "method": "get"
-        },
-        "logout" : {
-            "url" : "bb-user/api/auth/logout",
-            "method": "get"
-        },
-        "forgetPassword" : {
-            "url" : "bb-user/api/auth/forgetPassword",
-            "method" : "post"
-        },
-        "changePassword" : {
-            "url" : "bb-user/api/auth/changePassword",
-            "method" : "post"
-        }
+      "register": {
+        "url": "bb-user/api/auth/register",
+        "method": "post"
+      },
+      "canRegister": {
+        "url": "bb-user/api/auth/can-register",
+        "method": "get"
+      },
+      "login": {
+        "url": "bb-user/api/auth/login",
+        "method": "post"
+      },
+      "canLogin": {
+        "url": "bb-user/api/auth/can-login",
+        "method": "get"
+      },
+      "logout": {
+        "url": "bb-user/api/auth/logout",
+        "method": "get"
+      },
+      "forgetPassword": {
+        "url": "bb-user/api/auth/forgetPassword",
+        "method": "post"
+      },
+      "changePassword": {
+        "url": "bb-user/api/auth/changePassword",
+        "method": "post"
+      }
     },
     "message": {
-        "sendUserStreaming": {
-            "url": "bb-chat/api/message/sendUserStreaming",
-            "method": "post"
-        },
-        "getContextSize": {
-            "url": "bb-chat/api/message/getContextSize",
-            "method": "post"
-        },
-        "update": {
-            "url": "bb-chat/api/message/update",
-            "method": "post"
-        }
+      "sendUserStreaming": {
+        "url": "bb-chat/api/message/sendUserStreaming",
+        "method": "post"
+      },
+      "getContextSize": {
+        "url": "bb-chat/api/message/getContextSize",
+        "method": "post"
+      },
+      "update": {
+        "url": "bb-chat/api/message/update",
+        "method": "post"
+      }
     },
     "modelsSettings": {
-        "get": {
-            "url": "bb-models/api/settings/get",
-            "method": "get"
-        },
-        "save": {
-            "url": "bb-models/api/settings/save",
-            "method": "post"
-        }
+      "get": {
+        "url": "bb-models/api/settings/get",
+        "method": "get"
+      },
+      "save": {
+        "url": "bb-models/api/settings/save",
+        "method": "post"
+      }
     },
-    
     "chat": {
-        "create": {
-            "url": "bb-chat/api/chat/create",
-            "method": "post"
-        },
-        "get": {
-            "url": "bb-chat/api/chat/get",
-            "method": "get"
-        },
-        "getById": {
-            "url": "bb-chat/api/chat/:chatId",
-            "method": "get"
-        },
-        "recent": {
-            "url": "bb-chat/api/chat/recent",
-            "method": "get"
-        },
-        "all": {
-            "url": "bb-chat/api/chat/all",
-            "method": "get"
-        },
-        "adminSearch": {
-            "url": "bb-chat/api/admin/chat/search",
-            "method": "get"
-        },
-        "adminGetById": {
-            "url": "bb-chat/api/admin/chat/:chatId",
-            "method": "get"
-        },
-        "delete": {
-          "url": "bb-chat/api/chat/:chatId",
-          "method": "delete"
-        },
-        "adminDelete": {
-          "url": "bb-chat/api/admin/chat/:chatId",
-          "method": "delete"
-        },
-        "adminCreate": {
-          "url": "bb-chat/api/admin/chat/create",
-          "method": "post"
-        }
+      "create": {
+        "url": "bb-chat/api/chat/create",
+        "method": "post"
+      },
+      "get": {
+        "url": "bb-chat/api/chat/get",
+        "method": "get"
+      },
+      "getById": {
+        "url": "bb-chat/api/chat/:chatId",
+        "method": "get"
+      },
+      "recent": {
+        "url": "bb-chat/api/chat/recent",
+        "method": "get"
+      },
+      "all": {
+        "url": "bb-chat/api/chat/all",
+        "method": "get"
+      },
+      "adminSearch": {
+        "url": "bb-chat/api/admin/chat/search",
+        "method": "get"
+      },
+      "adminGetById": {
+        "url": "bb-chat/api/admin/chat/:chatId",
+        "method": "get"
+      },
+      "delete": {
+        "url": "bb-chat/api/chat/:chatId",
+        "method": "delete"
+      },
+      "adminDelete": {
+        "url": "bb-chat/api/admin/chat/:chatId",
+        "method": "delete"
+      },
+      "adminCreate": {
+        "url": "bb-chat/api/admin/chat/create",
+        "method": "post"
+      }
     },
     "thinking": {
-        "save": {
-            "url": "bb-chat/api/thinking/create",
-            "method": "post"
-        },
-        "get": {
-            "url": "bb-chat/api/thinking/get/:messageId",
-            "method": "get"
-        }
+      "save": {
+        "url": "bb-chat/api/thinking/create",
+        "method": "post"
+      },
+      "get": {
+        "url": "bb-chat/api/thinking/get/:messageId",
+        "method": "get"
+      }
     },
     "tps": {
-        "update": {
-            "url": "bb-chat/api/tps/update",
-            "method": "post"
-        },
-        "getChatStats": {
-            "url": "bb-chat/api/tps/chat/:chatId",
-            "method": "get"
-        }
+      "update": {
+        "url": "bb-chat/api/tps/update",
+        "method": "post"
+      },
+      "getChatStats": {
+        "url": "bb-chat/api/tps/chat/:chatId",
+        "method": "get"
+      }
     },
     "mail": {
       "logs": {

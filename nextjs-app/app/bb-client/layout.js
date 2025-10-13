@@ -15,8 +15,11 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 
-export default function ClientLayout({ children }) {
-  
+import { SidebarWidthProvider, useSidebarWidth } from './_components/SidebarWidthContext';
+
+function ClientLayoutInner({ children }) {
+  const { sidebarWidth, isCollapsed } = useSidebarWidth();
+
   const [authState, setAuthState] = useState({
     isLoading: true,
     isAuthenticated: false,
@@ -30,6 +33,12 @@ export default function ClientLayout({ children }) {
       isLoading: true,
       user: null
     });
+
+  // Set CSS variable on document root for global access
+  useEffect(() => {
+    const actualWidth = isCollapsed ? 64 : sidebarWidth;
+    document.documentElement.style.setProperty('--sidebar-width', `${actualWidth}px`);
+  }, [sidebarWidth, isCollapsed]);
 
   useEffect(() => {
     async function loadData() {
@@ -74,10 +83,10 @@ export default function ClientLayout({ children }) {
             redirect('/bb-auth/login');
       }
       else{
-        
+        const actualWidth = isCollapsed ? 64 : sidebarWidth;
           return (
               <div>
-                  <div className="h-full flex dark:bg-[#1F1F1F]" style={{ ['--sidebar-width']: '4rem' }}>
+                  <div className="h-full flex dark:bg-[#1F1F1F]" style={{ '--sidebar-width': `${actualWidth}px` }}>
                     <SidebarProvider>
                       <Header />
                       <SidebarNav />
@@ -92,4 +101,12 @@ export default function ClientLayout({ children }) {
             );
         }
 
+}
+
+export default function ClientLayout({ children }) {
+  return (
+    <SidebarWidthProvider>
+      <ClientLayoutInner>{children}</ClientLayoutInner>
+    </SidebarWidthProvider>
+  );
 }

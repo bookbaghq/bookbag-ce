@@ -1,0 +1,627 @@
+const master = require('mastercontroller');
+
+/**
+ * RAG Controller - Knowledge Base Management
+ *
+ * Routes:
+ * - POST /ingest - Upload and ingest a document
+ * - GET /list - List documents for tenant
+ * - DELETE /delete/:id - Delete a document
+ * - POST /query - Query knowledge base
+ * - GET /storage/usage - Get storage usage stats
+ */
+class ragController {
+    constructor(req) {
+        try {
+            this._currentUser = req.authService.currentUser(req.request, req.userContext);
+            this._ragContext = req.ragContext;
+            this._chatContext = req.chatContext; // Add chat context for chat creation
+
+            // Lazy load services using relative paths
+            const FileStorageService = require('../../service/fileStorageService');
+            const RAGService = require('../../service/ragService');
+
+            this.fileService = new FileStorageService();
+            this.ragService = new RAGService(this._ragContext);
+
+            console.log('✓ ragController initialized successfully');
+        } catch (error) {
+            console.error('❌ Error initializing ragController:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get tenant ID from current user
+     * @returns {string} - Tenant identifier
+     */
+    getTenantId() {
+        // Use user ID as tenant ID (can be changed to org ID if needed)
+        return String(this._currentUser?.id || 'default');
+    }
+
+    /**
+     * Get storage usage for tenant
+     * GET /storage/usage?tenantId=xxx
+     */
+    async getStorageUsage(obj) {
+        try {
+            const tenantId = obj?.params?.query?.tenantId || this.getTenantId();
+
+            const usageBytes = await this.fileService.getTenantStorageUsage(tenantId);
+            const usageMB = this.fileService.bytesToMB(usageBytes);
+
+            //TODO:  get storage quota or amount of data it cant have more based on settings
+            const quota = await this.fileService.checkStorageQuota(tenantId, 1024);
+
+            return this.returnJson({
+                success: true,
+                mb: usageMB,
+                bytes: usageBytes,
+                quota: quota.quotaMB,
+                percentUsed: quota.percentUsed,
+                exceeded: quota.exceeded
+            });
+        } catch (error) {
+            console.error('❌ Error getting storage usage:', error);
+            return this.returnJson({
+                success: false,
+                error: error.message
+            });
+        }
+    }
+
+    /**
+     * Ingest content from a URL
+     * POST /ingest-url
+     * Body: { url: string, tenantId?: string }
+     */
+    async ingestUrl(obj) {
+        try {
+            const formData = obj?.params?.formData || obj?.params;
+            const tenantId = formData?.tenantId || this.getTenantId();
+            const url = formData?.url;
+
+            if (!url) {
+                return this.returnJson({
+                    success: false,
+                    error: 'URL is required'
+                });
+            }
+
+            // Validate URL format
+            try {
+                new URL(url);
+            } catch (e) {
+                return this.returnJson({
+                    success: false,
+                    error: 'Invalid URL format'
+                });
+            }
+
+            // Check storage quota before proceeding
+            //TODO:  get storage quota or amount of data it cant have more based on settings
+            const quota = await this.fileService.checkStorageQuota(tenantId, 1024);
+            if (quota.exceeded) {
+                return this.returnJson({
+                    success: false,
+                    error: `Storage quota exceeded (${quota.usedMB}MB / ${quota.quotaMB}MB)`
+                });
+            }
+
+            console.log(`📡 Fetching content from URL: ${url}`);
+
+            // Fetch content from URL
+            const https = require('https');
+            const http = require('http');
+            const urlModule = require('url');
+            const parsedUrl = urlModule.parse(url);
+            const protocol = parsedUrl.protocol === 'https:' ? https : http;
+
+            const content = await new Promise((resolve, reject) => {
+                protocol.get(url, (res) => {
+                    let data = '';
+                    res.on('data', (chunk) => data += chunk);
+                    res.on('end', () => resolve(data));
+                }).on('error', reject);
+            });
+
+            // Simple HTML to text conversion (remove tags)
+            let text = content
+                .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+                .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+                .replace(/<[^>]+>/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            if (!text || text.length < 50) {
+                return this.returnJson({
+                    success: false,
+                    error: 'Could not extract meaningful content from URL'
+                });
+            }
+
+            // Create a filename from URL
+            const urlObj = new URL(url);
+            const filename = `${urlObj.hostname}${urlObj.pathname}`.replace(/[^a-zA-Z0-9.-]/g, '_') + '.txt';
+
+            // Save content to file
+            const fs = require('fs').promises;
+            const path = require('path');
+            const tempDir = path.join(process.cwd(), 'storage', 'uploads', tenantId);
+
+            // Ensure directory exists
+            await fs.mkdir(tempDir, { recursive: true });
+
+            const finalPath = path.join(tempDir, filename);
+            await fs.writeFile(finalPath, text, 'utf-8');
+
+            // Ingest into RAG system
+            const documentId = await this.ragService.ingestDocument({
+                tenantId,
+                title: urlObj.hostname + urlObj.pathname,
+                filename: filename,
+                filePath: finalPath,
+                text,
+                mimeType: 'text/plain'
+            });
+
+            return this.returnJson({
+                success: true,
+                documentId,
+                message: 'URL content ingested successfully'
+            });
+
+        } catch (error) {
+            console.error('❌ Error ingesting URL:', error);
+            return this.returnJson({
+                success: false,
+                error: error.message
+            });
+        }
+    }
+
+    /**
+     * Ingest a new document
+     * POST /ingest
+     * Requires multipart/form-data with 'file' field
+     * Body: { file: File, chatId?: number, title?: string }
+     * If chatId is not provided, a new chat will be created
+     */
+    async ingestDocument(obj) {
+        try {
+            console.log('🔍 ingestDocument called with obj:', {
+                hasCurrentUser: !!this._currentUser,
+                userId: this._currentUser?.id,
+                hasParams: !!obj?.params,
+                hasFormData: !!obj?.params?.formData
+            });
+
+            if (!this._currentUser || !this._currentUser.id) {
+                console.log('❌ User not authenticated');
+                return this.returnJson({
+                    success: false,
+                    error: 'User not authenticated'
+                });
+            }
+
+            const formData = obj?.params?.formData || obj?.params;
+
+            const tenantId = formData?.fields?.tenantId || formData?.tenantId || this.getTenantId();
+            let chatId = formData?.fields?.chatId || formData?.chatId || null;
+
+            // Parse chatId if it's a string
+            if (chatId && typeof chatId === 'string') {
+                chatId = parseInt(chatId, 10);
+            }
+
+            // Check if file was uploaded - handle multiple possible structures
+            let file = null;
+
+            // Check for single file in different locations
+            if (obj.request?.file) {
+                file = obj.request.file;
+            } else if (formData?.file) {
+                file = formData.file;
+            } else if (formData?.files?.file) {
+                // Handle formData.files.file structure
+                const fileUpload = formData.files.file;
+                file = Array.isArray(fileUpload) ? fileUpload[0] : fileUpload;
+            } else if (formData?.files) {
+                // Handle formData.files['file'] or any other field name
+                const fileKeys = Object.keys(formData.files);
+                if (fileKeys.length > 0) {
+                    const firstFile = formData.files[fileKeys[0]];
+                    file = Array.isArray(firstFile) ? firstFile[0] : firstFile;
+                }
+            }
+
+            if (!file) {
+                console.log('❌ No file found in request');
+                return this.returnJson({
+                    success: false,
+                    error: 'No file uploaded'
+                });
+            }
+
+            // Debug: Log full file object to see what properties are available
+            console.log('✓ File found, properties:', Object.keys(file));
+            console.log('  Full file object:', JSON.stringify(file, null, 2));
+
+            const originalName = file.originalname || file.originalFilename || file.name;
+            const tempPath = file.filepath || file.path || file.tempFilePath;
+            const mimeType = file.mimetype || file.type;
+
+            if (!tempPath) {
+                console.log('❌ No temp path found in file object');
+                return this.returnJson({
+                    success: false,
+                    error: 'File upload incomplete - no temporary path'
+                });
+            }
+
+            // Check storage quota before proceeding
+            //TODO:  get storage quota or amount of data it cant have more based on settings
+            const quota = await this.fileService.checkStorageQuota(tenantId, 1024);
+            if (quota.exceeded) {
+                // Clean up temp file
+                await this.fileService.deleteFile(tempPath);
+
+                return this.returnJson({
+                    success: false,
+                    error: `Storage quota exceeded (${quota.usedMB}MB / ${quota.quotaMB}MB)`
+                });
+            }
+
+            // Move file to tenant's permanent storage
+            const finalPath = await this.fileService.moveUploadToTenant(
+                tempPath,
+                tenantId,
+                originalName
+            );
+
+            // Extract text from file (simple text read for now)
+            const fs = require('fs').promises;
+            let text = '';
+
+            try {
+                text = await fs.readFile(finalPath, 'utf-8');
+            } catch (readError) {
+                console.error('⚠️  Could not read file as text:', readError.message);
+                text = `[Binary file: ${originalName}]`;
+            }
+
+            // If chatId is not provided, create a new chat (like message sending does)
+            if (!chatId) {
+                const crypto = require('crypto');
+                const chatEntity = require(`${master.root}/components/chats/app/models/chat`);
+                const userChatEntity = require(`${master.root}/components/chats/app/models/userchat`);
+                const timestamp = Date.now().toString();
+
+                // Create new chat
+                const chat = new chatEntity();
+                chat.created_at = timestamp;
+                chat.updated_at = timestamp;
+                chat.session_id = crypto.randomBytes(32).toString('hex');
+                chat.total_token_count = 0;
+                chat.title = `Knowledge Base: ${formData?.fields?.title || formData?.title || originalName}`;
+
+                this._chatContext.Chat.add(chat);
+                this._chatContext.saveChanges();
+
+                chatId = chat.id;
+                console.log(`✓ Created new chat with ID: ${chatId}`);
+
+                // Create UserChat join record
+                const userChat = new userChatEntity();
+                userChat.Chat = chatId;
+                userChat.user_id = this._currentUser.id;
+                userChat.created_at = timestamp;
+                userChat.updated_at = timestamp;
+                this._chatContext.UserChat.add(userChat);
+                this._chatContext.saveChanges();
+            }
+
+            // Ingest into RAG system with chatId
+            const documentId = await this.ragService.ingestDocument({
+                chatId,
+                tenantId,
+                title: formData?.fields?.title || formData?.title || originalName,
+                filename: originalName,
+                filePath: finalPath,
+                text,
+                mimeType
+            });
+
+            return this.returnJson({
+                success: true,
+                documentId,
+                chatId, // Return chatId so frontend can navigate to it
+                message: 'Document ingested successfully'
+            });
+
+        } catch (error) {
+            console.error('❌ Error ingesting document:', error);
+            console.error('Stack trace:', error.stack);
+
+            // Return a proper JSON response even on error
+            const errorResponse = {
+                success: false,
+                error: error.message || 'Unknown error occurred',
+                details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            };
+
+            return this.returnJson(errorResponse);
+        }
+    }
+
+    /**
+     * List all documents for a chat
+     * GET /list?chatId=xxx
+     */
+    async listDocuments(obj) {
+        try {
+            const chatId = obj?.params?.query?.chatId;
+
+            if (!chatId) {
+                return this.returnJson({
+                    success: false,
+                    error: 'chatId is required'
+                });
+            }
+
+            if (!this._currentUser || !this._currentUser.id) {
+                return this.returnJson({
+                    success: false,
+                    error: 'User not authenticated'
+                });
+            }
+
+            // Verify user has access to this chat
+            const membership = this._chatContext.UserChat
+                .where(uc => uc.chat_id == $$ && uc.user_id == $$, parseInt(chatId, 10), this._currentUser.id)
+                .single();
+
+            if (!membership) {
+                return this.returnJson({
+                    success: false,
+                    error: 'Unauthorized'
+                });
+            }
+
+            const documents = this._ragContext.Document
+                .where(d => d.chat_id == $$, parseInt(chatId, 10))
+                .toList()
+                .sort((a, b) => b.created_at - a.created_at);
+
+            const results = documents.map(doc => ({
+                id: doc.id,
+                title: doc.title,
+                filename: doc.filename,
+                mimeType: doc.mime_type,
+                createdAt: doc.created_at,
+                updatedAt: doc.updated_at
+            }));
+
+            return this.returnJson({
+                success: true,
+                documents: results
+            });
+
+        } catch (error) {
+            console.error('❌ Error listing documents:', error);
+            return this.returnJson({
+                success: false,
+                error: error.message
+            });
+        }
+    }
+
+    /**
+     * Delete a document and its chunks
+     * DELETE /delete/:id
+     */
+    async deleteDocument(obj) {
+        try {
+            const documentId = obj?.params?.id || obj?.params?.query?.id;
+
+            if (!documentId) {
+                return this.returnJson({
+                    success: false,
+                    error: 'Document ID is required'
+                });
+            }
+
+            // Get document
+            const document = this._ragContext.Document
+                .where(d => d.id == $$, documentId)
+                .single();
+
+            if (!document) {
+                return this.returnJson({
+                    success: false,
+                    error: 'Document not found'
+                });
+            }
+
+            // Verify user has access to the chat containing this document
+            if (document.chat_id) {
+                const membership = this._chatContext.UserChat
+                    .where(uc => uc.chat_id == $$ && uc.user_id == $$, document.chat_id, this._currentUser.id)
+                    .single();
+
+                if (!membership) {
+                    return this.returnJson({
+                        success: false,
+                        error: 'Unauthorized'
+                    });
+                }
+            } else {
+                // Legacy: Fall back to tenant_id check if chat_id is null
+                const tenantId = this.getTenantId();
+                if (document.tenant_id && document.tenant_id !== tenantId) {
+                    return this.returnJson({
+                        success: false,
+                        error: 'Unauthorized'
+                    });
+                }
+            }
+
+            // Delete file from storage (don't fail if file doesn't exist)
+            try {
+                await this.fileService.deleteFile(document.file_path);
+            } catch (fileError) {
+                console.warn(`⚠️  Could not delete file: ${fileError.message}`);
+                // Continue with deletion even if file doesn't exist
+            }
+
+            // Delete all chunks
+            await this.ragService.deleteDocumentChunks(documentId);
+
+            // Delete document record
+            this._ragContext.Document.remove(document);
+            this._ragContext.saveChanges();
+
+            return this.returnJson({
+                success: true,
+                message: 'Document deleted successfully'
+            });
+
+        } catch (error) {
+            console.error('❌ Error deleting document:', error);
+            console.error('Stack trace:', error.stack);
+
+            // Return a proper JSON response even on error
+            const errorResponse = {
+                success: false,
+                error: error.message || 'Unknown error occurred',
+                details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            };
+
+            return this.returnJson(errorResponse);
+        }
+    }
+
+    /**
+     * Query knowledge base
+     * POST /query
+     * Body: { chatId: number, question: string, k?: number }
+     */
+    async queryKnowledgeBase(obj) {
+        try {
+            const formData = obj?.params?.formData || obj?.params;
+            const chatId = formData?.chatId;
+            const question = formData?.question;
+            const k = parseInt(formData?.k || 5, 10);
+
+            if (!chatId) {
+                return this.returnJson({
+                    success: false,
+                    error: 'chatId is required'
+                });
+            }
+
+            if (!question) {
+                return this.returnJson({
+                    success: false,
+                    error: 'Question is required'
+                });
+            }
+
+            if (!this._currentUser || !this._currentUser.id) {
+                return this.returnJson({
+                    success: false,
+                    error: 'User not authenticated'
+                });
+            }
+
+            // Verify user has access to this chat
+            const membership = this._chatContext.UserChat
+                .where(uc => uc.chat_id == $$ && uc.user_id == $$, parseInt(chatId, 10), this._currentUser.id)
+                .single();
+
+            if (!membership) {
+                return this.returnJson({
+                    success: false,
+                    error: 'Unauthorized'
+                });
+            }
+
+            // Query RAG system
+            const results = await this.ragService.queryRAG(parseInt(chatId, 10), question, k);
+
+            // Build context string
+            const context = this.ragService.buildContextString(results);
+
+            return this.returnJson({
+                success: true,
+                results,
+                context,
+                count: results.length
+            });
+
+        } catch (error) {
+            console.error('❌ Error querying knowledge base:', error);
+            return this.returnJson({
+                success: false,
+                error: error.message
+            });
+        }
+    }
+
+    /**
+     * Get statistics for a chat's knowledge base
+     * GET /stats?chatId=xxx
+     */
+    async getStats(obj) {
+        try {
+            const chatId = obj?.params?.query?.chatId;
+
+            if (!chatId) {
+                return this.returnJson({
+                    success: false,
+                    error: 'chatId is required'
+                });
+            }
+
+            if (!this._currentUser || !this._currentUser.id) {
+                return this.returnJson({
+                    success: false,
+                    error: 'User not authenticated'
+                });
+            }
+
+            // Verify user has access to this chat
+            const membership = this._chatContext.UserChat
+                .where(uc => uc.chat_id == $$ && uc.user_id == $$, parseInt(chatId, 10), this._currentUser.id)
+                .single();
+
+            if (!membership) {
+                return this.returnJson({
+                    success: false,
+                    error: 'Unauthorized'
+                });
+            }
+
+            const stats = await this.ragService.getChatStats(parseInt(chatId, 10));
+
+            return this.returnJson({
+                success: true,
+                stats
+            });
+
+        } catch (error) {
+            console.error('❌ Error getting stats:', error);
+            return this.returnJson({
+                success: false,
+                error: error.message
+            });
+        }
+    }
+
+    returnJson(obj) {
+        return obj;
+    }
+}
+
+module.exports = ragController;

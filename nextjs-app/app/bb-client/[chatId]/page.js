@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ModernChatInterface } from '../_components/modern-chat-interface';
+import { KnowledgeBaseSidebar } from '../_components/components/KnowledgeBaseSidebar';
 
 export default function ChatPage() {
   const params = useParams();
@@ -133,8 +134,11 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-full w-full bg-background overflow-hidden">
+      <KnowledgeBaseSidebar
+        chatId={chatData.chatId}
+      />
       <div className="flex-1 flex flex-col h-full relative">
-        <ModernChatInterface 
+        <ModernChatInterface
           initialChatId={chatData.chatId}
           initialMessages={chatData.messages || []}
           chatTitle={chatData.title}

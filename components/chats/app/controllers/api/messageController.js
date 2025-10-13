@@ -6,16 +6,18 @@ const ChatHistoryService = require(`${master.root}/components/chats/app/service/
 const ModelService = require(`${master.root}/components/chats/app/service/modelService`);
 const ToolsService = require(`${master.root}/components/chats/app/service/toolsService`);
 const llmConfigService = require(`${master.root}/components/models/app/service/llmConfigService`);
+const ModelRouterService = require(`${master.root}/components/chats/app/service/modelRouterService`);
 const crypto = require('crypto');
 
 class messageController {
 
     modelConfig = null;
     modelSettings = null;
-    
+
     constructor(req) {
         this._currentUser = req.authService.currentUser(req.request, req.userContext);
         this._chatContext = req.chatContext;
+        this._modelContext = req.modelContext;
 
         // Use ModelService singleton to prevent memory leaks
         this.modelService = ModelService.getInstance();
@@ -296,12 +298,87 @@ class messageController {
     }
 
     /**
+     * Resolve auto model selection to a concrete model ID
+     * @param {string|number} modelId - Model ID or "auto"
+     * @param {string} userPrompt - User's message content
+     * @param {string|null} chatId - Chat ID for history
+     * @returns {Promise<string|number>} - Resolved model ID
+     */
+    async resolveAutoModel(modelId, userPrompt, chatId) {
+        // Check if this is an auto model request
+        if (!ModelRouterService.isAutoModel(modelId)) {
+            return modelId; // Return as-is if not auto
+        }
+
+        console.log('\n🎯 AUTO MODEL REQUESTED - Analyzing prompt...');
+
+        try {
+            // Get available published models for this user
+            const availableModels = this._modelContext.Model
+                .where(r => r.is_published == $$, 1)
+                .orderBy(m => m.created_at)
+                .toList();
+
+            if (!availableModels || availableModels.length === 0) {
+                console.log('⚠️  No published models available, cannot use auto selection');
+                return await llmConfigService.getFirstPublishedModelId();
+            }
+
+            // Map to router-compatible format
+            const mappedModels = availableModels.map(m => ({
+                id: m.id,
+                name: m.name,
+                label: m.name,
+                type: (m.name || '').toLowerCase()
+            }));
+
+            // Get conversation history for context
+            let conversationHistory = [];
+            let conversationTokenCount = 0;
+            if (chatId) {
+                try {
+                    const chatHistoryService = new ChatHistoryService(this._chatContext, {});
+                    conversationHistory = await chatHistoryService.loadChatHistory(chatId);
+
+                    // Calculate token count from history
+                    const toolsService = new ToolsService();
+                    conversationTokenCount = toolsService.calculateTokenCount(conversationHistory);
+                } catch (err) {
+                    console.log('⚠️  Could not load chat history:', err.message);
+                }
+            }
+
+            // Create router and select model
+            const router = new ModelRouterService(mappedModels);
+            const selectedModelId = router.selectModel(userPrompt, {
+                conversationHistory,
+                conversationTokenCount
+            });
+
+            if (selectedModelId) {
+                console.log(`✅ AUTO SELECTION COMPLETE: Using model ID ${selectedModelId}\n`);
+                return selectedModelId;
+            }
+
+            // Fallback to first available model
+            console.log('⚠️  Auto selection failed, using fallback model');
+            const fallback = router.getFallbackModel();
+            return fallback || await llmConfigService.getFirstPublishedModelId();
+
+        } catch (error) {
+            console.error('❌ Error in auto model selection:', error.message);
+            // Fallback to first available model on error
+            return await llmConfigService.getFirstPublishedModelId();
+        }
+    }
+
+    /**
      * Create user message in database first (DB-first approach)
      * Returns real message ID immediately for frontend use
      */
     async createUserMessage(obj) {
         try {
- 
+
             // Handle CORS preflight
             if (obj.request.method === 'OPTIONS') {
                 const origin = obj.request.headers.origin || '*';
@@ -316,7 +393,7 @@ class messageController {
             }
 
             const formData = obj.params.formData || obj.params;
-            const { content, chatId, modelId } = formData;
+            let { content, chatId, modelId } = formData;
 
             // Validate input
             if (!content || content.trim() === '') {
@@ -325,6 +402,10 @@ class messageController {
                     error: "Message content is required"
                 });
             }
+
+            // ✨ AUTO MODEL SELECTION: Resolve "auto" to concrete model ID
+            const resolvedModelId = await this.resolveAutoModel(modelId, content, chatId);
+            modelId = resolvedModelId;
 
             // Initialize persistence service
             const persistenceService = new MessagePersistenceService(this._chatContext, this._currentUser);

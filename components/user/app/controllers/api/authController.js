@@ -4,27 +4,23 @@
 
   
         logout(obj){
-            // Align cookie attributes with how they were set during login
-            try{
-                const origin = (obj.request && obj.request.headers && obj.request.headers.origin) ? String(obj.request.headers.origin) : '';
-                const isHttps = origin.startsWith('https://');
-                const cookieOptions = {
-                    path: '/',
-                    httpOnly: true,
-                    // Use same attributes as setCookie so browsers will delete it
-                    secure: !!isHttps,
-                    sameSite: isHttps ? 'None' : 'Lax'
-                };
-                // Explicitly set maxAge to 0 and also set an expired date for broad compatibility
-                master.sessions.deleteCookie("login", obj.response, { ...cookieOptions, maxAge: 0, expires: new Date(0).toUTCString() });
-            }catch(_){
-                // Fallback delete
-                master.sessions.deleteCookie("login", obj.response, { path: '/' });
-            }
+            // Secure cookie deletion matching login settings
+            const cookieOptions = {
+                path: '/',
+                httpOnly: true,
+                secure: false,
+                sameSite: 'lax',
+                maxAge: 0
+            };
+            master.sessions.deleteCookie("login", obj.response, cookieOptions);
             return this.returnJson({ message: "logged out" });
         }
 
         currentUser(obj){
+            // DEBUG: Log cookies
+            const cookieHeader = obj.request?.headers?.cookie;
+            console.log('🍪 DEBUG currentUser - Cookie header:', cookieHeader);
+
             // Prefer unified authService.currentUser to support temp-user mode
             try{
                 const cu = obj.authService.currentUser(obj.request, obj.userContext);
@@ -42,8 +38,10 @@
 
             // Fallback: check session cookie called login
             var ses = master.sessions.getCookie("login", obj.request);
+            console.log('🍪 DEBUG currentUser - Login cookie value:', ses);
 
             if(ses === -1){
+                console.log('❌ DEBUG currentUser - No login cookie found');
                 return this.returnJson({
                     error: "Session not found",
                     isAuthenticated : false,

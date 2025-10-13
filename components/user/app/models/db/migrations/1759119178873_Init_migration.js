@@ -16,13 +16,13 @@ class Init extends masterrecord.schema {
 
       this.seed('User', {
             user_name: 'admin',
-            email: 'admin@bookbag.work',
+            email: 'admin@bookbag.ai',
             role: 1,
             created_at: Date.now().toString(),
             updated_at: Date.now().toString()
         });
 
-        const user = this.context.User.where(u => u.email == $$, "admin@bookbag.work").single();
+        const user = this.context.User.where(u => u.email == $$, "admin@bookbag.ai").single();
 
         if (user && user.id) {
             this.seed('Auth', {
