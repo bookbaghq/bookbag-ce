@@ -20,7 +20,8 @@ import {
   Users,
   MessageSquare,
   HardDrive,
-  FolderOpen
+  FolderOpen,
+  Activity
 } from "lucide-react"
 
 
@@ -151,6 +152,22 @@ const data = {
         { title: "All Media", url: "/bb-admin/media" },
         { title: "RAG Files", url: "/bb-admin/media/rag-files" },
         { title: "Settings", url: "/bb-admin/media/settings" },
+      ],
+    },
+    {
+      title: "RAG",
+      url: "#",
+      icon: BookOpen,
+      items: [
+        { title: "Settings", url: "/bb-admin/rag/settings" },
+      ],
+    },
+    {
+      title: "Tokens",
+      url: "#",
+      icon: Activity,
+      items: [
+        { title: "Analytics", url: "/bb-admin/tokens/analytics" },
       ],
     },
     {

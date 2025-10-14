@@ -26,3 +26,7 @@ router.route("bb-rag/api/rag/stats", "api/rag#getStats", "get");
 
 // Delete a document by ID (must come after other routes to avoid catching them)
 router.route("bb-rag/api/rag/delete/:id", "api/rag#deleteDocument", "delete");
+
+// RAG Settings routes
+router.route("bb-rag/api/rag/settings", "api/ragSettings#getSettings", "get");
+router.route("bb-rag/api/rag/settings", "api/ragSettings#updateSettings", "post");

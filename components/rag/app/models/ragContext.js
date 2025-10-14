@@ -19,6 +19,9 @@ class ragContext extends masterrecord.context{
 
         // Register DocumentChunk model
         this.dbset(DocumentChunk);
+
+        // Register Settings model
+        this.dbset(Settings);
     }
 }
 

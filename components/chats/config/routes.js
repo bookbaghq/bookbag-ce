@@ -68,3 +68,7 @@ router.route("bb-chat/api/chat/:chatId", "api/chat#deleteChat", "delete");
 
 // Parameterized route must come LAST to avoid catching specific routes
 router.route("bb-chat/api/chat/:chatId", "api/chat#getChatById", "get");
+
+// Token Analytics routes
+router.route("bb-chat/api/token-analytics", "api/tokenAnalytics#getAnalytics", "get");
+router.route("bb-chat/api/token-analytics/user/:userId", "api/tokenAnalytics#getUserAnalytics", "get");

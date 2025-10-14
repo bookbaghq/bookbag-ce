@@ -25,7 +25,7 @@ class Settings{
         db.string().notNullable();
         db.get(function(value) {
             if (!value) {
-                return Date.now();
+                return Date.now().toString();
             } else {
                 return value;
             }
@@ -36,7 +36,7 @@ class Settings{
         db.string().notNullable();
         db.get(function(value) {
             if (!value) {
-                return Date.now();
+                return Date.now().toString();
             } else {
                 return value;
             }
