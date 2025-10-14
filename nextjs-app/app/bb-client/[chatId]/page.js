@@ -73,7 +73,8 @@ export default function ChatPage() {
         title: chat.title,
         messages: transformedMessages,
         createdAt: chat.created_at,
-        updatedAt: chat.updated_at
+        updatedAt: chat.updated_at,
+        isWorkspaceCreated: chat.is_workspace_created || false
       });
 
     } catch (err) {
@@ -136,6 +137,7 @@ export default function ChatPage() {
     <div className="flex h-full w-full bg-background overflow-hidden">
       <KnowledgeBaseSidebar
         chatId={chatData.chatId}
+        isWorkspaceCreated={chatData.isWorkspaceCreated}
       />
       <div className="flex-1 flex flex-col h-full relative">
         <ModernChatInterface

@@ -42,7 +42,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main;
  * - Delete documents
  * - Creates chat if none exists when uploading
  */
-export function KnowledgeBaseSidebar({ chatId = null }) {
+export function KnowledgeBaseSidebar({ chatId = null, isWorkspaceCreated = false }) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -52,6 +52,14 @@ export function KnowledgeBaseSidebar({ chatId = null }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('file'); // 'file' or 'url'
+
+  // RAG settings state
+  const [ragSettings, setRagSettings] = useState({
+    disableRag: false,
+    disableRagChat: false,
+    disableRagWorkspace: false
+  });
+  const [ragDisabled, setRagDisabled] = useState(false);
 
   // Multiple file support
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -67,12 +75,65 @@ export function KnowledgeBaseSidebar({ chatId = null }) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState(null);
 
+  // Fetch RAG settings on mount
+  useEffect(() => {
+    fetchRAGSettings();
+  }, []);
+
+  // Check if RAG should be disabled based on settings
+  useEffect(() => {
+    // If RAG is globally disabled, hide everything
+    if (ragSettings.disableRag) {
+      setRagDisabled(true);
+      return;
+    }
+
+    // If workspace RAG is disabled and this is a workspace chat, hide
+    if (ragSettings.disableRagWorkspace && isWorkspaceCreated) {
+      setRagDisabled(true);
+      return;
+    }
+
+    // If chat RAG is disabled and this is NOT a workspace chat, hide
+    if (ragSettings.disableRagChat && !isWorkspaceCreated) {
+      setRagDisabled(true);
+      return;
+    }
+
+    setRagDisabled(false);
+  }, [ragSettings, isWorkspaceCreated]);
+
   // Fetch documents and stats on mount
   useEffect(() => {
-    if (chatId) {
+    if (chatId && !ragDisabled) {
       refreshData();
     }
-  }, [chatId]);
+  }, [chatId, ragDisabled]);
+
+  const fetchRAGSettings = async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/bb-rag/api/rag/settings`, {
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        console.error('Error fetching RAG settings: HTTP', response.status);
+        return;
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.settings) {
+        setRagSettings({
+          disableRag: !!data.settings.disableRag,
+          disableRagChat: !!data.settings.disableRagChat,
+          disableRagWorkspace: !!data.settings.disableRagWorkspace
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching RAG settings:', error);
+    }
+  };
 
   const refreshData = async () => {
     if (!chatId) return;
@@ -329,6 +390,11 @@ export function KnowledgeBaseSidebar({ chatId = null }) {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  // Don't render sidebar if RAG is disabled
+  if (ragDisabled) {
+    return null;
+  }
+
   return (
     <>
     <aside className={`border-r bg-background flex flex-col h-full transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-80'}`}>
@@ -384,7 +450,8 @@ export function KnowledgeBaseSidebar({ chatId = null }) {
             >
               <FileText className="w-4 h-4" />
             </Button>
-            <Button
+            {/* Hidden for now - URL ingestion feature */}
+            {/* <Button
               type="button"
               variant="ghost"
               size="sm"
@@ -396,7 +463,7 @@ export function KnowledgeBaseSidebar({ chatId = null }) {
               title="Add from URLs"
             >
               <LinkIcon className="w-4 h-4" />
-            </Button>
+            </Button> */}
           </div>
         </div>
       ) : (
@@ -423,7 +490,8 @@ export function KnowledgeBaseSidebar({ chatId = null }) {
                 <FileText className="w-4 h-4" />
                 <span>Upload Files</span>
               </DropdownMenuItem>
-              <DropdownMenuItem
+              {/* Hidden for now - URL ingestion feature */}
+              {/* <DropdownMenuItem
                 onClick={() => {
                   setModalMode('url');
                   setModalOpen(true);
@@ -432,7 +500,7 @@ export function KnowledgeBaseSidebar({ chatId = null }) {
               >
                 <LinkIcon className="w-4 h-4" />
                 <span>Add from URL</span>
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
