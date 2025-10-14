@@ -18,12 +18,12 @@ class MediaSettings {
 
   created_at(db) {
     db.string().notNullable();
-    db.get(v => v || Date.now());
+    db.get(v => v || Date.now().toString());
   }
 
   updated_at(db) {
     db.string().notNullable();
-    db.get(v => v || Date.now());
+    db.get(v => v || Date.now().toString());
   }
 }
 

@@ -10,9 +10,9 @@ class MailSettings {
 
     weekly_summary_enabled(db){ db.boolean().default(false); }
 
-    created_at(db){ db.string().notNullable(); db.get(v=> v || Date.now()); }
+    created_at(db){ db.string().notNullable(); db.get(v=> v || Date.now().toString()); }
 
-    updated_at(db){ db.string().notNullable(); db.get(v=> v || Date.now()); }
+    updated_at(db){ db.string().notNullable(); db.get(v=> v || Date.now().toString()); }
 }
 
 module.exports = MailSettings;

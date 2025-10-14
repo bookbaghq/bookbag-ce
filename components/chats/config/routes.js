@@ -64,6 +64,7 @@ router.route("bb-chat/api/chat/:chatId/archive", "api/chat#archiveChat", "patch"
 
 // Delete route (must come before parameterized GET route)
 router.route("bb-chat/api/chat/:chatId/delete", "api/chat#deleteChat", "delete");
+router.route("bb-chat/api/chat/:chatId", "api/chat#deleteChat", "delete");
 
 // Parameterized route must come LAST to avoid catching specific routes
 router.route("bb-chat/api/chat/:chatId", "api/chat#getChatById", "get");

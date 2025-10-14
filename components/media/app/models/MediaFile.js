@@ -25,7 +25,7 @@ class MediaFile {
   }
 
   file_size(db) {
-    db.integer().default(0);
+    db.integer().notNullable().default(0);
   }
 
   uploaded_by(db) {
@@ -38,12 +38,12 @@ class MediaFile {
 
   created_at(db) {
     db.string().notNullable();
-    db.get(v => v || Date.now());
+    db.get(v => v || Date.now().toString());
   }
 
   updated_at(db) {
     db.string().notNullable();
-    db.get(v => v || Date.now());
+    db.get(v => v || Date.now().toString());
   }
 }
 

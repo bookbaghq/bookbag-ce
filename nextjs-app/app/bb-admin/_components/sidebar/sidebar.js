@@ -149,6 +149,7 @@ const data = {
       icon: FolderOpen,
       items: [
         { title: "All Media", url: "/bb-admin/media" },
+        { title: "RAG Files", url: "/bb-admin/media/rag-files" },
         { title: "Settings", url: "/bb-admin/media/settings" },
       ],
     },

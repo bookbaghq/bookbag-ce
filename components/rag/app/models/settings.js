@@ -9,10 +9,6 @@ class Settings{
         db.integer().primary().auto();
     }
 
-    storage_limit_mb(db) {
-        db.intdideger().default(1024); // Approximate storage you cannot go pass in mb
-    }
-
     disable_rag(db) {
         db.boolean().default(false); // Disable rag
     }

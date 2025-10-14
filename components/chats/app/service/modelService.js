@@ -15,6 +15,42 @@ class ModelService {
         this.setupGracefulShutdown();
     }
 
+    /**
+     * Unified generation dispatcher - routes to provider-specific implementations
+     * @param {Array} messageHistory - Conversation history
+     * @param {Function} onChunk - Streaming callback
+     * @param {boolean} noThinking - Whether to disable thinking detection
+     * @param {Object} modelConfig - Model configuration with provider field
+     * @returns {Promise<Object>} - Generation result
+     */
+    async _generate(messageHistory, onChunk, noThinking, modelConfig) {
+        const provider = (modelConfig?.provider || 'openai').toLowerCase();
+
+        console.log(`🎯 ModelService routing to provider: ${provider}`);
+
+        switch (provider) {
+            case 'openai':
+            case 'azure':
+                return await this._generateViaOpenAICompatible(messageHistory, onChunk, noThinking, modelConfig);
+
+            case 'grok':
+                // Grok uses OpenAI-compatible API
+                return await this._generateViaOpenAICompatible(messageHistory, onChunk, noThinking, modelConfig);
+
+            case 'anthropic':
+                // Future: Implement Claude-specific generation
+                throw new Error('Anthropic/Claude provider not yet implemented. Coming soon!');
+
+            case 'ollama':
+                // Future: Implement Ollama-specific generation
+                throw new Error('Ollama provider not yet implemented. Coming soon!');
+
+            default:
+                console.warn(`⚠️  Unknown provider '${provider}', falling back to OpenAI-compatible`);
+                return await this._generateViaOpenAICompatible(messageHistory, onChunk, noThinking, modelConfig);
+        }
+    }
+
     async _generateViaOpenAICompatible(messageHistory, onChunk, noThinking, modelConfig ) {
         const settings = modelConfig.settings;
         const baseUrl = String(modelConfig.server_url || '').replace(/\/?$/, '/');

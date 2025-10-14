@@ -22,7 +22,7 @@ class Chat {
         db.boolean().default(false);
     }
 
-    is_workplace_created(db){
+    is_workspace_created(db){
         db.boolean().default(false);
     }
 

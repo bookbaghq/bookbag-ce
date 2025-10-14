@@ -407,6 +407,8 @@ function EditServerModelButton({ model, onUpdated, onError }) {
     })()
   )
   const [autoTrimOn, setAutoTrimOn] = useState(!!model.auto_trim_on)
+  const [providerType, setProviderType] = useState(model.provider || 'openai')
+  const [groundingMode, setGroundingMode] = useState(model.grounding_mode || 'strict')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [errors, setErrors] = useState({ serverUrl: '', profileId: '', contextSize: '' })
@@ -490,12 +492,12 @@ function EditServerModelButton({ model, onUpdated, onError }) {
     setErrors(nextErrors)
     if (nextErrors.serverUrl || nextErrors.profileId || nextErrors.contextSize) { setSaving(false); return }
     try {
-      const payload = { id: model.id, name, description, server_url: serverUrl, api_key: apiKey, profile_id: profileId ? parseInt(profileId, 10) : undefined, auto_trim_on: !!autoTrimOn, context_size: cs, prompt_template: promptTemplate, system_prompt: systemPrompt }
+      const payload = { id: model.id, name, description, server_url: serverUrl, api_key: apiKey, profile_id: profileId ? parseInt(profileId, 10) : undefined, auto_trim_on: !!autoTrimOn, context_size: cs, prompt_template: promptTemplate, system_prompt: systemPrompt, provider: providerType, grounding_mode: groundingMode }
       const BASE = getBackendBaseUrl()
       const res = await fetch(`${BASE}/bb-models/api/models/update`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const data = await res.json()
       if (!data?.success) throw new Error(data?.error || 'Failed to update model')
-      if (onUpdated) onUpdated(data.model || { id: model.id, name, description, server_url: serverUrl, api_key: apiKey, profile_id: profileId ? parseInt(profileId, 10) : null, auto_trim_on: !!autoTrimOn, context_size: cs, system_prompt: systemPrompt })
+      if (onUpdated) onUpdated(data.model || { id: model.id, name, description, server_url: serverUrl, api_key: apiKey, profile_id: profileId ? parseInt(profileId, 10) : null, auto_trim_on: !!autoTrimOn, context_size: cs, system_prompt: systemPrompt, provider: providerType, grounding_mode: groundingMode })
       setOpen(false)
     } catch (e) {
       const msg = e?.message || 'Failed to update model'
@@ -564,6 +566,25 @@ function EditServerModelButton({ model, onUpdated, onError }) {
                   placeholder="e.g. 8192"
                 />
                 {errors.contextSize && <div className="text-xs text-red-600">{errors.contextSize}</div>}
+              </div>
+              <div className="space-y-2">
+                <Label className="mb-1 block">Provider</Label>
+                <select className="border rounded h-9 px-2 w-full" value={providerType} onChange={(e) => setProviderType(e.target.value)}>
+                  <option value="openai">OpenAI</option>
+                  <option value="grok">Grok</option>
+                  <option value="anthropic">Anthropic (Claude)</option>
+                  <option value="ollama">Ollama</option>
+                  <option value="azure">Azure OpenAI</option>
+                </select>
+                <p className="text-xs text-muted-foreground">Which provider API this model uses</p>
+              </div>
+              <div className="space-y-2">
+                <Label className="mb-1 block">RAG Grounding Mode</Label>
+                <select className="border rounded h-9 px-2 w-full" value={groundingMode} onChange={(e) => setGroundingMode(e.target.value)}>
+                  <option value="strict">Strict (Context-only answers)</option>
+                  <option value="soft">Soft (Flexible with general knowledge)</option>
+                </select>
+                <p className="text-xs text-muted-foreground">How strict RAG document grounding should be</p>
               </div>
               <div className="flex items-start gap-2">
                 <Checkbox id="auto-trim-edit" checked={!!autoTrimOn} onCheckedChange={(v) => setAutoTrimOn(!!v)} />
@@ -642,6 +663,8 @@ function VllmCreateForm({ onCreated, registerSubmit, onSavingChange }) {
   const [apiKey, setApiKey] = useState('')
   const [contextSize, setContextSize] = useState('')
   const [autoTrimOn, setAutoTrimOn] = useState(false)
+  const [providerType, setProviderType] = useState('openai')
+  const [groundingMode, setGroundingMode] = useState('strict')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [errors, setErrors] = useState({ name: '', serverUrl: '', profileId: '', contextSize: '' })
@@ -699,16 +722,18 @@ function VllmCreateForm({ onCreated, registerSubmit, onSavingChange }) {
     setErrors(nextErrors)
     if (nextErrors.name || nextErrors.serverUrl || nextErrors.profileId || nextErrors.contextSize) { setSaving(false); try { if (onSavingChange) onSavingChange(false) } catch(_) {}; return }
     try {
-      const payload = { 
-        name, 
-        description, 
-        profileId: parseInt(profileId, 10), 
-        server_url: serverUrl, 
-        api_key: apiKey, 
-        auto_trim_on: !!autoTrimOn, 
-        context_size: cs, 
-        prompt_template: promptTemplate, 
+      const payload = {
+        name,
+        description,
+        profileId: parseInt(profileId, 10),
+        server_url: serverUrl,
+        api_key: apiKey,
+        auto_trim_on: !!autoTrimOn,
+        context_size: cs,
+        prompt_template: promptTemplate,
         system_prompt: systemPrompt,
+        provider: providerType,
+        grounding_mode: groundingMode,
         thinking_strings: Array.isArray(thinkingItems) ? thinkingItems.filter(i => (i?.end_word || '').trim().length > 0).map(i => ({ start_word: i.start_word || '', end_word: i.end_word.trim() })) : []
       }
       const BASE = getBackendBaseUrl()
@@ -716,14 +741,14 @@ function VllmCreateForm({ onCreated, registerSubmit, onSavingChange }) {
       const data = await res.json()
       if (!data?.success) throw new Error(data?.error || 'Failed to create vLLM model')
       if (onCreated && data.model) onCreated(data.model)
-      setName(''); setDescription(''); setPromptTemplate(''); setSystemPrompt(''); setThinkingItems([]); setThinkingStart(''); setThinkingEnd(''); setProfileId(''); setServerUrl('http://localhost:8000'); setApiKey(''); setAutoTrimOn(false); setContextSize('')
+      setName(''); setDescription(''); setPromptTemplate(''); setSystemPrompt(''); setThinkingItems([]); setThinkingStart(''); setThinkingEnd(''); setProfileId(''); setServerUrl('http://localhost:8000'); setApiKey(''); setAutoTrimOn(false); setContextSize(''); setProviderType('openai'); setGroundingMode('strict')
     } catch (e) {
       setError(e.message || 'Failed to create vLLM model')
     } finally {
       setSaving(false)
       try { if (onSavingChange) onSavingChange(false) } catch(_) {}
     }
-  }, [name, description, profileId, serverUrl, apiKey, autoTrimOn, onCreated, onSavingChange, promptTemplate, systemPrompt, contextSize, thinkingItems])
+  }, [name, description, profileId, serverUrl, apiKey, autoTrimOn, onCreated, onSavingChange, promptTemplate, systemPrompt, contextSize, thinkingItems, providerType, groundingMode])
 
   // Register submit function for footer trigger without updating parent during render
   useEffect(() => {
@@ -776,6 +801,25 @@ function VllmCreateForm({ onCreated, registerSubmit, onSavingChange }) {
             <Label className="mb-1 block">Context Size (tokens)</Label>
             <Input type="number" value={contextSize} onChange={(e) => setContextSize(e.target.value)} placeholder="e.g. 8192" />
             {errors.contextSize && <div className="text-xs text-red-600">{errors.contextSize}</div>}
+          </div>
+          <div className="space-y-2">
+            <Label className="mb-1 block">Provider</Label>
+            <select className="border rounded h-9 px-2 w-full" value={providerType} onChange={(e) => setProviderType(e.target.value)}>
+              <option value="openai">OpenAI</option>
+              <option value="grok">Grok</option>
+              <option value="anthropic">Anthropic (Claude)</option>
+              <option value="ollama">Ollama</option>
+              <option value="azure">Azure OpenAI</option>
+            </select>
+            <p className="text-xs text-muted-foreground">Which provider API this model uses</p>
+          </div>
+          <div className="space-y-2">
+            <Label className="mb-1 block">RAG Grounding Mode</Label>
+            <select className="border rounded h-9 px-2 w-full" value={groundingMode} onChange={(e) => setGroundingMode(e.target.value)}>
+              <option value="strict">Strict (Context-only answers)</option>
+              <option value="soft">Soft (Flexible with general knowledge)</option>
+            </select>
+            <p className="text-xs text-muted-foreground">How strict RAG document grounding should be</p>
           </div>
           <div className="flex items-start gap-2">
             <Checkbox id="auto-trim-create" checked={!!autoTrimOn} onCheckedChange={(v) => setAutoTrimOn(!!v)} />

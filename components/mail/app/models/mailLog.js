@@ -14,9 +14,9 @@ class MailLog {
 
     meta(db){ db.string().nullable(); }
 
-    created_at(db){ db.string().notNullable(); db.get(v=> v || Date.now()); }
+    created_at(db){ db.string().notNullable(); db.get(v=> v || Date.now().toString()); }
 
-    updated_at(db){ db.string().notNullable(); db.get(v=> v || Date.now()); }
+    updated_at(db){ db.string().notNullable(); db.get(v=> v || Date.now().toString()); }
 }
 
 module.exports = MailLog;

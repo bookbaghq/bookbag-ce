@@ -5,12 +5,9 @@ import {
   Search,
   Trash2,
   File,
-  Image as ImageIcon,
-  Video,
-  Music,
   FileText,
-  Download,
-  HardDrive,
+  MessageSquare,
+  Briefcase,
   Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -30,12 +27,13 @@ import api from '@/apiConfig.json';
 
 const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main;
 
-export default function MediaPage() {
+export default function RagFilesPage() {
   const [files, setFiles] = useState([]);
   const [stats, setStats] = useState({
     totalFiles: 0,
-    formattedSize: '0 Bytes',
-    bySource: { admin: 0, client: 0, api: 0 }
+    chatFiles: 0,
+    workspaceFiles: 0,
+    ragFiles: 0
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
@@ -48,6 +46,7 @@ export default function MediaPage() {
   });
 
   useEffect(() => {
+    console.log('BASE_URL:', BASE_URL);
     fetchFiles();
     fetchStats();
   }, [pagination.page]);
@@ -67,18 +66,26 @@ export default function MediaPage() {
   const fetchFiles = async () => {
     try {
       setLoading(true);
+      console.log('Fetching RAG files from:', `${BASE_URL}/bb-media/api/media/rag/list?page=${pagination.page}&limit=${pagination.limit}`);
       const response = await fetch(
-        `${BASE_URL}/bb-media/api/media/list?page=${pagination.page}&limit=${pagination.limit}`,
+        `${BASE_URL}/bb-media/api/media/rag/list?page=${pagination.page}&limit=${pagination.limit}`,
         { credentials: 'include' }
       );
+
+      console.log('Response status:', response.status);
       const data = await response.json();
+      console.log('Response data:', data);
 
       if (data.success) {
         setFiles(data.files || []);
         setPagination(prev => ({ ...prev, ...data.pagination }));
+      } else {
+        console.error('API returned error:', data.error);
+        toast.error(data.error || 'Failed to load files');
       }
     } catch (error) {
       console.error('Error fetching files:', error);
+      toast.error('Failed to load files: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -88,7 +95,7 @@ export default function MediaPage() {
     try {
       setLoading(true);
       const response = await fetch(
-        `${BASE_URL}/bb-media/api/media/search?q=${encodeURIComponent(searchTerm)}&page=${pagination.page}&limit=${pagination.limit}`,
+        `${BASE_URL}/bb-media/api/media/rag/search?q=${encodeURIComponent(searchTerm)}&page=${pagination.page}&limit=${pagination.limit}`,
         { credentials: 'include' }
       );
       const data = await response.json();
@@ -99,6 +106,7 @@ export default function MediaPage() {
       }
     } catch (error) {
       console.error('Error searching files:', error);
+      toast.error('Failed to search files');
     } finally {
       setLoading(false);
     }
@@ -106,7 +114,7 @@ export default function MediaPage() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${BASE_URL}/bb-media/api/media/stats`, {
+      const response = await fetch(`${BASE_URL}/bb-media/api/media/rag/stats`, {
         credentials: 'include'
       });
       const data = await response.json();
@@ -114,23 +122,22 @@ export default function MediaPage() {
       if (data.success && data.stats) {
         setStats({
           totalFiles: data.stats.totalFiles || 0,
-          formattedSize: data.stats.formattedSize || '0 Bytes',
-          bySource: data.stats.bySource || { admin: 0, client: 0, api: 0 }
+          chatFiles: data.stats.chatFiles || 0,
+          workspaceFiles: data.stats.workspaceFiles || 0,
+          ragFiles: data.stats.ragFiles || 0
         });
       }
     } catch (error) {
       console.error('Error fetching stats:', error);
-      // Keep default stats on error
     }
   };
-
 
   const handleDeleteFile = async () => {
     if (!selectedFile) return;
 
     try {
       const response = await fetch(
-        `${BASE_URL}/bb-media/api/media/delete/${selectedFile.id}`,
+        `${BASE_URL}/bb-media/api/media/rag/delete/${selectedFile.id}`,
         {
           method: 'DELETE',
           credentials: 'include'
@@ -154,19 +161,25 @@ export default function MediaPage() {
     }
   };
 
-  const getFileIcon = (mimeType) => {
-    if (!mimeType) return <File className="w-8 h-8 text-gray-400" />;
+  const getSourceIcon = (source) => {
+    switch (source) {
+      case 'chat':
+        return <MessageSquare className="w-4 h-4 text-blue-500" />;
+      case 'workspace':
+        return <Briefcase className="w-4 h-4 text-green-500" />;
+      default:
+        return <File className="w-4 h-4 text-gray-500" />;
+    }
+  };
 
-    if (mimeType.startsWith('image/')) {
-      return <ImageIcon className="w-8 h-8 text-blue-500" />;
-    } else if (mimeType.startsWith('video/')) {
-      return <Video className="w-8 h-8 text-purple-500" />;
-    } else if (mimeType.startsWith('audio/')) {
-      return <Music className="w-8 h-8 text-green-500" />;
-    } else if (mimeType.startsWith('text/') || mimeType.includes('document')) {
-      return <FileText className="w-8 h-8 text-orange-500" />;
-    } else {
-      return <File className="w-8 h-8 text-gray-400" />;
+  const getSourceLabel = (source) => {
+    switch (source) {
+      case 'chat':
+        return 'Chat';
+      case 'workspace':
+        return 'Workspace';
+      default:
+        return 'RAG';
     }
   };
 
@@ -184,9 +197,9 @@ export default function MediaPage() {
     <div className="container mx-auto p-6 max-w-7xl">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Media Library</h1>
+        <h1 className="text-3xl font-bold mb-2">RAG Documents</h1>
         <p className="text-muted-foreground">
-          Manage all uploaded files in your system
+          Manage all RAG documents used for retrieval-augmented generation
         </p>
       </div>
 
@@ -195,43 +208,43 @@ export default function MediaPage() {
         <div className="border rounded-lg p-4">
           <div className="flex items-center gap-2 mb-2">
             <File className="w-5 h-5 text-muted-foreground" />
-            <h3 className="text-sm font-medium text-muted-foreground">Total Files</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Total Documents</h3>
           </div>
-          <p className="text-2xl font-bold">{stats?.totalFiles || 0}</p>
+          <p className="text-2xl font-bold">{stats.totalFiles}</p>
         </div>
 
         <div className="border rounded-lg p-4">
           <div className="flex items-center gap-2 mb-2">
-            <HardDrive className="w-5 h-5 text-muted-foreground" />
-            <h3 className="text-sm font-medium text-muted-foreground">Storage Used</h3>
+            <MessageSquare className="w-5 h-5 text-blue-500" />
+            <h3 className="text-sm font-medium text-muted-foreground">Chat Documents</h3>
           </div>
-          <p className="text-2xl font-bold">{stats?.formattedSize || '0 Bytes'}</p>
+          <p className="text-2xl font-bold">{stats.chatFiles}</p>
         </div>
 
         <div className="border rounded-lg p-4">
           <div className="flex items-center gap-2 mb-2">
-            <File className="w-5 h-5 text-muted-foreground" />
-            <h3 className="text-sm font-medium text-muted-foreground">Chat Files</h3>
+            <Briefcase className="w-5 h-5 text-green-500" />
+            <h3 className="text-sm font-medium text-muted-foreground">Workspace Documents</h3>
           </div>
-          <p className="text-2xl font-bold">{stats?.bySource?.chat || 0}</p>
+          <p className="text-2xl font-bold">{stats.workspaceFiles}</p>
         </div>
 
         <div className="border rounded-lg p-4">
           <div className="flex items-center gap-2 mb-2">
-            <File className="w-5 h-5 text-muted-foreground" />
-            <h3 className="text-sm font-medium text-muted-foreground">Workspace Files</h3>
+            <FileText className="w-5 h-5 text-purple-500" />
+            <h3 className="text-sm font-medium text-muted-foreground">RAG Documents</h3>
           </div>
-          <p className="text-2xl font-bold">{stats?.bySource?.workspace || 0}</p>
+          <p className="text-2xl font-bold">{stats.ragFiles}</p>
         </div>
       </div>
 
-      {/* Actions Bar */}
+      {/* Search Bar */}
       <div className="flex items-center gap-4 mb-6">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="Search files..."
+            placeholder="Search RAG documents by filename or title..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -243,26 +256,34 @@ export default function MediaPage() {
       {loading ? (
         <div className="text-center py-12">
           <Loader2 className="w-8 h-8 mx-auto mb-4 text-muted-foreground animate-spin" />
-          <p className="text-muted-foreground">Loading files...</p>
+          <p className="text-muted-foreground">Loading documents...</p>
         </div>
       ) : files.length === 0 ? (
         <div className="text-center py-12">
           <File className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-          <p className="text-lg font-medium mb-2">No files found</p>
+          <p className="text-lg font-medium mb-2">No documents found</p>
           <p className="text-muted-foreground">
-            {searchTerm ? 'Try adjusting your search' : 'No media files available'}
+            {searchTerm ? 'Try adjusting your search' : 'No RAG documents available'}
           </p>
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             {files.map((file) => (
               <div
                 key={file.id}
                 className="border rounded-lg p-4 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start justify-between mb-3">
-                  <div>{getFileIcon(file.mimeType)}</div>
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-8 h-8 text-blue-500" />
+                    <div className="flex items-center gap-1">
+                      {getSourceIcon(file.uploadSource)}
+                      <span className="text-xs text-muted-foreground">
+                        {getSourceLabel(file.uploadSource)}
+                      </span>
+                    </div>
+                  </div>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -276,18 +297,14 @@ export default function MediaPage() {
                   </Button>
                 </div>
 
-                <h3 className="font-medium text-sm mb-1 truncate" title={file.filename}>
-                  {file.filename}
+                <h3 className="font-medium text-sm mb-1 truncate" title={file.title || file.filename}>
+                  {file.title || file.filename}
                 </h3>
 
                 <div className="space-y-1 text-xs text-muted-foreground">
+                  <p className="truncate" title={file.filename}>{file.filename}</p>
                   <p>{file.formattedSize}</p>
                   <p>{formatDate(file.createdAt)}</p>
-                  <p className="capitalize">
-                    <span className="inline-block px-2 py-0.5 rounded bg-accent text-accent-foreground">
-                      {file.uploadSource}
-                    </span>
-                  </p>
                 </div>
               </div>
             ))}
@@ -322,10 +339,11 @@ export default function MediaPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete File</AlertDialogTitle>
+            <AlertDialogTitle>Delete RAG Document</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{selectedFile?.filename}"? This action cannot be undone
-              and will permanently remove the file from storage.
+              Are you sure you want to delete "{selectedFile?.title || selectedFile?.filename}"?
+              This action cannot be undone and will permanently remove the document and all its
+              associated chunks from the RAG system.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

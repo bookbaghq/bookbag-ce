@@ -110,27 +110,32 @@ class RAGService {
     /**
      * Ingest a document: chunk it, generate embeddings, and store everything
      * @param {object} params - Document parameters
-     * @param {number} [params.chatId] - Chat ID (optional - will be set later if not provided)
+     * @param {number} [params.chatId] - Chat ID (optional - for chat-specific documents)
+     * @param {number} [params.workspaceId] - Workspace ID (optional - for workspace-level shared documents)
      * @param {string} [params.tenantId] - Tenant/user ID (optional - kept for legacy)
      * @param {string} params.title - Document title
      * @param {string} params.filename - Original filename
      * @param {string} params.filePath - Path to stored file
      * @param {string} params.text - Full document text
      * @param {string} [params.mimeType] - MIME type
+     * @param {number} [params.fileSize] - File size in bytes
      * @returns {Promise<number>} - Document ID
      */
-    async ingestDocument({ chatId = null, tenantId = null, title, filename, filePath, text, mimeType = null }) {
+    async ingestDocument({ chatId = null, workspaceId = null, tenantId = null, title, filename, filePath, text, mimeType = null, fileSize = 0 }) {
         console.log(`\n📥 INGESTING DOCUMENT: ${title}`);
+        console.log(`   Scope: ${workspaceId ? `Workspace ${workspaceId}` : chatId ? `Chat ${chatId}` : 'Legacy tenant'}`);
 
         // Create document record in MySQL/SQLite (metadata + full text)
         const DocumentModel = require('../models/document');
         const document = new DocumentModel();
         document.chat_id = chatId;
+        document.workspace_id = workspaceId;
         document.tenant_id = tenantId;
         document.title = title;
         document.filename = filename;
         document.file_path = filePath;
         document.mime_type = mimeType;
+        document.file_size = fileSize || 0;
         document.created_at = Date.now().toString();
         document.updated_at = Date.now().toString();
 
@@ -175,30 +180,54 @@ class RAGService {
 
     /**
      * Query RAG system: find relevant chunks using cosine similarity
-     * @param {number} chatId - Chat ID
-     * @param {string} question - User's question
-     * @param {number} k - Number of top results to return
+     * Supports layered retrieval: workspace-level + chat-specific documents
+     * @param {object} params - Query parameters
+     * @param {number} [params.chatId] - Chat ID (optional - for chat-specific documents)
+     * @param {number} [params.workspaceId] - Workspace ID (optional - for workspace-level documents)
+     * @param {string} params.question - User's question
+     * @param {number} [params.k=5] - Number of top results to return
      * @returns {Promise<Array>} - Array of relevant chunks with scores
      */
-    async queryRAG(chatId, question, k = 5) {
+    async queryRAG({ chatId = null, workspaceId = null, question, k = 5 }) {
         console.log(`\n🔍 RAG QUERY: "${question.substring(0, 50)}..."`);
+        console.log(`   Scope: ${workspaceId ? `Workspace ${workspaceId}` : ''}${workspaceId && chatId ? ' + ' : ''}${chatId ? `Chat ${chatId}` : ''}`);
 
         // Generate embedding for the question
         console.log(`   🧠 Generating query embedding...`);
         const questionEmbedding = await this.generateEmbedding(question);
         console.log(`   ✓ Generated question embedding (${questionEmbedding.length} dims)`);
 
-        // Get all documents for this chat
-        const documents = this.context.Document
-            .where(d => d.chat_id == $$, chatId)
-            .toList();
+        // 🔍 Step 1: Retrieve workspace-level documents (if workspaceId exists)
+        let workspaceDocuments = [];
+        if (workspaceId) {
+            workspaceDocuments = this.context.Document
+                .where(d => d.workspace_id == $$, workspaceId)
+                .toList();
+            console.log(`   📚 Found ${workspaceDocuments.length} workspace-level documents`);
+        }
+
+        // 🔍 Step 2: Retrieve chat-specific documents (if chatId exists)
+        let chatDocuments = [];
+        if (chatId) {
+            chatDocuments = this.context.Document
+                .where(d => d.chat_id == $$, chatId)
+                .toList();
+            console.log(`   📚 Found ${chatDocuments.length} chat-specific documents`);
+        }
+
+        // Merge and deduplicate documents
+        const allDocuments = [...workspaceDocuments, ...chatDocuments];
+        const uniqueDocumentIds = new Set(allDocuments.map(d => d.id));
+        const documents = allDocuments.filter((doc, index, self) =>
+            index === self.findIndex(d => d.id === doc.id)
+        );
 
         if (documents.length === 0) {
-            console.log(`   ⚠️  No documents found for chat ${chatId}`);
+            console.log(`   ⚠️  No documents found`);
             return [];
         }
 
-        console.log(`   📚 Found ${documents.length} documents in knowledge base`);
+        console.log(`   📚 Total unique documents: ${documents.length}`);
 
         // Get all chunks for these documents
         const documentIds = documents.map(d => d.id);
@@ -207,7 +236,7 @@ class RAGService {
 
         console.log(`   📄 Processing ${chunks.length} chunks...`);
 
-        // Calculate similarity for each chunk
+        // 🧠 Step 3: Calculate similarity for each chunk, merge, deduplicate, sort
         const scoredChunks = [];
         for (const chunk of chunks) {
             if (!chunk.embedding) {
@@ -225,6 +254,9 @@ class RAGService {
                 // Find the document for this chunk
                 const document = documents.find(d => d.id === chunk.document_id);
 
+                // Determine source (workspace or chat)
+                const source = document?.workspace_id ? 'workspace' : 'chat';
+
                 scoredChunks.push({
                     chunkId: chunk.id,
                     documentId: chunk.document_id,
@@ -232,7 +264,8 @@ class RAGService {
                     chunkIndex: chunk.chunk_index,
                     content: chunk.content,
                     score: similarity,
-                    tokenCount: chunk.token_count
+                    tokenCount: chunk.token_count,
+                    source: source
                 });
             } catch (error) {
                 console.error(`   ❌ Error processing chunk ${chunk.id}:`, error.message);
@@ -245,8 +278,11 @@ class RAGService {
 
         console.log(`   ✅ Found ${topResults.length} relevant chunks`);
         if (topResults.length > 0) {
-            console.log(`   📈 Top score: ${topResults[0].score.toFixed(4)}`);
-            console.log(`   📉 Lowest score: ${topResults[topResults.length - 1].score.toFixed(4)}`);
+            console.log(`   📈 Top score: ${topResults[0].score.toFixed(4)} (${topResults[0].source})`);
+            console.log(`   📉 Lowest score: ${topResults[topResults.length - 1].score.toFixed(4)} (${topResults[topResults.length - 1].source})`);
+            const workspaceCount = topResults.filter(r => r.source === 'workspace').length;
+            const chatCount = topResults.filter(r => r.source === 'chat').length;
+            console.log(`   🔹 Workspace chunks: ${workspaceCount}, Chat chunks: ${chatCount}`);
         }
 
         return topResults;
@@ -254,8 +290,9 @@ class RAGService {
 
     /**
      * Build context string from top chunks for LLM prompt
+     * 🔥 Tightening #2: Add retrieval metadata (source, score) for better model grounding
      * @param {Array} chunks - Array of chunks from queryRAG
-     * @returns {string} - Formatted context string
+     * @returns {string} - Formatted context string with metadata
      */
     buildContextString(chunks) {
         if (!chunks || chunks.length === 0) {
@@ -266,7 +303,10 @@ class RAGService {
 
         for (let i = 0; i < chunks.length; i++) {
             const chunk = chunks[i];
-            context += `[${i + 1}] From "${chunk.documentTitle}":\n`;
+            const sourceLabel = chunk.source === 'workspace' ? '🏢 Workspace' : '💬 Chat';
+            const scoreLabel = `(relevance: ${(chunk.score * 100).toFixed(1)}%)`;
+
+            context += `📄 [${i + 1}] ${sourceLabel} - "${chunk.documentTitle}" ${scoreLabel}\n`;
             context += `${chunk.content}\n\n`;
         }
 

@@ -278,6 +278,8 @@ function InstallCreateForm({ provider = 'oa', initialName = '', onCreated, regis
   const [serverUrl, setServerUrl] = useState(defaultServer)
   const [apiKey, setApiKey] = useState('')
   const [contextSize, setContextSize] = useState('')
+  const [providerType, setProviderType] = useState(provider === 'grok' ? 'grok' : 'openai')
+  const [groundingMode, setGroundingMode] = useState(provider === 'grok' ? 'soft' : 'strict')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [errors, setErrors] = useState({ serverUrl: '', profileId: '', contextSize: '' })
@@ -288,6 +290,8 @@ function InstallCreateForm({ provider = 'oa', initialName = '', onCreated, regis
 
   useEffect(() => {
     setServerUrl(provider === 'grok' ? 'https://api.x.ai/v1' : 'https://api.openai.com/v1')
+    setProviderType(provider === 'grok' ? 'grok' : 'openai')
+    setGroundingMode(provider === 'grok' ? 'soft' : 'strict')
   }, [provider])
 
   useEffect(() => {
@@ -315,20 +319,30 @@ function InstallCreateForm({ provider = 'oa', initialName = '', onCreated, regis
     setErrors(nextErrors)
     if (nextErrors.serverUrl || nextErrors.profileId || nextErrors.contextSize) { setSaving(false); try { if (onSavingChange) onSavingChange(false) } catch(_) {}; return }
     try {
-      const payload = { modelId: name, title: name, description, server_url: serverUrl, api_key: apiKey, profileId: profileId ? parseInt(profileId, 10) : undefined, context_size: cs }
+      const payload = {
+        modelId: name,
+        title: name,
+        description,
+        server_url: serverUrl,
+        api_key: apiKey,
+        profileId: profileId ? parseInt(profileId, 10) : undefined,
+        context_size: cs,
+        provider: providerType,
+        grounding_mode: groundingMode
+      }
       const endpoint = provider === 'grok' ? '/bb-models/api/grok/install' : '/bb-models/api/oa/install'
       const res = await fetch(`${(process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main)}${endpoint}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const data = await res.json()
       if (!data?.success) throw new Error(data?.error || `Failed to install ${provider === 'grok' ? 'Grok' : 'OpenAI'} model`)
       if (onCreated) onCreated(data.model)
-      setName(initialName || ''); setDescription(''); setProfileId(''); setServerUrl(provider === 'grok' ? 'https://api.x.ai/v1' : 'https://api.openai.com/v1'); setApiKey(''); setContextSize('')
+      setName(initialName || ''); setDescription(''); setProfileId(''); setServerUrl(provider === 'grok' ? 'https://api.x.ai/v1' : 'https://api.openai.com/v1'); setApiKey(''); setContextSize(''); setProviderType(provider === 'grok' ? 'grok' : 'openai'); setGroundingMode(provider === 'grok' ? 'soft' : 'strict')
     } catch (e) {
       setError(e.message || `Failed to install ${provider === 'grok' ? 'Grok' : 'OpenAI'} model`)
     } finally {
       setSaving(false)
       try { if (onSavingChange) onSavingChange(false) } catch(_) {}
     }
-  }, [name, description, profileId, serverUrl, apiKey, provider, onCreated, onSavingChange, contextSize, initialName])
+  }, [name, description, profileId, serverUrl, apiKey, provider, onCreated, onSavingChange, contextSize, initialName, providerType, groundingMode])
 
   useEffect(() => {
     if (typeof registerSubmit === 'function') {
@@ -368,6 +382,25 @@ function InstallCreateForm({ provider = 'oa', initialName = '', onCreated, regis
         <Label className="mb-1 block">Context Size (tokens)</Label>
         <Input type="number" value={contextSize} onChange={(e) => setContextSize(e.target.value)} placeholder="e.g. 8192" />
         {errors.contextSize && <div className="text-xs text-red-600">{errors.contextSize}</div>}
+      </div>
+      <div className="space-y-2">
+        <Label className="mb-1 block">Provider</Label>
+        <select className="border rounded h-9 px-2 w-full" value={providerType} onChange={(e) => setProviderType(e.target.value)}>
+          <option value="openai">OpenAI</option>
+          <option value="grok">Grok</option>
+          <option value="anthropic">Anthropic (Claude)</option>
+          <option value="ollama">Ollama</option>
+          <option value="azure">Azure OpenAI</option>
+        </select>
+        <p className="text-xs text-muted-foreground">Which provider API this model uses</p>
+      </div>
+      <div className="space-y-2">
+        <Label className="mb-1 block">RAG Grounding Mode</Label>
+        <select className="border rounded h-9 px-2 w-full" value={groundingMode} onChange={(e) => setGroundingMode(e.target.value)}>
+          <option value="strict">Strict (Context-only answers)</option>
+          <option value="soft">Soft (Flexible with general knowledge)</option>
+        </select>
+        <p className="text-xs text-muted-foreground">How strict RAG document grounding should be</p>
       </div>
       {error && <div className="text-sm text-red-600">{error}</div>}
     </div>

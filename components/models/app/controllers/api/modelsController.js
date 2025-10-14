@@ -65,6 +65,8 @@ class modelsController{
             const promptTemplate = (f.prompt_template || '').toString();
             const systemPrompt = (f.system_prompt || '').toString();
             const thinkingStrings = Array.isArray(f.thinking_strings) ? f.thinking_strings : [];
+            const provider = (f.provider || '').toString().trim() || 'openai';
+            const groundingMode = (f.grounding_mode || '').toString().trim() || 'strict';
 
             if (!name) return this.returnJson({ success: false, error: 'name is required' });
             if (!profileId) return this.returnJson({ success: false, error: 'profileId is required' });
@@ -88,6 +90,8 @@ class modelsController{
             m.is_published = false;
             if (typeof f.auto_trim_on !== 'undefined') m.auto_trim_on = autoTrimOn;
             m.context_size = contextSize;
+            m.provider = provider;
+            m.grounding_mode = groundingMode;
             m.created_at = Date.now().toString();
             m.updated_at = Date.now().toString();
             this._modelContext.Model.add(m);
@@ -127,6 +131,8 @@ class modelsController{
                     context_size: m.context_size,
                     prompt_template: m.prompt_template || '',
                     system_prompt: m.system_prompt || '',
+                    provider: m.provider || 'openai',
+                    grounding_mode: m.grounding_mode || 'strict',
                 }
             });
         } catch (error) {
@@ -218,7 +224,7 @@ class modelsController{
             m.prompt_template = f.prompt_template;
             m.server_url = f.server_url;
             m.api_key = f.api_key;
-          
+
             if (typeof f.auto_trim_on !== 'undefined') {
                 const autoTrimOn = !!(f.auto_trim_on === true || f.auto_trim_on === 'true' || f.auto_trim_on === 1 || f.auto_trim_on === '1');
                 m.auto_trim_on = autoTrimOn;
@@ -227,11 +233,17 @@ class modelsController{
                 const cs = parseInt(f.context_size, 10);
                 if (Number.isFinite(cs) && cs > 0) m.context_size = cs;
             }
+            if (typeof f.provider !== 'undefined') {
+                m.provider = (f.provider || '').toString().trim() || 'openai';
+            }
+            if (typeof f.grounding_mode !== 'undefined') {
+                m.grounding_mode = (f.grounding_mode || '').toString().trim() || 'strict';
+            }
 
             m.updated_at = Date.now().toString();
 
             this._modelContext.saveChanges();
-            return this.returnJson({ success: true, model: { id: m.id, name: m.name, description: m.description || '', server_url: m.server_url || '', api_key: m.api_key || '', profile_id: m.profile_id || m.Profile || null, updated_at: m.updated_at, auto_trim_on: !!m.auto_trim_on, context_size: m.context_size } });
+            return this.returnJson({ success: true, model: { id: m.id, name: m.name, description: m.description || '', server_url: m.server_url || '', api_key: m.api_key || '', profile_id: m.profile_id || m.Profile || null, updated_at: m.updated_at, auto_trim_on: !!m.auto_trim_on, context_size: m.context_size, provider: m.provider || 'openai', grounding_mode: m.grounding_mode || 'strict' } });
         } catch (error) {
             return this.returnJson({ success: false, error: error.message });
         }
@@ -303,6 +315,8 @@ class modelsController{
                     prompt_template: m.prompt_template || '',
                     auto_trim_on: !!(m.auto_trim_on === true || m.auto_trim_on === 1 || m.auto_trim_on === '1' || String(m.auto_trim_on).toLowerCase() === 'true'),
                     api_key: m.api_key || '',
+                    provider: m.provider || 'openai',
+                    grounding_mode: m.grounding_mode || 'strict',
                     promptTemplates,
                     tags: [],
                 };

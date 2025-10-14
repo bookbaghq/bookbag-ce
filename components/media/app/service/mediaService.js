@@ -116,6 +116,7 @@ class MediaService {
    */
   async getStorageStats() {
     try {
+      
       const files = await fs.readdir(this.uploadDir);
       let totalSize = 0;
 

@@ -582,7 +582,7 @@ class chatController {
             const chatData = {
                 id: chat.id,
                 title: chat.title || 'Untitled Chat',
-                is_workplace_created: (chat.is_workplace_created === true || chat.is_workplace_created === 1),
+                is_workspace_created: (chat.is_workspace_created === true || chat.is_workspace_created === 1),
                 session_id: chat.session_id,
                 total_token_count: chat.total_token_count || 0,
                 created_at: parseInt(chat.created_at),

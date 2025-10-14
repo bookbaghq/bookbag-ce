@@ -60,6 +60,8 @@ class grokController {
             const apiKey = obj?.params?.formData?.api_key || obj?.params?.api_key || '';
             const profileId = obj?.params?.formData?.profileId || obj?.params?.formData?.profile_id || obj?.params?.profileId || obj?.params?.profile_id || null;
             const contextSize = parseInt(obj?.params?.formData?.context_size || obj?.params?.context_size, 10);
+            const provider = obj?.params?.formData?.provider || obj?.params?.provider || 'grok';
+            const groundingMode = obj?.params?.formData?.grounding_mode || obj?.params?.grounding_mode || 'soft';
             if (!modelId) return this.returnJson({ success: false, error: 'modelId is required' });
 
             // Avoid duplicate install (by name)
@@ -74,6 +76,8 @@ class grokController {
             m.name = title || modelId;
             m.description = description || `Grok remote model - ${modelId}`;
             m.is_published = false;
+            m.provider = provider; // Set provider for routing
+            m.grounding_mode = groundingMode; // Set grounding mode
             m.created_at = now;
             m.updated_at = now;
 

@@ -16,9 +16,9 @@ class MailSmtpConnection {
 
     is_active(db){ db.boolean().default(true); }
 
-    created_at(db){ db.string().notNullable(); db.get(v=> v || Date.now()); }
+    created_at(db){ db.string().notNullable(); db.get(v=> v || Date.now().toString()); }
 
-    updated_at(db){ db.string().notNullable(); db.get(v=> v || Date.now()); }
+    updated_at(db){ db.string().notNullable(); db.get(v=> v || Date.now().toString()); }
 }
 
 module.exports = MailSmtpConnection;

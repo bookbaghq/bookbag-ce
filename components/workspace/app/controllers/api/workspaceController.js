@@ -246,7 +246,7 @@ class workspaceController {
             const now = Date.now().toString();
             const chat = new chatEntity();
             chat.created_at = now;
-            chat.is_workplace_created = true;
+            chat.is_workspace_created = true;
             chat.updated_at = now;
             chat.session_id = (require('crypto').randomBytes(16).toString('hex'));
             chat.total_token_count = 0;

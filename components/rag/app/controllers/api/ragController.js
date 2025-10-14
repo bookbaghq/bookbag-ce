@@ -16,13 +16,16 @@ class ragController {
             this._currentUser = req.authService.currentUser(req.request, req.userContext);
             this._ragContext = req.ragContext;
             this._chatContext = req.chatContext; // Add chat context for chat creation
+            this._mediaContext = req.mediaContext; // Add media context for settings
 
             // Lazy load services using relative paths
             const FileStorageService = require('../../service/fileStorageService');
             const RAGService = require('../../service/ragService');
+            const TextExtractorService = require('../../service/textExtractorService');
 
             this.fileService = new FileStorageService();
             this.ragService = new RAGService(this._ragContext);
+            this.textExtractor = new TextExtractorService();
 
             console.log('✓ ragController initialized successfully');
         } catch (error) {
@@ -41,6 +44,20 @@ class ragController {
     }
 
     /**
+     * Get storage limit from MediaSettings
+     * @returns {number} - Storage limit in MB
+     */
+    getStorageLimit() {
+        try {
+            const settings = this._mediaContext.MediaSettings.take(1).toList()[0];
+            return settings?.storage_limit_mb || 1024; // Default to 1GB if not set
+        } catch (error) {
+            console.warn('⚠️  Could not get storage limit from settings, using default 1024MB');
+            return 1024;
+        }
+    }
+
+    /**
      * Get storage usage for tenant
      * GET /storage/usage?tenantId=xxx
      */
@@ -51,8 +68,9 @@ class ragController {
             const usageBytes = await this.fileService.getTenantStorageUsage(tenantId);
             const usageMB = this.fileService.bytesToMB(usageBytes);
 
-            //TODO:  get storage quota or amount of data it cant have more based on settings
-            const quota = await this.fileService.checkStorageQuota(tenantId, 1024);
+            // Get storage limit from MediaSettings
+            const storageLimit = this.getStorageLimit();
+            const quota = await this.fileService.checkStorageQuota(tenantId, storageLimit);
 
             return this.returnJson({
                 success: true,
@@ -100,8 +118,8 @@ class ragController {
             }
 
             // Check storage quota before proceeding
-            //TODO:  get storage quota or amount of data it cant have more based on settings
-            const quota = await this.fileService.checkStorageQuota(tenantId, 1024);
+            const storageLimit = this.getStorageLimit();
+            const quota = await this.fileService.checkStorageQuota(tenantId, storageLimit);
             if (quota.exceeded) {
                 return this.returnJson({
                     success: false,
@@ -185,7 +203,7 @@ class ragController {
      * Ingest a new document
      * POST /ingest
      * Requires multipart/form-data with 'file' field
-     * Body: { file: File, chatId?: number, title?: string }
+     * Body: { file: File, chatId?: number, workspaceId?: number, title?: string }
      * If chatId is not provided, a new chat will be created
      */
     async ingestDocument(obj) {
@@ -209,10 +227,16 @@ class ragController {
 
             const tenantId = formData?.fields?.tenantId || formData?.tenantId || this.getTenantId();
             let chatId = formData?.fields?.chatId || formData?.chatId || null;
+            let workspaceId = formData?.fields?.workspaceId || formData?.workspaceId || null;
 
             // Parse chatId if it's a string
             if (chatId && typeof chatId === 'string') {
                 chatId = parseInt(chatId, 10);
+            }
+
+            // Parse workspaceId if it's a string
+            if (workspaceId && typeof workspaceId === 'string') {
+                workspaceId = parseInt(workspaceId, 10);
             }
 
             // Check if file was uploaded - handle multiple possible structures
@@ -261,8 +285,8 @@ class ragController {
             }
 
             // Check storage quota before proceeding
-            //TODO:  get storage quota or amount of data it cant have more based on settings
-            const quota = await this.fileService.checkStorageQuota(tenantId, 1024);
+            const storageLimit = this.getStorageLimit();
+            const quota = await this.fileService.checkStorageQuota(tenantId, storageLimit);
             if (quota.exceeded) {
                 // Clean up temp file
                 await this.fileService.deleteFile(tempPath);
@@ -280,19 +304,36 @@ class ragController {
                 originalName
             );
 
-            // Extract text from file (simple text read for now)
+            // Get file size
             const fs = require('fs').promises;
+            let fileSize = 0;
+            try {
+                const stats = await fs.stat(finalPath);
+                fileSize = stats.size;
+            } catch (err) {
+                console.warn('⚠️  Could not get file size:', err.message);
+            }
+
+            // Extract text from file using TextExtractor service
             let text = '';
 
             try {
-                text = await fs.readFile(finalPath, 'utf-8');
-            } catch (readError) {
-                console.error('⚠️  Could not read file as text:', readError.message);
-                text = `[Binary file: ${originalName}]`;
+                text = await this.textExtractor.extract(finalPath, mimeType);
+            } catch (extractError) {
+                console.error('❌ Text extraction failed:', extractError.message);
+                // Clean up the uploaded file if extraction fails
+                await this.fileService.deleteFile(finalPath);
+
+                return this.returnJson({
+                    success: false,
+                    error: `Failed to extract text from file: ${extractError.message}`,
+                    supportedFormats: this.textExtractor.getSupportedFormatsString()
+                });
             }
 
-            // If chatId is not provided, create a new chat (like message sending does)
-            if (!chatId) {
+            // If chatId is not provided AND no workspaceId, create a new chat (like message sending does)
+            // If workspaceId is provided, skip chat creation (workspace-level document)
+            if (!chatId && !workspaceId) {
                 const crypto = require('crypto');
                 const chatEntity = require(`${master.root}/components/chats/app/models/chat`);
                 const userChatEntity = require(`${master.root}/components/chats/app/models/userchat`);
@@ -320,17 +361,21 @@ class ragController {
                 userChat.updated_at = timestamp;
                 this._chatContext.UserChat.add(userChat);
                 this._chatContext.saveChanges();
+            } else if (workspaceId && !chatId) {
+                console.log(`✓ Uploading workspace-level document (workspaceId: ${workspaceId}, no chatId)`);
             }
 
-            // Ingest into RAG system with chatId
+            // Ingest into RAG system with chatId and/or workspaceId
             const documentId = await this.ragService.ingestDocument({
                 chatId,
+                workspaceId,
                 tenantId,
                 title: formData?.fields?.title || formData?.title || originalName,
                 filename: originalName,
                 filePath: finalPath,
                 text,
-                mimeType
+                mimeType,
+                fileSize
             });
 
             return this.returnJson({
@@ -356,17 +401,18 @@ class ragController {
     }
 
     /**
-     * List all documents for a chat
-     * GET /list?chatId=xxx
+     * List all documents for a chat or workspace
+     * GET /list?chatId=xxx OR /list?workspaceId=xxx
      */
     async listDocuments(obj) {
         try {
             const chatId = obj?.params?.query?.chatId;
+            const workspaceId = obj?.params?.query?.workspaceId;
 
-            if (!chatId) {
+            if (!chatId && !workspaceId) {
                 return this.returnJson({
                     success: false,
-                    error: 'chatId is required'
+                    error: 'chatId or workspaceId is required'
                 });
             }
 
@@ -377,36 +423,60 @@ class ragController {
                 });
             }
 
-            // Verify user has access to this chat
-            const membership = this._chatContext.UserChat
-                .where(uc => uc.chat_id == $$ && uc.user_id == $$, parseInt(chatId, 10), this._currentUser.id)
-                .single();
+            // Verify user has access
+            if (chatId) {
+                const membership = this._chatContext.UserChat
+                    .where(uc => uc.chat_id == $$ && uc.user_id == $$, parseInt(chatId, 10), this._currentUser.id)
+                    .single();
 
-            if (!membership) {
+                if (!membership) {
+                    return this.returnJson({
+                        success: false,
+                        error: 'Unauthorized'
+                    });
+                }
+
+                const documents = this._ragContext.Document
+                    .where(d => d.chat_id == $$, parseInt(chatId, 10))
+                    .toList()
+                    .sort((a, b) => b.created_at - a.created_at);
+
+                const results = documents.map(doc => ({
+                    id: doc.id,
+                    title: doc.title,
+                    filename: doc.filename,
+                    mimeType: doc.mime_type,
+                    createdAt: doc.created_at,
+                    updatedAt: doc.updated_at
+                }));
+
                 return this.returnJson({
-                    success: false,
-                    error: 'Unauthorized'
+                    success: true,
+                    documents: results
                 });
             }
 
-            const documents = this._ragContext.Document
-                .where(d => d.chat_id == $$, parseInt(chatId, 10))
-                .toList()
-                .sort((a, b) => b.created_at - a.created_at);
+            if (workspaceId) {
+                // For workspace, verify user is a member (admin only for now)
+                const documents = this._ragContext.Document
+                    .where(d => d.workspace_id == $$, parseInt(workspaceId, 10))
+                    .toList()
+                    .sort((a, b) => b.created_at - a.created_at);
 
-            const results = documents.map(doc => ({
-                id: doc.id,
-                title: doc.title,
-                filename: doc.filename,
-                mimeType: doc.mime_type,
-                createdAt: doc.created_at,
-                updatedAt: doc.updated_at
-            }));
+                const results = documents.map(doc => ({
+                    id: doc.id,
+                    title: doc.title,
+                    filename: doc.filename,
+                    mimeType: doc.mime_type,
+                    createdAt: doc.created_at,
+                    updatedAt: doc.updated_at
+                }));
 
-            return this.returnJson({
-                success: true,
-                documents: results
-            });
+                return this.returnJson({
+                    success: true,
+                    documents: results
+                });
+            }
 
         } catch (error) {
             console.error('❌ Error listing documents:', error);
@@ -570,17 +640,18 @@ class ragController {
     }
 
     /**
-     * Get statistics for a chat's knowledge base
-     * GET /stats?chatId=xxx
+     * Get statistics for a chat or workspace's knowledge base
+     * GET /stats?chatId=xxx OR /stats?workspaceId=xxx
      */
     async getStats(obj) {
         try {
             const chatId = obj?.params?.query?.chatId;
+            const workspaceId = obj?.params?.query?.workspaceId;
 
-            if (!chatId) {
+            if (!chatId && !workspaceId) {
                 return this.returnJson({
                     success: false,
-                    error: 'chatId is required'
+                    error: 'chatId or workspaceId is required'
                 });
             }
 
@@ -591,24 +662,56 @@ class ragController {
                 });
             }
 
-            // Verify user has access to this chat
-            const membership = this._chatContext.UserChat
-                .where(uc => uc.chat_id == $$ && uc.user_id == $$, parseInt(chatId, 10), this._currentUser.id)
-                .single();
+            if (chatId) {
+                // Verify user has access to this chat
+                const membership = this._chatContext.UserChat
+                    .where(uc => uc.chat_id == $$ && uc.user_id == $$, parseInt(chatId, 10), this._currentUser.id)
+                    .single();
 
-            if (!membership) {
+                if (!membership) {
+                    return this.returnJson({
+                        success: false,
+                        error: 'Unauthorized'
+                    });
+                }
+
+                const stats = await this.ragService.getChatStats(parseInt(chatId, 10));
+
                 return this.returnJson({
-                    success: false,
-                    error: 'Unauthorized'
+                    success: true,
+                    stats
                 });
             }
 
-            const stats = await this.ragService.getChatStats(parseInt(chatId, 10));
+            if (workspaceId) {
+                // Get workspace stats
+                const documents = this._ragContext.Document
+                    .where(d => d.workspace_id == $$, parseInt(workspaceId, 10))
+                    .toList();
 
-            return this.returnJson({
-                success: true,
-                stats
-            });
+                let chunkCount = 0;
+                let totalTokens = 0;
+
+                for (const doc of documents) {
+                    const docChunks = this._ragContext.DocumentChunk
+                        .where(c => c.document_id == $$, doc.id)
+                        .toList();
+                    chunkCount += docChunks.length;
+                    totalTokens += docChunks.reduce((sum, chunk) => sum + (chunk.token_count || 0), 0);
+                }
+
+                const stats = {
+                    documentCount: documents.length,
+                    chunkCount: chunkCount,
+                    totalTokens: totalTokens,
+                    avgChunksPerDoc: documents.length > 0 ? Math.round(chunkCount / documents.length) : 0
+                };
+
+                return this.returnJson({
+                    success: true,
+                    stats
+                });
+            }
 
         } catch (error) {
             console.error('❌ Error getting stats:', error);

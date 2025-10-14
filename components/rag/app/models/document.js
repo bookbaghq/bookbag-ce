@@ -10,7 +10,11 @@ class Document {
     }
 
     chat_id(db) {
-        db.integer().nullable(); // References Chat.id - null during initial upload, set after chat creation
+        db.integer().nullable(); // References Chat.id - for chat-specific documents
+    }
+
+    workspace_id(db) {
+        db.integer().nullable(); // References Workspace.id - for workspace-level shared documents
     }
 
     tenant_id(db) {
@@ -37,11 +41,15 @@ class Document {
         db.hasMany('DocumentChunk');
     }
 
+    file_size(db) {
+        db.integer().notNullable().default(0);
+    }
+
     created_at(db) {
         db.string().notNullable();
         db.get(function(value) {
             if (!value) {
-                return Date.now();
+                return Date.now().toString();
             } else {
                 return value;
             }
@@ -52,7 +60,7 @@ class Document {
         db.string().notNullable();
         db.get(function(value) {
             if (!value) {
-                return Date.now();
+                return Date.now().toString();
             } else {
                 return value;
             }

@@ -180,17 +180,32 @@ class llmConfigService {
             contextSizeValue = 0;
         }
 
+         // Auto-detect provider from server_url if not explicitly set
+         let provider = (m.provider || '').toLowerCase().trim();
+         if (!provider && m.server_url) {
+             const url = String(m.server_url).toLowerCase();
+             if (url.includes('x.ai')) provider = 'grok';
+             else if (url.includes('anthropic')) provider = 'anthropic';
+             else if (url.includes('openai')) provider = 'openai';
+             else provider = 'openai'; // Default fallback
+         }
+         if (!provider) provider = 'openai';
+
+         // Get grounding mode (strict or soft)
+         const groundingMode = (m.grounding_mode || '').toLowerCase().trim() || 'strict';
+
          return {
              id: String(m.id),
              name: m.name,
              description: m.description || '',
              server_url: m.server_url || '',
              api_key: m.api_key || '',
-             server_url: m.server_url || '',
              prompt_template: m.prompt_template || '',
              system_prompt: m.system_prompt || '',
              auto_trim_on: !!m.auto_trim_on,
              context_size: contextSizeValue,
+             provider: provider,
+             grounding_mode: groundingMode,
              settings
          };
     }

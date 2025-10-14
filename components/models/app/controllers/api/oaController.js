@@ -46,6 +46,8 @@ class oaController {
             const apiKey = obj?.params?.formData?.api_key || obj?.params?.api_key || '';
             const profileId = obj?.params?.formData?.profileId || obj?.params?.formData?.profile_id || obj?.params?.profileId || obj?.params?.profile_id || null;
             const contextSize = parseInt(obj?.params?.formData?.context_size || obj?.params?.context_size, 10);
+            const provider = obj?.params?.formData?.provider || obj?.params?.provider || 'openai';
+            const groundingMode = obj?.params?.formData?.grounding_mode || obj?.params?.grounding_mode || 'strict';
             if (!modelId) return this.returnJson({ success: false, error: 'modelId is required' });
 
             // Avoid duplicate install (by name)
@@ -60,6 +62,8 @@ class oaController {
             m.name = title || modelId;
             m.description = description || `OpenAI remote model - ${modelId}`;
             m.is_published = false;
+            m.provider = provider; // Set provider
+            m.grounding_mode = groundingMode; // Set grounding mode
             m.created_at = now;
             m.updated_at = now;
 
@@ -81,7 +85,7 @@ class oaController {
             this._modelContext.Model.add(m);
             this._modelContext.saveChanges();
 
-            return this.returnJson({ success: true, model: { id: m.id, name: m.name, server_url: m.server_url || '', api_key: m.api_key || '', profile_id: m.profile_id || m.Profile || null } });
+            return this.returnJson({ success: true, model: { id: m.id, name: m.name, server_url: m.server_url || '', api_key: m.api_key || '', profile_id: m.profile_id || m.Profile || null, provider: m.provider, grounding_mode: m.grounding_mode } });
         } catch (error) {
             return this.returnJson({ success:false, error: error.message });
         }

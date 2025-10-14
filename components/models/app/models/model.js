@@ -70,6 +70,14 @@ class Model {
         db.string().nullable();
     }
 
+    provider(db){
+        db.string().nullable().default('openai');
+    }
+
+    grounding_mode(db){
+        db.string().nullable().default('strict');
+    }
+
     is_published(db){
         db.boolean().default(false);
         db.get(function(value){

@@ -19,6 +19,90 @@ class chatSocket {
 		this.streamingService = deps.streamingService || StreamingService.getInstance();
 	}
 
+	/**
+	 * Inject RAG grounding instructions into message history
+	 *
+	 * ⚠️ CRITICAL: This runs ALWAYS, even when ragContext is empty.
+	 * This prevents the model from hallucinating when RAG finds no documents.
+	 *
+	 * @param {Array} messageHistory - The conversation history to modify (mutated in place)
+	 * @param {string} ragContext - Retrieved context from RAG (may be empty string)
+	 * @param {string} ragQueryText - Original user query text
+	 * @returns {void} - Modifies messageHistory in place
+	 */
+	/**
+	 * Inject RAG grounding instructions into message history
+	 * Uses grounding_mode from model config (strict or soft)
+	 */
+	_injectRAGGrounding(messageHistory, ragContext, ragQueryText) {
+		let hasContext = ragContext && ragContext.trim().length > 0;
+
+		// 🔥 Trim overly large context to prevent context window overflow
+		const MAX_CONTEXT_CHARS = 12000;
+		if (hasContext && ragContext.length > MAX_CONTEXT_CHARS) {
+			console.warn(`⚠️  RAG: Truncating context from ${ragContext.length} to ${MAX_CONTEXT_CHARS} chars`);
+			ragContext = ragContext.slice(0, MAX_CONTEXT_CHARS) + '\n\n[...TRUNCATED FOR LENGTH...]';
+		}
+
+		// Only inject if we have context - skip injection entirely when no documents found
+		if (!hasContext) {
+			console.log(`ℹ️  RAG: No context found - skipping RAG grounding to allow normal model behavior`);
+			return;
+		}
+
+		// Get grounding mode from model config (DB-driven)
+		const groundingMode = (this.modelConfig?.grounding_mode || 'strict').toLowerCase();
+		const isSoftMode = groundingMode === 'soft';
+
+		console.log(`📚 RAG: Found context (${ragContext.length} chars) - Grounding mode: ${groundingMode}`);
+
+		const existingSystemPrompt = this.modelConfig.system_prompt || '';
+
+		// Build grounding instructions based on grounding_mode
+		let systemPromptWithContext;
+		if (isSoftMode) {
+			// Soft grounding - allows model flexibility (good for Grok, Claude)
+			systemPromptWithContext = `${existingSystemPrompt}
+
+--- Retrieved Knowledge Base Context ---
+${ragContext}
+--- End of Retrieved Context ---
+
+Use the information provided above to help answer the user's question. If the context contains relevant information, prioritize it in your response. If the context doesn't contain relevant information, you may use your general knowledge but mention that the information wasn't found in the knowledge base.`;
+		} else {
+			// Strict grounding - forces context-only answers (good for OpenAI)
+			systemPromptWithContext = `${existingSystemPrompt}
+
+--- Retrieved Knowledge Base Context ---
+${ragContext}
+--- End of Retrieved Context ---
+
+**INSTRUCTIONS:**
+Answer the user's question using the information provided between the "Retrieved Knowledge Base Context" markers above.
+- If the answer is present there, use it in your response.
+- If it is NOT present, reply: "I don't know based on the provided documents."
+- Prioritize the retrieved context over your general knowledge.`;
+		}
+
+		// Inject or update system message in history
+		const systemMsgIndex = messageHistory.findIndex(m => m.role === 'system');
+		if (systemMsgIndex >= 0) {
+			messageHistory[systemMsgIndex].content = systemPromptWithContext;
+		} else {
+			messageHistory.unshift({ role: 'system', content: systemPromptWithContext });
+		}
+
+		console.log(`✅ RAG: Context injected into system prompt (${groundingMode} mode)`);
+
+		// 🔥 Log final message history for debugging (optional, controlled by env var)
+		const DEBUG_MESSAGE_HISTORY = process.env.DEBUG_MESSAGE_HISTORY === 'true';
+		if (DEBUG_MESSAGE_HISTORY) {
+			console.log("\n📨 FINAL MESSAGE HISTORY AFTER RAG GROUNDING:");
+			console.log(JSON.stringify(messageHistory, null, 2));
+			console.log("\n");
+		}
+	}
+
 	// Client emits: socket.emit('start', { chatId, modelId, userMessageId, noThinking })
 	async start(data, socket /*, io */) {
 		// High-level flow: auth -> params -> model -> history -> placeholder -> stream -> persist -> finalize
@@ -56,24 +140,37 @@ class chatSocket {
 			this.modelSettings = this.modelConfig.settings || {};
 
 			// Workspace-aware overrides: prompt template, system prompt, and settings via workspace Profile/Overrides
+			// IMPORTANT: Declare workspaceId at function scope so RAG query can access it later
+			let workspaceId = null;
 			try {
 				// Attempt to detect if chat is workspace-created and load its workspace
 				let isWorkspaceCreated = false;
-				let workspaceId = null;
 				try {
-					const chatEntity = chatContext.Chat.where(r => r.id == $$, chatId || 0).single();
-					isWorkspaceCreated = !!(chatEntity && (chatEntity.is_workplace_created === true || chatEntity.is_workplace_created === 1));
+					const chatIdNum = parseInt(chatId, 10) || 0;
+					const chatEntity = chatContext?.Chat?.where?.(r => r.id == $$, chatIdNum)?.single();
+					// Check if chat is workspace-created using the is_workspace_created column
+					isWorkspaceCreated = !!(chatEntity && (chatEntity.is_workspace_created === true || chatEntity.is_workspace_created === 1));
 				} catch (_) {}
+				console.log(`🔍 Workspace Detection: Chat ${chatId} - isWorkspaceCreated = ${isWorkspaceCreated}`);
 				if (isWorkspaceCreated) {
-					let workspaceContext = null;
-					try { workspaceContext = (master.requestList && master.requestList.workspaceContext) ? master.requestList.workspaceContext : null; } catch (_) { workspaceContext = null; }
-					if (workspaceContext) {
+					// Access workspace context from master singleton
+					
+					const workspaceContext = master.requestList.workspaceContext;
+					if (!workspaceContext) {
+						console.warn(`⚠️  Workspace context singleton not found`);
+					} else {
 						try {
-							const link = workspaceContext.WorkspaceChat.where(r => r.chat_id == $$, chatId).toList()[0];
+							const chatIdNum = parseInt(chatId, 10) || 0;
+							const link = workspaceContext.WorkspaceChat.where(r => r.chat_id == $$, chatIdNum).toList()[0];
 							workspaceId = link ? link.workspace_id : null;
-						} catch (_) { workspaceId = null; }
+							console.log(`✅ Found workspace link: workspaceId = ${workspaceId}`);
+						} catch (err) {
+							console.warn(`⚠️  Failed to query workspace link:`, err.message);
+							workspaceId = null;
+						}
 					}
-					if (workspaceId) {
+
+					if (workspaceId && workspaceContext) {
 						try {
 							const ws = workspaceContext.Workspace.where(r => r.id == $$, workspaceId).single();
 							// 1) prompt_template override (if provided on workspace)
@@ -88,28 +185,47 @@ class chatSocket {
 							// 3) Build settings from workspace Profile + ModelOverrides(workspace)
 							const modelCtxFactory = require(`${master.root}/components/models/app/models/modelContext`);
 							const mctx = new modelCtxFactory();
+
 							// Resolve workspace profile and rules
 							let rules = [];
 							try {
-								const profileId = ws.profile_id || ws.Profile?.id;
+								const profileId = ws.profile_id ?? ws.Profile?.id;
 								if (profileId) {
 									const prof = mctx.Profiles.where(r => r.id == $$, profileId).single();
 									const pr = prof?.ProfileFieldRules;
 									rules = pr?.toList ? pr.toList() : (Array.isArray(pr) ? pr : (pr ? [pr] : []));
 								}
 							} catch (_) { rules = []; }
+
+							// Short-circuit if no rules
+							if (rules.length === 0) {
+								console.warn(`ℹ️  Workspace ${workspaceId} has no ProfileFieldRules.`);
+							}
+
 							const defaults = {}; const ruleMeta = {};
 							for (const r of rules) {
 								if (!r || !r.name) continue;
 								defaults[r.name] = r.default_value;
 								ruleMeta[r.name] = { field_type: (r.field_type || '').toString().toLowerCase(), range: (r.range || '').toString() };
 							}
+
+							// Helper: Parse stop_strings robustly
+							const parseStopStrings = (val) => {
+								if (Array.isArray(val)) return val;
+								if (typeof val === 'string') {
+									try { const parsed = JSON.parse(val); if (Array.isArray(parsed)) return parsed; } catch (_) {}
+									return val.split(',').map(s => s.trim()).filter(Boolean);
+								}
+								return [];
+							};
+
 							// Workspace-specific overrides
 							let overrides = [];
 							try {
 								const raw = mctx.ModelOverrides.where(o => o.workspace_id == $$, workspaceId).toList();
 								overrides = Array.isArray(raw) ? raw : (raw ? [raw] : []);
 							} catch (_) { overrides = []; }
+
 							const effective = { ...defaults };
 							for (const ov of overrides) {
 								try {
@@ -117,15 +233,17 @@ class chatSocket {
 										if (ru.id === ov.profile_field_rule_id) {
 											const key = ru.name;
 											if (key === 'stop_strings') {
-												effective['stop_strings'] = ov.StopStrings || ov.stop_strings || ov.stop || [];
+												effective['stop_strings'] = parseStopStrings(ov.StopStrings ?? ov.stop_strings ?? ov.stop ?? ov.value);
 											} else if (typeof ov.value !== 'undefined' && ov.value !== null) {
 												effective[key] = ov.value;
 											}
 										}
 									}
 								} catch (_) {}
-							// Coercion copied from llmConfigService
-							const coerceByType = (type, value, rangeStr) => {
+							}
+
+							// Coercion helper
+							const coerceByType = (type, value) => {
 								const t = (type || '').toLowerCase();
 								if (value === null || typeof value === 'undefined') return undefined;
 								if (t === 'integer' || t === 'int') { const n = parseInt(value, 10); return Number.isFinite(n) ? n : undefined; }
@@ -144,10 +262,13 @@ class chatSocket {
 								}
 								return String(value);
 							};
+
 							const wsSettings = {};
 							for (const key of Object.keys(effective)) {
-								const meta = ruleMeta[key] || { field_type: 'string', range: '' };
-								const coerced = coerceByType(meta.field_type, effective[key], meta.range);
+								const meta = ruleMeta[key] || { field_type: 'string' };
+								const coerced = (key === 'stop_strings')
+									? parseStopStrings(effective[key])
+									: coerceByType(meta.field_type, effective[key]);
 								if (typeof coerced !== 'undefined') wsSettings[key] = coerced;
 							}
 
@@ -159,9 +280,10 @@ class chatSocket {
 								settings: Object.keys(wsSettings).length > 0 ? wsSettings : (this.modelConfig.settings || {})
 							};
 							this.modelSettings = this.modelConfig.settings || {};
-						}
+
+							console.log(`✅ Workspace ${workspaceId} overrides applied successfully`);
 						} catch (e) {
-							console.error('⚠️ Workspace overrides failed:', e?.message);
+							console.error('⚠️  Workspace overrides failed:', e?.message);
 						}
 					}
 				}
@@ -221,11 +343,17 @@ class chatSocket {
 				const lastUserMessage = [...messageHistory].reverse().find(m => m.role === 'user');
 				if (lastUserMessage && lastUserMessage.content) {
 					ragQueryText = lastUserMessage.content; // Save the query text
-					console.log(`🔍 RAG: Querying knowledge base for chat ${chatId}...`);
+					console.log(`🔍 RAG: Querying knowledge base for chat ${chatId}${workspaceId ? ` (workspace ${workspaceId})` : ' (no workspace)'}...`);
+					console.log(`🔍 RAG: workspaceId = ${workspaceId}, chatId = ${chatId}`);
 					console.log(`🔍 RAG: Query text: "${ragQueryText}"`);
 
-					// Query the knowledge base (top 5 most relevant chunks)
-					const results = await ragService.queryRAG(parseInt(chatId, 10), ragQueryText, 5);
+					// Query the knowledge base with layered retrieval (workspace + chat documents)
+					const results = await ragService.queryRAG({
+						chatId: parseInt(chatId, 10),
+						workspaceId: workspaceId ? parseInt(workspaceId, 10) : null,
+						question: ragQueryText,
+						k: 5
+					});
 
 					if (results && results.length > 0) {
 						console.log(`✅ RAG: Found ${results.length} relevant chunks (top score: ${results[0].score.toFixed(4)})`);
@@ -243,59 +371,9 @@ class chatSocket {
 				console.warn('⚠️  RAG query failed (non-fatal):', ragErr.message);
 			}
 
-			// Inject RAG context with STRONG grounding instructions if available
-			if (ragContext) {
-				// ✅ FIX 1: Strengthen system instruction with mandatory language
-				const existingSystemPrompt = this.modelConfig.system_prompt || '';
-				const systemPromptWithContext = `${existingSystemPrompt}
-
---- Retrieved Knowledge Base Context ---
-${ragContext}
---- End of Retrieved Context ---
-
-**CRITICAL INSTRUCTIONS:**
-You MUST answer the user's question **only** using the information contained between the "Retrieved Knowledge Base Context" markers above.
-- If the answer is present there, return it directly and concisely.
-- If it is NOT present, reply EXACTLY: "I don't know based on the provided documents."
-- Do NOT answer from your own knowledge or speculate beyond the retrieved context.
-- Do NOT ask clarifying questions.
-- Respond directly based ONLY on the retrieved context.`;
-
-				// Inject or update system message in history
-				const systemMsgIndex = messageHistory.findIndex(m => m.role === 'system');
-				if (systemMsgIndex >= 0) {
-					// Append to existing system message rather than replacing it
-					messageHistory[systemMsgIndex].content = systemPromptWithContext;
-				} else {
-					// Prepend system message with RAG context
-					messageHistory.unshift({ role: 'system', content: systemPromptWithContext });
-				}
-
-				// ✅ FIX 2 & 3: Inject retrieved context directly into the user message for stronger grounding
-				// Use bulletproof injection that safely finds and modifies the last user message
-				const lastUserMsg = [...messageHistory].reverse().find(m => m.role === 'user');
-
-				if (lastUserMsg && typeof lastUserMsg.content === 'string' && lastUserMsg.content.trim()) {
-					// Create strongly grounded user message with context + mandatory instructions
-					// Fallback to original content if ragQueryText is missing
-					const userQuestion = ragQueryText || lastUserMsg.content;
-
-					const groundedUserMessage = `Context from Knowledge Base:
-
-${ragContext || '[NO CONTEXT FOUND]'}
-
-Instructions: Answer the following question ONLY using the context provided above. If the answer is not in the context, reply: "I don't know based on the provided documents."
-
-Question: ${userQuestion}`;
-
-					lastUserMsg.content = groundedUserMessage;
-					console.log(`✅ RAG: Context injected into both system prompt AND user message for maximum grounding`);
-					console.log(`✅ RAG: Final grounded user message (first 300 chars):`, groundedUserMessage.slice(0, 300) + "...");
-				} else {
-					console.warn(`⚠️  No valid user message found. Skipping user message injection.`);
-					console.log(`✅ RAG: Context injected into system prompt only (${ragContext.split('\n').length} lines)`);
-				}
-			}
+			// 🔥 ALWAYS inject RAG grounding - even when no context is found
+			// This prevents the model from hallucinating when RAG returns no results
+			this._injectRAGGrounding(messageHistory, ragContext, ragQueryText);
 
 			// Apply server-side auto-trim if enabled and model defines a real context_size
 			try {
@@ -407,11 +485,14 @@ Question: ${userQuestion}`;
 					return msg.content && msg.content.trim() && msg.content.trim() !== '-';
 				});
 
-				// 📨 DEBUG: Log the final message history being sent to the LLM
-				console.log("📨 FINAL MESSAGE HISTORY SENT TO LLM (after filtering placeholder):");
-				console.log(JSON.stringify(messageHistory, null, 2));
+				// 📨 DEBUG: Log the final message history being sent to the LLM (only in development)
+				const DEBUG_MESSAGE_HISTORY = process.env.DEBUG_MESSAGE_HISTORY === 'true';
+				if (DEBUG_MESSAGE_HISTORY) {
+					console.log("📨 FINAL MESSAGE HISTORY SENT TO LLM (after filtering placeholder):");
+					console.log(JSON.stringify(messageHistory, null, 2));
+				}
 
-				generationResult = await this.modelService._generateViaOpenAICompatible(
+				generationResult = await this.modelService._generate(
 					messageHistory,
 					tokenCallback,
 					noThinking,
