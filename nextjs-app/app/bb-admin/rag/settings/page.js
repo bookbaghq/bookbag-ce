@@ -153,7 +153,7 @@ export default function RagSettingsPage() {
                 Disable RAG for Workspaces
               </Label>
               <p className="text-sm text-muted-foreground">
-                Prevent workspace-level RAG functionality. Users won't be able to upload
+                Prevent workspace-level RAG functionality. Users won&apos;t be able to upload
                 shared documents at the workspace level or use workspace knowledge bases.
               </p>
             </div>

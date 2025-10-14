@@ -337,33 +337,41 @@ Answer the user's question using the information provided between the "Retrieved
 			try {
 				// Initialize RAG service (using module-level imports for efficiency)
 				const ragCtx = new RAGContext();
-				const ragService = new RAGService(ragCtx);
 
-				// Get the user's last message to use as the query (reverse find is faster for long histories)
-				const lastUserMessage = [...messageHistory].reverse().find(m => m.role === 'user');
-				if (lastUserMessage && lastUserMessage.content) {
-					ragQueryText = lastUserMessage.content; // Save the query text
-					console.log(`🔍 RAG: Querying knowledge base for chat ${chatId}${workspaceId ? ` (workspace ${workspaceId})` : ' (no workspace)'}...`);
-					console.log(`🔍 RAG: workspaceId = ${workspaceId}, chatId = ${chatId}`);
-					console.log(`🔍 RAG: Query text: "${ragQueryText}"`);
+				// Check if RAG should be skipped based on settings
+				const shouldSkip = RAGService.shouldSkipRAG(ragCtx, chatContext, chatId);
 
-					// Query the knowledge base with layered retrieval (workspace + chat documents)
-					const results = await ragService.queryRAG({
-						chatId: parseInt(chatId, 10),
-						workspaceId: workspaceId ? parseInt(workspaceId, 10) : null,
-						question: ragQueryText,
-						k: 5
-					});
+				if (shouldSkip) {
+					console.log('⏭️  RAG: Skipping due to settings');
+				} else {
+					const ragService = new RAGService(ragCtx);
 
-					if (results && results.length > 0) {
-						console.log(`✅ RAG: Found ${results.length} relevant chunks (top score: ${results[0].score.toFixed(4)})`);
+					// Get the user's last message to use as the query (reverse find is faster for long histories)
+					const lastUserMessage = [...messageHistory].reverse().find(m => m.role === 'user');
+					if (lastUserMessage && lastUserMessage.content) {
+						ragQueryText = lastUserMessage.content; // Save the query text
+						console.log(`🔍 RAG: Querying knowledge base for chat ${chatId}${workspaceId ? ` (workspace ${workspaceId})` : ' (no workspace)'}...`);
+						console.log(`🔍 RAG: workspaceId = ${workspaceId}, chatId = ${chatId}`);
+						console.log(`🔍 RAG: Query text: "${ragQueryText}"`);
 
-						// Build context string from retrieved documents
-						ragContext = ragService.buildContextString(results);
+						// Query the knowledge base with layered retrieval (workspace + chat documents)
+						const results = await ragService.queryRAG({
+							chatId: parseInt(chatId, 10),
+							workspaceId: workspaceId ? parseInt(workspaceId, 10) : null,
+							question: ragQueryText,
+							k: 5
+						});
 
-						console.log(`📚 RAG: Context length: ${ragContext.length} characters`);
-					} else {
-						console.log(`ℹ️  RAG: No relevant documents found for this query`);
+						if (results && results.length > 0) {
+							console.log(`✅ RAG: Found ${results.length} relevant chunks (top score: ${results[0].score.toFixed(4)})`);
+
+							// Build context string from retrieved documents
+							ragContext = ragService.buildContextString(results);
+
+							console.log(`📚 RAG: Context length: ${ragContext.length} characters`);
+						} else {
+							console.log(`ℹ️  RAG: No relevant documents found for this query`);
+						}
 					}
 				}
 			} catch (ragErr) {

@@ -35,6 +35,90 @@ class ragController {
     }
 
     /**
+     * Get RAG settings
+     * @returns {object} - Settings object with disable flags
+     */
+    getRAGSettings() {
+        try {
+            let settings = this._ragContext.Settings.single();
+
+            if (!settings) {
+                // Return default settings if none exist
+                return {
+                    disable_rag: false,
+                    disable_rag_chat: false,
+                    disable_rag_workspace: false
+                };
+            }
+
+            return {
+                disable_rag: settings.disable_rag || false,
+                disable_rag_chat: settings.disable_rag_chat || false,
+                disable_rag_workspace: settings.disable_rag_workspace || false
+            };
+        } catch (error) {
+            console.error('❌ Error getting RAG settings:', error);
+            // Return safe defaults on error
+            return {
+                disable_rag: false,
+                disable_rag_chat: false,
+                disable_rag_workspace: false
+            };
+        }
+    }
+
+    /**
+     * Check if RAG is disabled for a specific chat
+     * @param {number} chatId - Chat ID to check
+     * @returns {object} - { disabled: boolean, reason: string }
+     */
+    checkRAGDisabled(chatId = null, workspaceId = null) {
+        const settings = this.getRAGSettings();
+
+        // Check if RAG is globally disabled
+        if (settings.disable_rag) {
+            return { disabled: true, reason: 'RAG system is disabled' };
+        }
+
+        // If it's a workspace document (workspaceId provided, no chatId)
+        if (workspaceId && !chatId) {
+            if (settings.disable_rag_workspace) {
+                return { disabled: true, reason: 'RAG for workspaces is disabled' };
+            }
+            return { disabled: false };
+        }
+
+        // If it's a chat document (chatId provided)
+        if (chatId) {
+            // Get chat to check if it's workspace-created
+            const chat = this._chatContext.Chat
+                .where(c => c.id == $$, parseInt(chatId, 10))
+                .single();
+
+            if (!chat) {
+                return { disabled: true, reason: 'Chat not found' };
+            }
+
+            // Workspace-created chats bypass the disable_rag_chat setting
+            if (chat.is_workspace_created) {
+                // Only check if workspace RAG is disabled
+                if (settings.disable_rag_workspace) {
+                    return { disabled: true, reason: 'RAG for workspaces is disabled' };
+                }
+                return { disabled: false };
+            } else {
+                // Non-workspace chats check the disable_rag_chat setting
+                if (settings.disable_rag_chat) {
+                    return { disabled: true, reason: 'RAG for chats is disabled' };
+                }
+                return { disabled: false };
+            }
+        }
+
+        return { disabled: false };
+    }
+
+    /**
      * Get tenant ID from current user
      * @returns {string} - Tenant identifier
      */
@@ -229,6 +313,15 @@ class ragController {
             let chatId = formData?.fields?.chatId || formData?.chatId || null;
             let workspaceId = formData?.fields?.workspaceId || formData?.workspaceId || null;
 
+            // Check if RAG is disabled
+            const ragCheck = this.checkRAGDisabled(chatId, workspaceId);
+            if (ragCheck.disabled) {
+                return this.returnJson({
+                    success: false,
+                    error: ragCheck.reason
+                });
+            }
+
             // Parse chatId if it's a string
             if (chatId && typeof chatId === 'string') {
                 chatId = parseInt(chatId, 10);
@@ -420,6 +513,18 @@ class ragController {
                 return this.returnJson({
                     success: false,
                     error: 'User not authenticated'
+                });
+            }
+
+            // Check if RAG is disabled
+            const ragCheck = this.checkRAGDisabled(chatId, workspaceId);
+            if (ragCheck.disabled) {
+                // Return empty list when disabled
+                return this.returnJson({
+                    success: true,
+                    documents: [],
+                    disabled: true,
+                    reason: ragCheck.reason
                 });
             }
 
@@ -659,6 +764,23 @@ class ragController {
                 return this.returnJson({
                     success: false,
                     error: 'User not authenticated'
+                });
+            }
+
+            // Check if RAG is disabled
+            const ragCheck = this.checkRAGDisabled(chatId, workspaceId);
+            if (ragCheck.disabled) {
+                // Return zero stats when disabled
+                return this.returnJson({
+                    success: true,
+                    stats: {
+                        documentCount: 0,
+                        chunkCount: 0,
+                        totalTokens: 0,
+                        avgChunksPerDoc: 0
+                    },
+                    disabled: true,
+                    reason: ragCheck.reason
                 });
             }
 

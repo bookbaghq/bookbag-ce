@@ -34,6 +34,81 @@ class RAGService {
     }
 
     /**
+     * Static helper to check if RAG should be skipped based on settings and chat type
+     * @param {object} ragContext - RAG database context
+     * @param {object} chatContext - Chat database context
+     * @param {number} chatId - Chat ID to check
+     * @returns {boolean} - true if RAG should be skipped, false if RAG should be used
+     */
+    static shouldSkipRAG(ragContext, chatContext, chatId) {
+        try {
+            // Get RAG settings
+            let settings = null;
+            try {
+                settings = ragContext.Settings.single();
+            } catch (err) {
+                console.log('⚠️  Could not load RAG settings, using defaults (RAG enabled)');
+                return false; // Default to RAG enabled if settings cannot be loaded
+            }
+
+            // If no settings exist, default to RAG enabled
+            if (!settings) {
+                return false;
+            }
+
+            // Rule 1: Check if RAG is globally disabled
+            if (settings.disable_rag) {
+                console.log('🚫 RAG: Globally disabled (disable_rag = true)');
+                return true; // Skip RAG
+            }
+
+            // If chatId is not provided, allow RAG (for backward compatibility)
+            if (!chatId) {
+                return false;
+            }
+
+            // Get the chat to check if it's workspace-created
+            let chat = null;
+            try {
+                chat = chatContext.Chat
+                    .where(c => c.id == $$, parseInt(chatId, 10))
+                    .single();
+            } catch (err) {
+                console.log(`⚠️  Could not load chat ${chatId}, allowing RAG by default`);
+                return false; // Default to RAG enabled if chat cannot be loaded
+            }
+
+            if (!chat) {
+                console.log(`⚠️  Chat ${chatId} not found, allowing RAG by default`);
+                return false;
+            }
+
+            const isWorkspaceCreated = chat.is_workspace_created === true || chat.is_workspace_created === 1;
+
+            // Rule 2: If workspace RAG is disabled and this is a workspace chat, skip RAG
+            if (settings.disable_rag_workspace && isWorkspaceCreated) {
+                console.log(`🚫 RAG: Disabled for workspace chats (disable_rag_workspace = true, chat ${chatId} is workspace-created)`);
+                return true; // Skip RAG
+            }
+
+            // Rule 3: If chat RAG is disabled and this is NOT a workspace chat, skip RAG
+            if (settings.disable_rag_chat && !isWorkspaceCreated) {
+                console.log(`🚫 RAG: Disabled for regular chats (disable_rag_chat = true, chat ${chatId} is not workspace-created)`);
+                return true; // Skip RAG
+            }
+
+            // All checks passed, RAG should be used
+            console.log(`✅ RAG: Enabled for chat ${chatId} (workspace-created: ${isWorkspaceCreated})`);
+            return false; // Use RAG
+
+        } catch (error) {
+            console.error('❌ Error checking RAG settings:', error.message);
+            // On error, default to RAG enabled (safer for backward compatibility)
+            return false;
+        }
+    }
+
+    /**
      * Calculate cosine similarity between two vectors
      * @param {number[]} vectorA - First vector
      * @param {number[]} vectorB - Second vector
@@ -122,8 +197,7 @@ class RAGService {
      * @returns {Promise<number>} - Document ID
      */
     async ingestDocument({ chatId = null, workspaceId = null, tenantId = null, title, filename, filePath, text, mimeType = null, fileSize = 0 }) {
-        console.log(`\n📥 INGESTING DOCUMENT: ${title}`);
-        console.log(`   Scope: ${workspaceId ? `Workspace ${workspaceId}` : chatId ? `Chat ${chatId}` : 'Legacy tenant'}`);
+     
 
         // Create document record in MySQL/SQLite (metadata + full text)
         const DocumentModel = require('../models/document');
@@ -143,19 +217,18 @@ class RAGService {
         this.context.saveChanges();
 
         const documentId = document.id;
-        console.log(`   ✓ Created document record: ID ${documentId}`);
+        
 
         // Chunk the text using LangChain splitter
-        console.log(`   🔪 Chunking text...`);
+     
         const chunks = await this.chunkText(text);
-        console.log(`   ✓ Created ${chunks.length} chunks`);
-
+     
         // Generate embeddings for all chunks in batch
-        console.log(`   🧠 Generating embeddings for ${chunks.length} chunks...`);
+     
         const startTime = Date.now();
         const embeddings = await this.embeddingService.embedBatch(chunks);
         const embeddingTime = Date.now() - startTime;
-        console.log(`   ✓ Generated ${embeddings.length} embeddings in ${embeddingTime}ms`);
+    
 
         // Store chunks with embeddings in database
         const DocumentChunkModel = require('../models/documentChunk');
@@ -173,8 +246,6 @@ class RAGService {
         }
         this.context.saveChanges();
 
-        console.log(`   ✅ Document ingestion complete! (${chunks.length} chunks with embeddings stored)\n`);
-
         return documentId;
     }
 
@@ -189,21 +260,15 @@ class RAGService {
      * @returns {Promise<Array>} - Array of relevant chunks with scores
      */
     async queryRAG({ chatId = null, workspaceId = null, question, k = 5 }) {
-        console.log(`\n🔍 RAG QUERY: "${question.substring(0, 50)}..."`);
-        console.log(`   Scope: ${workspaceId ? `Workspace ${workspaceId}` : ''}${workspaceId && chatId ? ' + ' : ''}${chatId ? `Chat ${chatId}` : ''}`);
-
-        // Generate embedding for the question
-        console.log(`   🧠 Generating query embedding...`);
+ 
         const questionEmbedding = await this.generateEmbedding(question);
-        console.log(`   ✓ Generated question embedding (${questionEmbedding.length} dims)`);
-
+       
         // 🔍 Step 1: Retrieve workspace-level documents (if workspaceId exists)
         let workspaceDocuments = [];
         if (workspaceId) {
             workspaceDocuments = this.context.Document
                 .where(d => d.workspace_id == $$, workspaceId)
                 .toList();
-            console.log(`   📚 Found ${workspaceDocuments.length} workspace-level documents`);
         }
 
         // 🔍 Step 2: Retrieve chat-specific documents (if chatId exists)
@@ -212,7 +277,6 @@ class RAGService {
             chatDocuments = this.context.Document
                 .where(d => d.chat_id == $$, chatId)
                 .toList();
-            console.log(`   📚 Found ${chatDocuments.length} chat-specific documents`);
         }
 
         // Merge and deduplicate documents
@@ -223,24 +287,18 @@ class RAGService {
         );
 
         if (documents.length === 0) {
-            console.log(`   ⚠️  No documents found`);
             return [];
         }
-
-        console.log(`   📚 Total unique documents: ${documents.length}`);
-
+      
         // Get all chunks for these documents
         const documentIds = documents.map(d => d.id);
         const allChunks = this.context.DocumentChunk.toList();
         const chunks = allChunks.filter(c => documentIds.includes(c.document_id));
 
-        console.log(`   📄 Processing ${chunks.length} chunks...`);
-
         // 🧠 Step 3: Calculate similarity for each chunk, merge, deduplicate, sort
         const scoredChunks = [];
         for (const chunk of chunks) {
-            if (!chunk.embedding) {
-                console.warn(`   ⚠️  Chunk ${chunk.id} has no embedding, skipping`);
+            if (!chunk.embedding) { 
                 continue;
             }
 
@@ -276,13 +334,10 @@ class RAGService {
         scoredChunks.sort((a, b) => b.score - a.score);
         const topResults = scoredChunks.slice(0, k);
 
-        console.log(`   ✅ Found ${topResults.length} relevant chunks`);
+   
         if (topResults.length > 0) {
-            console.log(`   📈 Top score: ${topResults[0].score.toFixed(4)} (${topResults[0].source})`);
-            console.log(`   📉 Lowest score: ${topResults[topResults.length - 1].score.toFixed(4)} (${topResults[topResults.length - 1].source})`);
             const workspaceCount = topResults.filter(r => r.source === 'workspace').length;
             const chatCount = topResults.filter(r => r.source === 'chat').length;
-            console.log(`   🔹 Workspace chunks: ${workspaceCount}, Chat chunks: ${chatCount}`);
         }
 
         return topResults;
@@ -319,8 +374,7 @@ class RAGService {
      * @returns {Promise<void>}
      */
     async deleteDocumentChunks(documentId) {
-        console.log(`🗑️  Deleting chunks for document ${documentId}`);
-
+       
         // Delete chunks from database
         const chunks = this.context.DocumentChunk
             .where(c => c.document_id == $$, documentId)
@@ -330,8 +384,6 @@ class RAGService {
             this.context.DocumentChunk.remove(chunk);
         }
         this.context.saveChanges();
-
-        console.log(`✅ Chunks deleted (${chunks.length} chunks)`);
     }
 
     /**

@@ -670,7 +670,7 @@ sendMail();`;
               <div>
                 <h3 className="font-medium text-foreground mb-2">What to Check</h3>
                 <ul className="list-disc list-inside space-y-1 ml-2">
-                  <li>Verify the email arrives in the recipient's inbox</li>
+                  <li>Verify the email arrives in the recipient&apos;s inbox</li>
                   <li>Check that the From address matches your settings</li>
                   <li>Ensure the email is not marked as spam</li>
                   <li>Confirm that any custom headers or settings are applied</li>

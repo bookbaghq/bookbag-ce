@@ -108,6 +108,7 @@ export function KnowledgeBaseSidebar({ chatId = null, isWorkspaceCreated = false
     if (chatId && !ragDisabled) {
       refreshData();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatId, ragDisabled]);
 
   const fetchRAGSettings = async () => {
@@ -737,7 +738,7 @@ export function KnowledgeBaseSidebar({ chatId = null, isWorkspaceCreated = false
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Document</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{documentToDelete?.title}"? This action cannot be undone
+              Are you sure you want to delete &quot;{documentToDelete?.title}&quot;? This action cannot be undone
               and will permanently remove the document from your knowledge base.
             </AlertDialogDescription>
           </AlertDialogHeader>

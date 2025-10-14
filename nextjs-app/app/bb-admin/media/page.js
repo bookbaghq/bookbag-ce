@@ -50,6 +50,7 @@ export default function MediaPage() {
   useEffect(() => {
     fetchFiles();
     fetchStats();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pagination.page]);
 
   useEffect(() => {
@@ -62,6 +63,7 @@ export default function MediaPage() {
     }, 500);
 
     return () => clearTimeout(delaySearch);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm]);
 
   const fetchFiles = async () => {
@@ -324,7 +326,7 @@ export default function MediaPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete File</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{selectedFile?.filename}"? This action cannot be undone
+              Are you sure you want to delete &quot;{selectedFile?.filename}&quot;? This action cannot be undone
               and will permanently remove the file from storage.
             </AlertDialogDescription>
           </AlertDialogHeader>

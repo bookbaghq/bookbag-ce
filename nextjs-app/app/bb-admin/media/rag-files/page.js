@@ -49,6 +49,7 @@ export default function RagFilesPage() {
     console.log('BASE_URL:', BASE_URL);
     fetchFiles();
     fetchStats();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pagination.page]);
 
   useEffect(() => {
@@ -61,6 +62,7 @@ export default function RagFilesPage() {
     }, 500);
 
     return () => clearTimeout(delaySearch);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm]);
 
   const fetchFiles = async () => {
@@ -341,7 +343,7 @@ export default function RagFilesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete RAG Document</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{selectedFile?.title || selectedFile?.filename}"?
+              Are you sure you want to delete &quot;{selectedFile?.title || selectedFile?.filename}&quot;?
               This action cannot be undone and will permanently remove the document and all its
               associated chunks from the RAG system.
             </AlertDialogDescription>

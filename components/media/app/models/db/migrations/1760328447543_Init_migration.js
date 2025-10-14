@@ -12,6 +12,14 @@ class Init extends masterrecord.schema {
         
      this.createTable(table.MediaFile);
      this.createTable(table.MediaSettings);
+
+     this.seed('MediaSettings', {
+        storage_limit_mb: 1024,
+        storage_enabled: 1,
+        created_at: Date.now().toString(),
+        updated_at: Date.now().toString()
+      });
+
     }
 
     down(table){

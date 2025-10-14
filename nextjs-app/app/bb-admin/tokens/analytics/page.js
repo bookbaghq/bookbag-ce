@@ -284,12 +284,12 @@ export default function TokenAnalyticsPage() {
             <p>
               Token usage is tracked at the chat level (total_token_count) and aggregated across different
               dimensions: chats, models, and users. Each message tracks its token count, which contributes
-              to the chat's total.
+              to the chat&apos;s total.
             </p>
           </div>
 
           <div>
-            <h3 className="font-medium text-foreground mb-2">What's included?</h3>
+            <h3 className="font-medium text-foreground mb-2">What&apos;s included?</h3>
             <ul className="list-disc list-inside space-y-1 ml-2">
               <li>Only non-deleted and non-archived chats are included</li>
               <li>Token counts include both input and output tokens</li>
