@@ -8,15 +8,10 @@ class DocumentChunk {
     id(db) {
         db.integer().primary().auto();
     }
-    
-    document_id(db) {
-        db.integer().notNullable(); // Foreign key to Documents
-    }
 
     Document(db) {
         db.belongsTo('Document', 'document_id');
     }
-    
 
     chunk_index(db) {
         db.integer().notNullable(); // Order within the document (0, 1, 2...)
