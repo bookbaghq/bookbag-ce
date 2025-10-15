@@ -1,5 +1,3 @@
-const { pipeline } = require('@xenova/transformers');
-
 /**
  * EmbeddingService - Local Embedding Generation for Bookbag RAG
  *
@@ -14,6 +12,7 @@ const { pipeline } = require('@xenova/transformers');
 class EmbeddingService {
     constructor() {
         this.pipe = null;
+        this.pipelineFunction = null; // Store the pipeline function from dynamic import
         this.model = 'Xenova/all-MiniLM-L6-v2'; // Lightweight, fast, 384-dimensional embeddings
         this.isInitialized = false;
         this.initializationPromise = null;
@@ -22,6 +21,7 @@ class EmbeddingService {
     /**
      * Initialize the embedding model
      * This lazy-loads the model on first use
+     * Uses dynamic import() to support ES modules in CommonJS
      * @returns {Promise<void>}
      */
     async initialize() {
@@ -35,10 +35,16 @@ class EmbeddingService {
 
         this.initializationPromise = (async () => {
             try {
+                console.log(`🧠 Loading @xenova/transformers module...`);
+
+                // Dynamic import to support ES module in CommonJS
+                const transformers = await import('@xenova/transformers');
+                this.pipelineFunction = transformers.pipeline;
+
                 console.log(`🧠 Loading embedding model: ${this.model}...`);
                 const startTime = Date.now();
 
-                this.pipe = await pipeline('feature-extraction', this.model);
+                this.pipe = await this.pipelineFunction('feature-extraction', this.model);
 
                 const loadTime = Date.now() - startTime;
                 console.log(`✅ Embedding model loaded in ${loadTime}ms`);
@@ -46,6 +52,11 @@ class EmbeddingService {
                 this.isInitialized = true;
             } catch (error) {
                 console.error('❌ Failed to load embedding model:', error);
+                console.error('   Error details:', error.message);
+                console.error('   This may be due to:');
+                console.error('   1. Missing @xenova/transformers package (run: npm install @xenova/transformers)');
+                console.error('   2. Network issues downloading model files');
+                console.error('   3. Insufficient memory or disk space');
                 throw new Error(`Failed to initialize embedding service: ${error.message}`);
             }
         })();

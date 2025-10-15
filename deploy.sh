@@ -117,10 +117,10 @@ FRONTEND_LOCAL_URL="http://localhost:3000"
 FRONTEND_NETWORK_URL="http://${NETWORK_IP}:3000"
 FRONTEND_LOOPBACK_URL="http://127.0.0.1:3000"
 
-# Ensure JWT secrets are initialized before starting services
-echo -e "${BLUE}🔐 Initializing JWT secrets...${NC}"
-npm run init-jwt
-echo -e "${GREEN}✅ JWT secrets ensured${NC}"
+# Ensure JWT secrets are initialized before starting services (for specific environment)
+echo -e "${BLUE}🔐 Initializing JWT secrets for ${MODE} environment...${NC}"
+node scripts/init-jwt-secrets.js $MODE
+echo -e "${GREEN}✅ JWT secrets ensured for ${MODE}${NC}"
 echo ""
 
 # Update CORS configuration with frontend URLs (localhost, loopback, and network)

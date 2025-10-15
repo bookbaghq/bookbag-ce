@@ -5,7 +5,11 @@
         "http://localhost:8080",
         "http://192.168.1.173:3000",
         "http://192.168.1.173:8080",
-        "http://192.168.1.173:3001"
+        "http://192.168.1.173:3001",
+        "http://192.168.236.211:3000",
+        "http://192.168.236.211:3000/",
+        "http://localhost:3000/",
+        "http://127.0.0.1:3000/"
     ],
     "methods": [
         "GET",
@@ -24,7 +28,9 @@
         "Origin",
         "Cookie"
     ],
-    "exposeHeaders": ["Set-Cookie"],
+    "exposeHeaders": [
+        "Set-Cookie"
+    ],
     "credentials": true,
     "maxAge": 3600
 }

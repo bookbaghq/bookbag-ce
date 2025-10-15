@@ -74,11 +74,11 @@ if ($env:NEXT_PUBLIC_BACKEND_URL -notmatch '^https?://') {
 
 Write-Host "📦 Backend URL: $($env:NEXT_PUBLIC_BACKEND_URL)" -ForegroundColor Blue
 
-# Ensure JWT secrets are initialized before starting services
-Write-Host "🔐 Initializing JWT secrets..." -ForegroundColor Blue
-npm run init-jwt
+# Ensure JWT secrets are initialized before starting services (for specific environment)
+Write-Host "🔐 Initializing JWT secrets for $MODE environment..." -ForegroundColor Blue
+node scripts/init-jwt-secrets.js $MODE
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-Write-Host "✅ JWT secrets ensured" -ForegroundColor Green
+Write-Host "✅ JWT secrets ensured for $MODE" -ForegroundColor Green
 Write-Host ""
 
 # Update CORS configuration with frontend URL

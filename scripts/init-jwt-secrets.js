@@ -59,10 +59,28 @@ const initJwtSecrets = (envFile) => {
 // Main execution
 console.log('\n🔐 Checking JWT secrets...\n');
 
-const devUpdated = initJwtSecrets('config/environments/env.development.json');
-const prodUpdated = initJwtSecrets('config/environments/env.production.json');
+// Check if a specific environment was provided as argument
+const targetEnv = process.argv[2]; // 'development' or 'production'
 
-if (devUpdated || prodUpdated) {
+let updated = false;
+
+if (targetEnv === 'development') {
+  // Only update development
+  console.log('🎯 Target environment: development\n');
+  updated = initJwtSecrets('config/environments/env.development.json');
+} else if (targetEnv === 'production') {
+  // Only update production
+  console.log('🎯 Target environment: production\n');
+  updated = initJwtSecrets('config/environments/env.production.json');
+} else {
+  // No specific environment provided, update both (backward compatibility)
+  console.log('🎯 Target environment: all (no specific env provided)\n');
+  const devUpdated = initJwtSecrets('config/environments/env.development.json');
+  const prodUpdated = initJwtSecrets('config/environments/env.production.json');
+  updated = devUpdated || prodUpdated;
+}
+
+if (updated) {
   console.log('\n✨ JWT secrets have been initialized!\n');
 } else {
   console.log('\n✓ All JWT secrets are already configured.\n');
