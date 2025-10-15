@@ -1,6 +1,6 @@
 const fs = require('fs').promises;
 const path = require('path');
-const pdf = require('pdf-parse');
+// pdf-parse lazy-loaded on demand to avoid ES module issues
 const mammoth = require('mammoth');
 const cheerio = require('cheerio');
 const csv = require('csv-parser');
@@ -11,7 +11,7 @@ const { createReadStream } = require('fs');
  *
  * Supports Phase 1 "Core 6" file formats for MVP:
  * - Plain text (.txt, .md)
- * - PDF (.pdf) - via pdf-parse
+ * - PDF (.pdf) - via pdf-parse (lazy-loaded)
  * - Microsoft Word (.docx) - via mammoth
  * - HTML (.html, .htm) - via cheerio
  * - CSV (.csv) - via csv-parser
@@ -20,6 +20,7 @@ const { createReadStream } = require('fs');
  * - Single extraction interface: extract(filePath, mimeType)
  * - Format-specific methods for each file type
  * - Clean separation of concerns for easy extension
+ * - PDF parser lazy-loaded to avoid ES module issues
  *
  * Future (Phase 2+):
  * - RTF, EPUB, PPTX support
@@ -27,6 +28,28 @@ const { createReadStream } = require('fs');
  * - Audio transcription (not in MVP)
  */
 class TextExtractorService {
+    constructor() {
+        this.pdfParser = null; // Lazy-loaded pdf-parse module
+    }
+
+    /**
+     * Lazy-load the pdf-parse module to avoid ES module issues on startup
+     * @returns {Promise<Function>} - The pdf-parse function
+     */
+    async loadPdfParser() {
+        if (this.pdfParser) {
+            return this.pdfParser;
+        }
+
+        try {
+            // Use dynamic require wrapped in a function to avoid immediate loading
+            this.pdfParser = require('pdf-parse');
+            return this.pdfParser;
+        } catch (error) {
+            console.error('❌ Failed to load pdf-parse:', error.message);
+            throw new Error('PDF parsing is not available. Please ensure pdf-parse is installed.');
+        }
+    }
     /**
      * Main extraction entry point - automatically detects file type and extracts text
      * @param {string} filePath - Absolute path to the file
@@ -79,11 +102,14 @@ class TextExtractorService {
     }
 
     /**
-     * Extract text from PDF files using pdf-parse
+     * Extract text from PDF files using pdf-parse (lazy-loaded)
      * @param {string} filePath - Path to PDF file
      * @returns {Promise<string>} - Extracted text from all pages
      */
     async extractPDF(filePath) {
+        // Lazy-load pdf-parse to avoid ES module issues on startup
+        const pdf = await this.loadPdfParser();
+
         const dataBuffer = await fs.readFile(filePath);
         const pdfData = await pdf(dataBuffer);
 

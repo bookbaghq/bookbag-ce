@@ -2,26 +2,39 @@
 
 ## Problem
 
-The backend was crashing on startup with this error:
+The backend was crashing on startup with these errors:
 
+**Error 1: @xenova/transformers**
 ```
 Error [ERR_REQUIRE_ESM]: require() of ES Module /var/www/bookbag-ce/node_modules/@xenova/transformers/src/transformers.js not supported.
+```
+
+**Error 2: pdf-parse / pdfjs-dist**
+```
+Error [ERR_REQUIRE_ESM]: require() of ES Module /var/www/bookbag-ce/node_modules/pdfjs-dist/legacy/build/pdf.mjs not supported.
 ```
 
 This caused:
 - Backend to crash during route initialization
 - All API requests to return `ERR_EMPTY_RESPONSE`
 - RAG features completely non-functional
+- PDF file uploads to fail
 
 ## Root Cause
 
-`@xenova/transformers` version 3.x+ is an **ES Module only** package, but Bookbag uses **CommonJS** (`require()` syntax). Node.js doesn't allow `require()` for ES modules - you must use dynamic `import()`.
+Multiple packages have ES Module dependencies:
+1. `@xenova/transformers` version 3.x+ is **ES Module only**
+2. `pdf-parse` depends on `pdfjs-dist` which is **ES Module only**
 
-## Solution Applied
+But Bookbag uses **CommonJS** (`require()` syntax). Node.js doesn't allow `require()` for ES modules - you must use dynamic `import()` or lazy loading.
 
-Changed `components/rag/app/service/embeddingService.js` to use **dynamic import** instead of `require()`:
+## Solutions Applied
 
-### Before (Broken):
+### Fix 1: Embedding Service (transformers)
+
+Changed `components/rag/app/service/embeddingService.js` to use **dynamic import**:
+
+**Before (Broken):**
 ```javascript
 const { pipeline } = require('@xenova/transformers');
 
@@ -32,7 +45,7 @@ class EmbeddingService {
 }
 ```
 
-### After (Fixed):
+**After (Fixed):**
 ```javascript
 class EmbeddingService {
     async initialize() {
@@ -45,12 +58,65 @@ class EmbeddingService {
 }
 ```
 
-## Why This Fix Works
+### Fix 2: Text Extractor Service (pdf-parse)
 
+Changed `components/rag/app/service/textExtractorService.js` to **lazy-load pdf-parse**:
+
+**Before (Broken):**
+```javascript
+const pdf = require('pdf-parse'); // Crashes on startup
+
+class TextExtractorService {
+    async extractPDF(filePath) {
+        const dataBuffer = await fs.readFile(filePath);
+        const pdfData = await pdf(dataBuffer);
+        return pdfData.text;
+    }
+}
+```
+
+**After (Fixed):**
+```javascript
+// Don't require at top level
+
+class TextExtractorService {
+    constructor() {
+        this.pdfParser = null; // Lazy-loaded
+    }
+
+    async loadPdfParser() {
+        if (this.pdfParser) return this.pdfParser;
+        // Load only when needed
+        this.pdfParser = require('pdf-parse');
+        return this.pdfParser;
+    }
+
+    async extractPDF(filePath) {
+        const pdf = await this.loadPdfParser(); // Lazy load
+        const dataBuffer = await fs.readFile(filePath);
+        const pdfData = await pdf(dataBuffer);
+        return pdfData.text;
+    }
+}
+```
+
+## Why These Fixes Work
+
+### Fix 1: Dynamic Import
 - **Dynamic `import()`** returns a Promise and can load ES modules from CommonJS
 - The import happens **inside the async function**, not at the top level
 - The `pipeline` function is stored and reused for subsequent operations
+
+### Fix 2: Lazy Loading
+- **Deferred require()** - Only loads `pdf-parse` when a PDF is actually uploaded
+- Avoids the ES module issue during startup/route initialization
+- Module is cached after first load for performance
+- No impact on non-PDF file types
+
+### Both Solutions
 - No changes needed to package.json or module type
+- Backward compatible with existing code
+- Works in production and development
 
 ## Deployment Steps
 
