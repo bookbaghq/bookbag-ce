@@ -42,8 +42,10 @@ class TextExtractorService {
         }
 
         try {
-            // Use dynamic require wrapped in a function to avoid immediate loading
-            this.pdfParser = require('pdf-parse');
+            // Use dynamic import() to load the ES module
+            const pdfParseModule = await import('pdf-parse');
+            // ES modules have default export
+            this.pdfParser = pdfParseModule.default || pdfParseModule;
             return this.pdfParser;
         } catch (error) {
             console.error('❌ Failed to load pdf-parse:', error.message);
