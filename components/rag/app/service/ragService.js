@@ -234,7 +234,7 @@ class RAGService {
         const DocumentChunkModel = require('../models/documentChunk');
         for (let i = 0; i < chunks.length; i++) {
             const chunk = new DocumentChunkModel();
-            chunk.document_id = documentId;
+            chunk.Document = documentId;
             chunk.chunk_index = i;
             chunk.content = chunks[i];
             chunk.embedding = JSON.stringify(embeddings[i]); // Store as JSON string
