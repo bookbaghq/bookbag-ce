@@ -217,7 +217,7 @@ class RAGService {
         this.context.saveChanges();
 
         const documentId = document.id;
-        
+        console.log('🔍 Document ID:------------------------------------>', documentId);
 
         // Chunk the text using LangChain splitter
      

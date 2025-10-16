@@ -11,6 +11,7 @@ class DocumentChunk {
 
     Document(db) {
         db.belongsTo('Document', 'document_id');
+        db.integer().notNullable();
     }
 
     chunk_index(db) {
