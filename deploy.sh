@@ -100,6 +100,18 @@ echo ""
 echo -e "${GREEN}✅ Configured Backend URL: $NEXT_PUBLIC_BACKEND_URL${NC}"
 echo -e "${BLUE}   (This URL will be used by the frontend to connect to the backend)${NC}"
 
+# Get frontend port (only in production mode)
+FRONTEND_PORT=3000
+if [ "$MODE" = "production" ]; then
+    echo ""
+    echo -n "Enter frontend port [default: 3000]: "
+    read USER_FRONTEND_PORT
+    if [ -n "$USER_FRONTEND_PORT" ]; then
+        FRONTEND_PORT=$USER_FRONTEND_PORT
+    fi
+    echo -e "${GREEN}✅ Frontend will run on port: $FRONTEND_PORT${NC}"
+fi
+
 # Derive URLs for display (local and network)
 BACKEND_SCHEME=$(echo "$NEXT_PUBLIC_BACKEND_URL" | sed -E 's#^(https?)://.*#\1#')
 BACKEND_HOSTPORT=$(echo "$NEXT_PUBLIC_BACKEND_URL" | sed -E 's#^https?://([^/]+).*#\1#')
@@ -113,9 +125,9 @@ fi
 BACKEND_LOCAL_URL="http://localhost:${BACKEND_PORT}"
 BACKEND_NETWORK_URL="${BACKEND_SCHEME}://${NETWORK_IP}:${BACKEND_PORT}"
 
-FRONTEND_LOCAL_URL="http://localhost:3000"
-FRONTEND_NETWORK_URL="http://${NETWORK_IP}:3000"
-FRONTEND_LOOPBACK_URL="http://127.0.0.1:3000"
+FRONTEND_LOCAL_URL="http://localhost:${FRONTEND_PORT}"
+FRONTEND_NETWORK_URL="http://${NETWORK_IP}:${FRONTEND_PORT}"
+FRONTEND_LOOPBACK_URL="http://127.0.0.1:${FRONTEND_PORT}"
 
 # Ensure JWT secrets are initialized before starting services (for specific environment)
 echo -e "${BLUE}🔐 Initializing JWT secrets for ${MODE} environment...${NC}"
@@ -124,7 +136,7 @@ echo -e "${GREEN}✅ JWT secrets ensured for ${MODE}${NC}"
 echo ""
 
 # Update CORS configuration with frontend URLs (localhost, loopback, and network)
-FRONTEND_ORIGIN=$(echo $NEXT_PUBLIC_BACKEND_URL | sed -E 's|:[0-9]+|:3000|')
+FRONTEND_ORIGIN=$(echo $NEXT_PUBLIC_BACKEND_URL | sed -E "s|:[0-9]+|:${FRONTEND_PORT}|")
 echo -e "${BLUE}🔒 Updating CORS configuration...${NC}"
 
 if [ -f "config/initializers/cors.json" ]; then
@@ -226,7 +238,7 @@ if [ "$USE_PM2" = true ]; then
     echo ""
 
     echo -e "${BLUE}🚀 Starting services with PM2 (${MODE} mode)...${NC}"
-    NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL pm2 start $CONFIG_FILE --update-env
+    PORT=$FRONTEND_PORT NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL pm2 start $CONFIG_FILE --update-env
     echo -e "${GREEN}✅ Services started in ${MODE} mode${NC}"
     echo ""
 
@@ -253,7 +265,7 @@ else
         echo -e "${YELLOW}Press Ctrl+C to stop${NC}"
         echo ""
         echo -e "${BLUE}Starting backend on port ${BACKEND_PORT}...${NC}"
-        echo -e "${BLUE}Starting frontend on port 3000...${NC}"
+        echo -e "${BLUE}Starting frontend on port ${FRONTEND_PORT}...${NC}"
         echo ""
         
         # Start backend in background
@@ -270,13 +282,13 @@ else
         
         # Start frontend in foreground
         cd nextjs-app
-        NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL npm run dev
+        PORT=$FRONTEND_PORT NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL npm run dev
     else
         echo -e "${YELLOW}Starting in production mode (foreground processes)${NC}"
         echo -e "${YELLOW}Press Ctrl+C to stop${NC}"
         echo ""
         echo -e "${BLUE}Starting backend on port ${BACKEND_PORT}...${NC}"
-        echo -e "${BLUE}Starting frontend on port 3000...${NC}"
+        echo -e "${BLUE}Starting frontend on port ${FRONTEND_PORT}...${NC}"
         echo ""
         
         # Start backend in background
@@ -293,7 +305,7 @@ else
         
         # Start frontend in foreground
         cd nextjs-app
-        NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL npm start
+        PORT=$FRONTEND_PORT NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL npm start
     fi
 fi
 
