@@ -247,25 +247,15 @@ class ragController {
             const urlObj = new URL(url);
             const filename = `${urlObj.hostname}${urlObj.pathname}`.replace(/[^a-zA-Z0-9.-]/g, '_') + '.txt';
 
-            // Save content to file
-            const fs = require('fs').promises;
-            const path = require('path');
-            const tempDir = path.join(process.cwd(), 'storage', 'uploads', tenantId);
-
-            // Ensure directory exists
-            await fs.mkdir(tempDir, { recursive: true });
-
-            const finalPath = path.join(tempDir, filename);
-            await fs.writeFile(finalPath, text, 'utf-8');
-
-            // Ingest into RAG system
+            // Ingest into RAG system - no file storage, only chunks
             const documentId = await this.ragService.ingestDocument({
                 tenantId,
                 title: urlObj.hostname + urlObj.pathname,
                 filename: filename,
-                filePath: finalPath,
+                filePath: '', // No file stored - only chunks in database
                 text,
-                mimeType: 'text/plain'
+                mimeType: 'text/plain',
+                fileSize: text.length // Approximate file size based on text length
             });
 
             return this.returnJson({
@@ -377,51 +367,77 @@ class ragController {
                 });
             }
 
-            // Check storage quota before proceeding
-            const storageLimit = this.getStorageLimit();
-            const quota = await this.fileService.checkStorageQuota(tenantId, storageLimit);
-            if (quota.exceeded) {
-                // Clean up temp file
-                await this.fileService.deleteFile(tempPath);
-
+            if (!originalName) {
+                console.log('❌ No original filename found in file object');
                 return this.returnJson({
                     success: false,
-                    error: `Storage quota exceeded (${quota.usedMB}MB / ${quota.quotaMB}MB)`
+                    error: 'File upload incomplete - no filename'
                 });
             }
 
-            // Move file to tenant's permanent storage
-            const finalPath = await this.fileService.moveUploadToTenant(
-                tempPath,
-                tenantId,
-                originalName
-            );
+            // Get file extension from original filename
+            const path = require('path');
+            const fileExt = path.extname(originalName).toLowerCase();
 
-            // Get file size
+            // Check if file type is supported
+            if (!this.textExtractor.isSupported(originalName)) {
+                return this.returnJson({
+                    success: false,
+                    error: `Unsupported file type: ${fileExt}. ${this.textExtractor.getSupportedFormatsString()}`
+                });
+            }
+
+            // Get file size from temp file
             const fs = require('fs').promises;
             let fileSize = 0;
             try {
-                const stats = await fs.stat(finalPath);
+                const stats = await fs.stat(tempPath);
                 fileSize = stats.size;
             } catch (err) {
                 console.warn('⚠️  Could not get file size:', err.message);
             }
 
-            // Extract text from file using TextExtractor service
+            // Create a temp file with the correct extension for the text extractor
+            // The text extractor relies on file extensions to determine how to parse
+            const tempPathWithExt = `${tempPath}${fileExt}`;
+            try {
+                await fs.copyFile(tempPath, tempPathWithExt);
+                console.log(`✓ Created temp file with extension: ${tempPathWithExt}`);
+            } catch (copyError) {
+                console.error('❌ Failed to create temp file with extension:', copyError.message);
+                await this.fileService.deleteFile(tempPath);
+                return this.returnJson({
+                    success: false,
+                    error: 'Failed to process file'
+                });
+            }
+
+            // Extract text from temp file using TextExtractor service
             let text = '';
 
             try {
-                text = await this.textExtractor.extract(finalPath, mimeType);
+                text = await this.textExtractor.extract(tempPathWithExt, mimeType);
             } catch (extractError) {
                 console.error('❌ Text extraction failed:', extractError.message);
-                // Clean up the uploaded file if extraction fails
-                await this.fileService.deleteFile(finalPath);
+                // Clean up both temp files if extraction fails
+                await this.fileService.deleteFile(tempPath);
+                await this.fileService.deleteFile(tempPathWithExt);
 
                 return this.returnJson({
                     success: false,
                     error: `Failed to extract text from file: ${extractError.message}`,
                     supportedFormats: this.textExtractor.getSupportedFormatsString()
                 });
+            }
+
+            // Delete both temp files after successful extraction
+            try {
+                await this.fileService.deleteFile(tempPath);
+                await this.fileService.deleteFile(tempPathWithExt);
+                console.log('✓ Deleted temp files after text extraction');
+            } catch (deleteError) {
+                console.warn('⚠️  Could not delete temp files:', deleteError.message);
+                // Continue anyway - text extraction succeeded
             }
 
             // If chatId is not provided AND no workspaceId, create a new chat (like message sending does)
@@ -459,13 +475,14 @@ class ragController {
             }
 
             // Ingest into RAG system with chatId and/or workspaceId
+            // Note: filePath is set to empty string since we don't store files, only chunks
             const documentId = await this.ragService.ingestDocument({
                 chatId,
                 workspaceId,
                 tenantId,
                 title: formData?.fields?.title || formData?.title || originalName,
                 filename: originalName,
-                filePath: finalPath,
+                filePath: '', // No file stored - only chunks in database
                 text,
                 mimeType,
                 fileSize
@@ -642,13 +659,7 @@ class ragController {
                 }
             }
 
-            // Delete file from storage (don't fail if file doesn't exist)
-            try {
-                await this.fileService.deleteFile(document.file_path);
-            } catch (fileError) {
-                console.warn(`⚠️  Could not delete file: ${fileError.message}`);
-                // Continue with deletion even if file doesn't exist
-            }
+            // No need to delete files - we don't store them anymore, only chunks
 
             // Delete all chunks
             await this.ragService.deleteDocumentChunks(documentId);

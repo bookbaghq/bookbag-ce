@@ -30,7 +30,7 @@ class Document {
     }
 
     file_path(db) {
-        db.string().notNullable(); // Path to stored file
+        db.string().nullable(); // No longer storing files, only chunks
     }
 
     mime_type(db) {

@@ -25,9 +25,3 @@ router.route("bb-media/api/media/settings", "api/media#updateSettings", "post");
 
 // Delete a media file by ID (must come after other routes to avoid catching them)
 router.route("bb-media/api/media/delete/:id", "api/media#deleteFile", "delete");
-
-// RAG-specific routes
-router.route("bb-media/api/media/rag/list", "api/media#listRagFiles", "get");
-router.route("bb-media/api/media/rag/search", "api/media#searchRagFiles", "get");
-router.route("bb-media/api/media/rag/stats", "api/media#getRagStats", "get");
-router.route("bb-media/api/media/rag/delete/:id", "api/media#deleteRagFile", "delete");

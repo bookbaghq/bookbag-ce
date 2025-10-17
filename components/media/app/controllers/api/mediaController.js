@@ -120,47 +120,20 @@ class mediaController {
       const limit = parseInt(obj?.params?.query?.limit || 50, 10);
       const offset = (page - 1) * limit;
 
-      // Get all files from MediaFile
+      // Get all files from MediaFile only
       const mediaFiles = this._mediaContext.MediaFile.toList();
 
-      // Get all RAG documents
-      const ragDocs = this._ragContext.Document.toList();
-
-      // Merge both lists with a source indicator
-      const allFiles = [
-        ...mediaFiles.map(f => ({
-          ...f,
-          source: 'media',
-          _id: `media_${f.id}`
-        })),
-        ...ragDocs.map(d => ({
-          id: d.id,
-          filename: d.filename,
-          stored_filename: d.filename,
-          file_path: d.file_path,
-          mime_type: d.mime_type,
-          file_size: d.file_size || 0,
-          uploaded_by: null,
-          upload_source: d.chat_id ? 'chat' : (d.workspace_id ? 'workspace' : 'rag'),
-          created_at: d.created_at,
-          updated_at: d.updated_at,
-          source: 'rag',
-          _id: `rag_${d.id}`,
-          title: d.title
-        }))
-      ];
-
-      const totalCount = allFiles.length;
+      const totalCount = mediaFiles.length;
 
       // Sort by created_at descending
-      allFiles.sort((a, b) => {
+      mediaFiles.sort((a, b) => {
         const aTime = parseInt(a.created_at || 0);
         const bTime = parseInt(b.created_at || 0);
         return bTime - aTime;
       });
 
       // Apply pagination
-      const files = allFiles.slice(offset, offset + limit);
+      const files = mediaFiles.slice(offset, offset + limit);
 
       // Format files with file sizes from database
       const formattedFiles = files.map((file) => {
@@ -168,7 +141,7 @@ class mediaController {
         const formattedSize = this.mediaService.formatFileSize(fileSize);
 
         return {
-          id: file._id,
+          id: `media_${file.id}`,
           filename: file.filename,
           storedFilename: file.stored_filename,
           mimeType: file.mime_type,
@@ -178,8 +151,8 @@ class mediaController {
           uploadSource: file.upload_source,
           createdAt: file.created_at,
           updatedAt: file.updated_at,
-          source: file.source,
-          title: file.title || file.filename
+          source: 'media',
+          title: file.filename
         };
       });
 
@@ -218,41 +191,13 @@ class mediaController {
         return this.listFiles(obj);
       }
 
-      // Get all files from MediaFile
+      // Get all files from MediaFile only
       const mediaFiles = this._mediaContext.MediaFile.toList();
-
-      // Get all RAG documents
-      const ragDocs = this._ragContext.Document.toList();
-
-      // Merge both lists with a source indicator
-      const allFiles = [
-        ...mediaFiles.map(f => ({
-          ...f,
-          source: 'media',
-          _id: `media_${f.id}`
-        })),
-        ...ragDocs.map(d => ({
-          id: d.id,
-          filename: d.filename,
-          stored_filename: d.filename,
-          file_path: d.file_path,
-          mime_type: d.mime_type,
-          file_size: d.file_size || 0,
-          uploaded_by: null,
-          upload_source: d.chat_id ? 'chat' : (d.workspace_id ? 'workspace' : 'rag'),
-          created_at: d.created_at,
-          updated_at: d.updated_at,
-          source: 'rag',
-          _id: `rag_${d.id}`,
-          title: d.title
-        }))
-      ];
 
       // Filter by search term
       const lowerSearch = searchTerm.toLowerCase();
-      const filtered = allFiles.filter(f =>
-        (f.filename && f.filename.toLowerCase().includes(lowerSearch)) ||
-        (f.title && f.title.toLowerCase().includes(lowerSearch))
+      const filtered = mediaFiles.filter(f =>
+        (f.filename && f.filename.toLowerCase().includes(lowerSearch))
       );
 
       const totalCount = filtered.length;
@@ -273,7 +218,7 @@ class mediaController {
         const formattedSize = this.mediaService.formatFileSize(fileSize);
 
         return {
-          id: file._id,
+          id: `media_${file.id}`,
           filename: file.filename,
           storedFilename: file.stored_filename,
           mimeType: file.mime_type,
@@ -283,8 +228,8 @@ class mediaController {
           uploadSource: file.upload_source,
           createdAt: file.created_at,
           updatedAt: file.updated_at,
-          source: file.source,
-          title: file.title || file.filename
+          source: 'media',
+          title: file.filename
         };
       });
 
@@ -324,68 +269,34 @@ class mediaController {
         });
       }
 
-      // Parse the composite ID to determine source
+      // Parse the composite ID to get the actual ID
       const [source, id] = fileId.split('_');
 
-      if (source === 'media') {
-        // Delete from MediaFile
-        const file = this._mediaContext.MediaFile
-          .where(f => f.id == $$, parseInt(id, 10))
-          .single();
-
-        if (!file) {
-          return this.returnJson({
-            success: false,
-            error: 'File not found'
-          });
-        }
-
-        // Delete physical file
-        await this.mediaService.deleteFile(file.file_path);
-
-        // Delete database record
-        this._mediaContext.MediaFile.remove(file);
-        this._mediaContext.saveChanges();
-
-      } else if (source === 'rag') {
-        // Delete from RAG Document
-        const doc = this._ragContext.Document
-          .where(d => d.id == $$, parseInt(id, 10))
-          .single();
-
-        if (!doc) {
-          return this.returnJson({
-            success: false,
-            error: 'Document not found'
-          });
-        }
-
-        // Delete physical file
-        try {
-          await this.mediaService.deleteFile(doc.file_path);
-        } catch (err) {
-          console.error('Error deleting physical file:', err);
-        }
-
-        // Delete document chunks first (if any)
-        const chunks = this._ragContext.DocumentChunk
-          .where(c => c.document_id == $$, parseInt(id, 10))
-          .toList();
-
-        chunks.forEach(chunk => {
-          this._ragContext.DocumentChunk.remove(chunk);
-        });
-
-        // Delete database record
-        this._ragContext.Document.remove(doc);
-        this._ragContext.saveChanges();
-
-      } else {
+      if (source !== 'media') {
         return this.returnJson({
           success: false,
           error: 'Invalid file ID format'
         });
       }
+
+      // Delete from MediaFile
+      const file = this._mediaContext.MediaFile
+        .where(f => f.id == $$, parseInt(id, 10))
+        .single();
+
+      if (!file) {
+        return this.returnJson({
+          success: false,
+          error: 'File not found'
+        });
+      }
+
+      // Delete physical file
+      await this.mediaService.deleteFile(file.file_path);
+
+      // Delete database record
+      this._mediaContext.MediaFile.remove(file);
+      this._mediaContext.saveChanges();
 
       return this.returnJson({
         success: true,
@@ -408,16 +319,10 @@ class mediaController {
   async getStats(obj) {
     try {
       const mediaFileCount = this._mediaContext.MediaFile.count();
-      const ragDocCount = this._ragContext.Document.count();
-      const totalCount = mediaFileCount + ragDocCount;
 
       // Calculate total size from database file_size fields
       const mediaFiles = this._mediaContext.MediaFile.toList();
-      const ragDocs = this._ragContext.Document.toList();
-
-      const mediaTotalSize = mediaFiles.reduce((sum, f) => sum + (f.file_size || 0), 0);
-      const ragTotalSize = ragDocs.reduce((sum, d) => sum + (d.file_size || 0), 0);
-      const totalSize = mediaTotalSize + ragTotalSize;
+      const totalSize = mediaFiles.reduce((sum, f) => sum + (f.file_size || 0), 0);
 
       // Get file count by source
       const adminFiles = this._mediaContext.MediaFile
@@ -430,24 +335,16 @@ class mediaController {
         .where(f => f.upload_source === 'api')
         .count();
 
-      // Get RAG document counts
-      const chatDocs = ragDocs.filter(d => d.chat_id).length;
-      const workspaceDocs = ragDocs.filter(d => d.workspace_id && !d.chat_id).length;
-      const ragFiles = ragDocs.filter(d => !d.chat_id && !d.workspace_id).length;
-
       return this.returnJson({
         success: true,
         stats: {
-          totalFiles: totalCount,
+          totalFiles: mediaFileCount,
           totalSize: totalSize,
           formattedSize: this.mediaService.formatFileSize(totalSize),
           bySource: {
             admin: adminFiles,
             client: clientFiles,
-            api: apiFiles,
-            chat: chatDocs,
-            workspace: workspaceDocs,
-            rag: ragFiles
+            api: apiFiles
           }
         }
       });
@@ -551,11 +448,7 @@ class mediaController {
     try {
       // Calculate total size from database file_size fields
       const mediaFiles = this._mediaContext.MediaFile.toList();
-      const ragDocs = this._ragContext.Document.toList();
-
-      const mediaTotalSize = mediaFiles.reduce((sum, f) => sum + (f.file_size || 0), 0);
-      const ragTotalSize = ragDocs.reduce((sum, d) => sum + (d.file_size || 0), 0);
-      const totalSize = mediaTotalSize + ragTotalSize;
+      const totalSize = mediaFiles.reduce((sum, f) => sum + (f.file_size || 0), 0);
 
       const settings = this._mediaContext.MediaSettings.take(1).toList()[0];
 
@@ -573,248 +466,6 @@ class mediaController {
 
     } catch (error) {
       console.error('❌ Error getting storage usage:', error);
-      return this.returnJson({
-        success: false,
-        error: error.message
-      });
-    }
-  }
-
-  /**
-   * List RAG files only
-   * GET /rag/list?page=1&limit=50
-   */
-  async listRagFiles(obj) {
-    try {
-      const page = parseInt(obj?.params?.query?.page || 1, 10);
-      const limit = parseInt(obj?.params?.query?.limit || 50, 10);
-      const offset = (page - 1) * limit;
-
-      // Get all RAG documents
-      const ragDocs = this._ragContext.Document.toList();
-
-      const totalCount = ragDocs.length;
-
-      // Sort by created_at descending
-      ragDocs.sort((a, b) => {
-        const aTime = parseInt(a.created_at || 0);
-        const bTime = parseInt(b.created_at || 0);
-        return bTime - aTime;
-      });
-
-      // Apply pagination
-      const files = ragDocs.slice(offset, offset + limit);
-
-      // Format files with file sizes from database
-      const formattedFiles = files.map((doc) => {
-        const fileSize = doc.file_size || 0;
-        const formattedSize = this.mediaService.formatFileSize(fileSize);
-
-        return {
-          id: doc.id,
-          filename: doc.filename,
-          storedFilename: doc.filename,
-          mimeType: doc.mime_type,
-          fileSize: fileSize,
-          formattedSize: formattedSize,
-          uploadedBy: null,
-          uploadSource: doc.chat_id ? 'chat' : (doc.workspace_id ? 'workspace' : 'rag'),
-          createdAt: doc.created_at,
-          updatedAt: doc.updated_at,
-          source: 'rag',
-          title: doc.title,
-          chatId: doc.chat_id,
-          workspaceId: doc.workspace_id
-        };
-      });
-
-      return this.returnJson({
-        success: true,
-        files: formattedFiles,
-        pagination: {
-          page,
-          limit,
-          totalCount,
-          totalPages: Math.ceil(totalCount / limit)
-        }
-      });
-
-    } catch (error) {
-      console.error('❌ Error listing RAG files:', error);
-      return this.returnJson({
-        success: false,
-        error: error.message
-      });
-    }
-  }
-
-  /**
-   * Search RAG files only
-   * GET /rag/search?q=search_term&page=1&limit=50
-   */
-  async searchRagFiles(obj) {
-    try {
-      const searchTerm = obj?.params?.query?.q || '';
-      const page = parseInt(obj?.params?.query?.page || 1, 10);
-      const limit = parseInt(obj?.params?.query?.limit || 50, 10);
-      const offset = (page - 1) * limit;
-
-      if (!searchTerm) {
-        return this.listRagFiles(obj);
-      }
-
-      // Get all RAG documents
-      const ragDocs = this._ragContext.Document.toList();
-
-      // Filter by search term
-      const lowerSearch = searchTerm.toLowerCase();
-      const filtered = ragDocs.filter(d =>
-        (d.filename && d.filename.toLowerCase().includes(lowerSearch)) ||
-        (d.title && d.title.toLowerCase().includes(lowerSearch))
-      );
-
-      const totalCount = filtered.length;
-
-      // Sort by created_at descending
-      filtered.sort((a, b) => {
-        const aTime = parseInt(a.created_at || 0);
-        const bTime = parseInt(b.created_at || 0);
-        return bTime - aTime;
-      });
-
-      // Apply pagination
-      const files = filtered.slice(offset, offset + limit);
-
-      // Format files with file sizes from database
-      const formattedFiles = files.map((doc) => {
-        const fileSize = doc.file_size || 0;
-        const formattedSize = this.mediaService.formatFileSize(fileSize);
-
-        return {
-          id: doc.id,
-          filename: doc.filename,
-          storedFilename: doc.filename,
-          mimeType: doc.mime_type,
-          fileSize: fileSize,
-          formattedSize: formattedSize,
-          uploadedBy: null,
-          uploadSource: doc.chat_id ? 'chat' : (doc.workspace_id ? 'workspace' : 'rag'),
-          createdAt: doc.created_at,
-          updatedAt: doc.updated_at,
-          source: 'rag',
-          title: doc.title,
-          chatId: doc.chat_id,
-          workspaceId: doc.workspace_id
-        };
-      });
-
-      return this.returnJson({
-        success: true,
-        files: formattedFiles,
-        searchTerm,
-        pagination: {
-          page,
-          limit,
-          totalCount,
-          totalPages: Math.ceil(totalCount / limit)
-        }
-      });
-
-    } catch (error) {
-      console.error('❌ Error searching RAG files:', error);
-      return this.returnJson({
-        success: false,
-        error: error.message
-      });
-    }
-  }
-
-  /**
-   * Get RAG statistics
-   * GET /rag/stats
-   */
-  async getRagStats(obj) {
-    try {
-      const ragDocs = this._ragContext.Document.toList();
-
-      const totalFiles = ragDocs.length;
-      const chatFiles = ragDocs.filter(d => d.chat_id).length;
-      const workspaceFiles = ragDocs.filter(d => d.workspace_id && !d.chat_id).length;
-      const ragFiles = ragDocs.filter(d => !d.chat_id && !d.workspace_id).length;
-
-      return this.returnJson({
-        success: true,
-        stats: {
-          totalFiles,
-          chatFiles,
-          workspaceFiles,
-          ragFiles
-        }
-      });
-
-    } catch (error) {
-      console.error('❌ Error getting RAG stats:', error);
-      return this.returnJson({
-        success: false,
-        error: error.message
-      });
-    }
-  }
-
-  /**
-   * Delete a RAG document
-   * DELETE /rag/delete/:id
-   */
-  async deleteRagFile(obj) {
-    try {
-      const fileId = obj?.params?.id || obj?.params?.query?.id;
-
-      if (!fileId) {
-        return this.returnJson({
-          success: false,
-          error: 'File ID is required'
-        });
-      }
-
-      // Get document
-      const doc = this._ragContext.Document
-        .where(d => d.id == $$, parseInt(fileId, 10))
-        .single();
-
-      if (!doc) {
-        return this.returnJson({
-          success: false,
-          error: 'Document not found'
-        });
-      }
-
-      // Delete physical file
-      try {
-        await this.mediaService.deleteFile(doc.file_path);
-      } catch (err) {
-        console.error('Error deleting physical file:', err);
-      }
-
-      // Delete document chunks first (if any)
-      const chunks = this._ragContext.DocumentChunk
-        .where(c => c.document_id == $$, parseInt(fileId, 10))
-        .toList();
-
-      chunks.forEach(chunk => {
-        this._ragContext.DocumentChunk.remove(chunk);
-      });
-
-      // Delete database record
-      this._ragContext.Document.remove(doc);
-      this._ragContext.saveChanges();
-
-      return this.returnJson({
-        success: true,
-        message: 'RAG document deleted successfully'
-      });
-
-    } catch (error) {
-      console.error('❌ Error deleting RAG file:', error);
       return this.returnJson({
         success: false,
         error: error.message
