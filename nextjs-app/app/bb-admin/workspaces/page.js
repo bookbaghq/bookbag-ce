@@ -26,6 +26,10 @@ export default function WorkspacesPage(){
   const [createUserSearch, setCreateUserSearch] = useState('')
   const [createSearchResults, setCreateSearchResults] = useState([])
   const [createSearchLoading, setCreateSearchLoading] = useState(false)
+  const [createModels, setCreateModels] = useState([])
+  const [createModelSearch, setCreateModelSearch] = useState('')
+  const [createModelSearchResults, setCreateModelSearchResults] = useState([])
+  const [createModelSearchLoading, setCreateModelSearchLoading] = useState(false)
 
   // Delete confirmation state
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -112,6 +116,43 @@ export default function WorkspacesPage(){
       setCreateSearchLoading(false)
     }
   }, [createUserSearch, createOpen])
+
+  // Debounced model search for create dialog
+  useEffect(() => {
+    if (!createOpen) return
+    const searchQuery = createModelSearch.trim()
+    if (!searchQuery) {
+      setCreateModelSearchResults([])
+      return
+    }
+
+    setCreateModelSearchLoading(true)
+    const handle = setTimeout(async () => {
+      try {
+        const res = await fetch(`${api.ApiConfig.main}/bb-models/api/models`, { credentials: 'include' })
+        const data = await res.json()
+        if (data.success && Array.isArray(data.models)) {
+          const filtered = data.models.filter(m => {
+            const nm = String(m.name || '').toLowerCase()
+            const fam = String(m.family || m.type || '').toLowerCase()
+            return nm.includes(searchQuery.toLowerCase()) || fam.includes(searchQuery.toLowerCase())
+          })
+          setCreateModelSearchResults(filtered)
+        } else {
+          setCreateModelSearchResults([])
+        }
+      } catch (_) {
+        setCreateModelSearchResults([])
+      } finally {
+        setCreateModelSearchLoading(false)
+      }
+    }, 300)
+
+    return () => {
+      clearTimeout(handle)
+      setCreateModelSearchLoading(false)
+    }
+  }, [createModelSearch, createOpen])
 
   const openEdit = async (workspace) => {
     if (!workspace || !workspace.id) return
@@ -243,6 +284,19 @@ export default function WorkspacesPage(){
       const lastName = u.lastName || u.last_name || ''
       return [...prev, { user_id: u.id, role: 'member', name: `${firstName} ${lastName}`.trim(), email: u.email }]
     })
+    // Clear search input after adding user to hide dropdown
+    setCreateUserSearch('')
+  }
+
+  const toggleCreateModel = (m) => {
+    if (!m) return
+    setCreateModels(prev => {
+      const exists = prev.some(x => String(x.model_id || x.id) === String(m.id))
+      if (exists) return prev.filter(x => String(x.model_id || x.id) !== String(m.id))
+      return [...prev, { model_id: m.id, name: m.name }]
+    })
+    // Clear search input after adding model to hide dropdown
+    setCreateModelSearch('')
   }
 
   const toggleModel = async (m) => {
@@ -414,6 +468,75 @@ export default function WorkspacesPage(){
                 </div>
               )}
             </div>
+
+            <Separator />
+
+            <div className="space-y-3">
+              <div className="text-sm font-medium">Assign Models (optional)</div>
+              <Input
+                placeholder="Search models"
+                value={createModelSearch}
+                onChange={(e) => setCreateModelSearch(e.target.value)}
+              />
+
+              {createModels.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-xs text-muted-foreground">Selected Models:</div>
+                  <div className="flex flex-wrap gap-2">
+                    {createModels.map(sel => (
+                      <span key={`create-selm-${sel.model_id || sel.id}`} className="inline-flex items-center gap-1 rounded-md border bg-background shadow-xs h-7 px-2 text-xs">
+                        {sel.name || String(sel.model_id || sel.id)}
+                        <button
+                          type="button"
+                          className="ml-1 rounded border px-1 hover:bg-accent hover:text-accent-foreground"
+                          title="Remove"
+                          onClick={() => toggleCreateModel({ id: sel.model_id || sel.id })}
+                        >×</button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {createModelSearch.trim() && (
+                <div className="relative">
+                  <div className="absolute left-0 right-0 top-0 border rounded bg-background shadow-lg max-h-48 overflow-y-auto z-10">
+                    {createModelSearchLoading && (
+                      <div className="text-sm text-muted-foreground text-center py-2">Loading...</div>
+                    )}
+                    {!createModelSearchLoading && createModelSearchResults.filter(m => {
+                      const already = createModels.some(x => String(x.model_id || x.id) === String(m.id));
+                      return !already;
+                    }).map(m => (
+                      <div
+                        key={`create-m-find-${m.id}`}
+                        className="flex items-center justify-between px-3 py-2 text-sm hover:bg-accent cursor-pointer border-b last:border-b-0"
+                        onClick={() => toggleCreateModel(m)}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium truncate">{m.name}</div>
+                          {!!m.family && <div className="text-xs text-muted-foreground truncate">{m.family}</div>}
+                        </div>
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-center rounded-md border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground h-7 px-2 text-sm ml-2"
+                          title="Add model"
+                          onClick={(e) => { e.stopPropagation(); toggleCreateModel(m); }}
+                        >+</button>
+                      </div>
+                    ))}
+                    {!createModelSearchLoading && createModelSearchResults.filter(m => {
+                      const already = createModels.some(x => String(x.model_id || x.id) === String(m.id));
+                      return !already;
+                    }).length === 0 && (
+                      <div className="text-sm text-muted-foreground text-center py-2">No models found</div>
+                    )}
+                  </div>
+                  {/* Spacer to prevent content overlap */}
+                  <div className="h-2"></div>
+                </div>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
@@ -423,6 +546,8 @@ export default function WorkspacesPage(){
               setProfileId('');
               setCreateUsers([]);
               setCreateUserSearch('');
+              setCreateModels([]);
+              setCreateModelSearch('');
             }}>Cancel</Button>
             <Button disabled={!name || saving} onClick={async () => {
               setSaving(true)
@@ -436,12 +561,19 @@ export default function WorkspacesPage(){
                     const userPayload = createUsers.map(u => ({ user_id: u.user_id || u.id, role: u.role || 'member' }));
                     await svc.assignUsers(res.id, userPayload);
                   }
+                  // Assign models if any were selected
+                  if (createModels.length > 0) {
+                    const modelPayload = createModels.map(m => ({ model_id: m.model_id || m.id }));
+                    await svc.assignModels(res.id, modelPayload);
+                  }
                   setCreateOpen(false);
                   setName('');
                   setDescription('');
                   setProfileId('');
                   setCreateUsers([]);
                   setCreateUserSearch('');
+                  setCreateModels([]);
+                  setCreateModelSearch('');
                   await load();
                 }
               } catch(_){}

@@ -41,8 +41,6 @@ router.route("bb-chat/api/chat/edit", "api/chat#editChat", "put");
 
 // New chat management API routes (must come BEFORE parameterized routes)
 router.route("bb-chat/api/chat/recent", "api/chat#getRecentChats", "get");
-router.route("bb-chat/api/chat/yesterday", "api/chat#getYesterdayChats", "get");
-router.route("bb-chat/api/chat/sevendays", "api/chat#getSevenDayChats", "get");
 router.route("bb-chat/api/chat/all", "api/chat#getAllChats", "get");
 router.route("bb-chat/api/chat/admin-created", "api/chat#getAdminCreatedChats", "get");
 router.route("bb-chat/api/chat/favorites", "api/chat#getFavoriteChats", "get");

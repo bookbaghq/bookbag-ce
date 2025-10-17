@@ -293,12 +293,21 @@ class RAGService {
         // Get all chunks for these documents
         const documentIds = documents.map(d => d.id);
         const allChunks = this.context.DocumentChunk.toList();
-        const chunks = allChunks.filter(c => documentIds.includes(c.document_id));
+        // Support both document_id and Document field names (ORM may use either)
+        const chunks = allChunks.filter(c => documentIds.includes(c.document_id || c.Document));
+
+        console.log(`📊 RAG: Found ${documents.length} documents, ${allChunks.length} total chunks, ${chunks.length} matching chunks`);
+        if (chunks.length === 0 && allChunks.length > 0) {
+            console.warn(`⚠️  RAG: No chunks matched document IDs. Document IDs: ${documentIds}, Sample chunk:`, allChunks[0]);
+        }
 
         // 🧠 Step 3: Calculate similarity for each chunk, merge, deduplicate, sort
         const scoredChunks = [];
+        let processedChunks = 0;
+        let skippedChunks = 0;
         for (const chunk of chunks) {
-            if (!chunk.embedding) { 
+            if (!chunk.embedding) {
+                skippedChunks++;
                 continue;
             }
 
@@ -309,15 +318,17 @@ class RAGService {
                 // Calculate cosine similarity
                 const similarity = this.cosineSimilarity(questionEmbedding, chunkEmbedding);
 
-                // Find the document for this chunk
-                const document = documents.find(d => d.id === chunk.document_id);
+                // Find the document for this chunk - support both field names
+                const chunkDocId = chunk.document_id || chunk.Document;
+                const document = documents.find(d => d.id === chunkDocId);
+                processedChunks++;
 
                 // Determine source (workspace or chat)
                 const source = document?.workspace_id ? 'workspace' : 'chat';
 
                 scoredChunks.push({
                     chunkId: chunk.id,
-                    documentId: chunk.document_id,
+                    documentId: chunkDocId,
                     documentTitle: document?.title || 'Unknown',
                     chunkIndex: chunk.chunk_index,
                     content: chunk.content,
@@ -330,14 +341,20 @@ class RAGService {
             }
         }
 
+        console.log(`📊 RAG: Processed ${processedChunks} chunks, skipped ${skippedChunks} (no embedding)`);
+
         // Sort by similarity score (highest first) and take top k
         scoredChunks.sort((a, b) => b.score - a.score);
         const topResults = scoredChunks.slice(0, k);
 
-   
+
         if (topResults.length > 0) {
             const workspaceCount = topResults.filter(r => r.source === 'workspace').length;
             const chatCount = topResults.filter(r => r.source === 'chat').length;
+            console.log(`✅ RAG: Returning ${topResults.length} results (${workspaceCount} workspace, ${chatCount} chat)`);
+            console.log(`   Top score: ${topResults[0].score.toFixed(4)}, Bottom score: ${topResults[topResults.length - 1].score.toFixed(4)}`);
+        } else {
+            console.log(`ℹ️  RAG: No results found after similarity calculation`);
         }
 
         return topResults;

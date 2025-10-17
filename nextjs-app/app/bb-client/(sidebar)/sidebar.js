@@ -72,59 +72,25 @@ const navigationData = {
   // Chat history grouped by time period
   chatHistory: {
     favorites: [
-      { 
-        id: "fav-1", 
-        title: "UI/UX Design Brief", 
+      {
+        id: "fav-1",
+        title: "UI/UX Design Brief",
         timestamp: "24 Mar",
         description: "UI/UX Designer creating delightful digital experiences with a user-centered..."
       },
-      { 
-        id: "fav-2", 
-        title: "QA Process Explained", 
+      {
+        id: "fav-2",
+        title: "QA Process Explained",
         timestamp: "22 Mar",
         description: "Quality Assurance (QA) is a process that ensures that a product or service meets specific..."
       }
     ],
     recent: [
-      { 
-        id: "recent-1", 
-        title: "Quantum Entanglement", 
+      {
+        id: "recent-1",
+        title: "Quantum Entanglement",
         timestamp: "Today",
         description: "Exploring the fascinating phenomenon of quantum entanglement and its implications for quantum computing."
-      }
-    ],
-    yesterday: [
-      { 
-        id: "y-1", 
-        title: "Big Data's Role in Science", 
-        timestamp: "Yesterday",
-        description: "Examining how big data analytics is transforming scientific research and enabling new discoveries."
-      },
-      { 
-        id: "y-2", 
-        title: "Artificial Intelligence in Healthcare", 
-        timestamp: "Yesterday",
-        description: "Analyzing the current applications and future potential of AI in improving healthcare outcomes."
-      }
-    ],
-    previousWeek: [
-      { 
-        id: "pw-1", 
-        title: "Blockchain's Influence on Digital Privacy", 
-        timestamp: "5 days ago",
-        description: "Investigating how blockchain technology is reshaping our approach to data privacy and security."
-      },
-      { 
-        id: "pw-2", 
-        title: "AI's Applications and Ethical Concerns", 
-        timestamp: "6 days ago",
-        description: "Discussing the wide-ranging applications of AI and the ethical questions they raise."
-      },
-      { 
-        id: "pw-3", 
-        title: "Biotechnology's Impact on Modern Medicine", 
-        timestamp: "7 days ago",
-        description: "Exploring how advances in biotechnology are revolutionizing medical treatments and diagnostics."
       }
     ]
   }
@@ -151,6 +117,8 @@ export function SidebarNav(props) {
     // Initialize expanded states from localStorage if available
     let allThreadsExpanded = false;
     let favoritesExpanded = true;
+    let recentExpanded = true;
+
     try {
       const savedAll = localStorage.getItem('sidebarAllThreadsExpanded');
       if (savedAll !== null) allThreadsExpanded = JSON.parse(savedAll);
@@ -163,20 +131,31 @@ export function SidebarNav(props) {
     } catch (error) {
       console.warn('Error loading favorites state from localStorage:', error);
     }
+    try {
+      const savedRecent = localStorage.getItem('sidebarRecentExpanded');
+      if (savedRecent !== null) recentExpanded = JSON.parse(savedRecent);
+    } catch (error) {
+      console.warn('Error loading recent state from localStorage:', error);
+    }
+
+    let workspacesExpanded = true;
+    try {
+      const savedWorkspaces = localStorage.getItem('sidebarWorkspacesExpanded');
+      if (savedWorkspaces !== null) workspacesExpanded = JSON.parse(savedWorkspaces);
+    } catch (error) {
+      console.warn('Error loading workspaces state from localStorage:', error);
+    }
 
     return {
       favorites: favoritesExpanded,
-      recent: true,
-      yesterday: true,
-      previousWeek: true,
-      allThreads: allThreadsExpanded
+      recent: recentExpanded,
+      allThreads: allThreadsExpanded,
+      workspaces: workspacesExpanded
     };
   });
   const [chatData, setChatData] = useState({
     favorites: [],
-    recent: [],
-    yesterday: [],
-    previousWeek: []
+    recent: []
   });
   const [allThreads, setAllThreads] = useState([]);
   const [adminChats, setAdminChats] = useState([]);
@@ -275,6 +254,12 @@ export function SidebarNav(props) {
   useEffect(() => {
     try { localStorage.setItem('sidebarFavoritesExpanded', JSON.stringify(expandedSections.favorites)); } catch (_) {}
   }, [expandedSections.favorites]);
+  useEffect(() => {
+    try { localStorage.setItem('sidebarRecentExpanded', JSON.stringify(expandedSections.recent)); } catch (_) {}
+  }, [expandedSections.recent]);
+  useEffect(() => {
+    try { localStorage.setItem('sidebarWorkspacesExpanded', JSON.stringify(expandedSections.workspaces)); } catch (_) {}
+  }, [expandedSections.workspaces]);
 
   useEffect(() => {
     // Handle global deletion/archival events to keep sidebar in sync
@@ -285,9 +270,7 @@ export function SidebarNav(props) {
       setAllThreads(prev => prev.filter(thread => String(thread.id) !== String(id)));
       setChatData(prev => ({
         favorites: prev.favorites.filter(chat => String(chat.id) !== String(id)),
-        recent: prev.recent.filter(chat => String(chat.id) !== String(id)),
-        yesterday: prev.yesterday.filter(chat => String(chat.id) !== String(id)),
-        previousWeek: prev.previousWeek.filter(chat => String(chat.id) !== String(id))
+        recent: prev.recent.filter(chat => String(chat.id) !== String(id))
       }));
       setWorkspaceChats(prev => {
         const next = { ...prev };
@@ -306,9 +289,7 @@ export function SidebarNav(props) {
       setAllThreads(prev => updateTitle(prev));
       setChatData(prev => ({
         favorites: updateTitle(prev.favorites),
-        recent: updateTitle(prev.recent),
-        yesterday: updateTitle(prev.yesterday),
-        previousWeek: updateTitle(prev.previousWeek)
+        recent: updateTitle(prev.recent)
       }));
       setWorkspaceChats(prev => {
         const next = { ...prev };
@@ -342,8 +323,6 @@ export function SidebarNav(props) {
   useEffect(() => {
     fetchFavorites();
     fetchRecent();
-    fetchYesterday();
-    fetchPreviousWeek();
     fetchAdminChats();
     // Load user's workspaces
     (async () => {
@@ -400,27 +379,6 @@ export function SidebarNav(props) {
     } catch (_) {}
   };
 
-  const fetchYesterday = async () => {
-    try {
-      const base = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
-      const resp = await fetch(`${base}/bb-chat/api/chat/yesterday`, { method: 'GET', credentials: 'include' });
-      const data = await resp.json();
-      if (data?.success) {
-        setChatData(prev => ({ ...prev, yesterday: data.chats || [] }));
-      }
-    } catch (_) {}
-  };
-
-  const fetchPreviousWeek = async () => {
-    try {
-      const base = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
-      const resp = await fetch(`${base}/bb-chat/api/chat/sevendays`, { method: 'GET', credentials: 'include' });
-      const data = await resp.json();
-      if (data?.success) {
-        setChatData(prev => ({ ...prev, previousWeek: data.chats || [] }));
-      }
-    } catch (_) {}
-  };
 
   const fetchAllThreads = useCallback(async () => {
     try {
@@ -514,8 +472,8 @@ export function SidebarNav(props) {
   // Function to expand the section containing the active chat
   const expandSectionWithActiveChat = (chatData, activeChatId) => {
     // Do not auto-expand Favorites; respect user's persisted choice
-    const sections = ['recent', 'yesterday', 'previousWeek'];
-    
+    const sections = ['recent'];
+
     for (const section of sections) {
       const hasActiveChat = chatData[section].some(chat => chat.id.toString() === activeChatId);
       if (hasActiveChat) {
@@ -564,10 +522,7 @@ export function SidebarNav(props) {
     if (section === 'allThreads' && !wasExpanded && allThreads.length === 0) {
       fetchAllThreads();
     }
-    // Persist favorites state immediately when toggled
-    if (section === 'favorites') {
-      try { localStorage.setItem('sidebarFavoritesExpanded', JSON.stringify(!wasExpanded)); } catch (_) {}
-    }
+    // Note: localStorage persistence is handled automatically by useEffect hooks
   };
 
   const toggleWorkspace = async (wid) => {
@@ -628,9 +583,7 @@ export function SidebarNav(props) {
           setAllThreads(prev => prev.filter(thread => thread.id.toString() !== chatId.toString()));
           setChatData(prev => ({
             favorites: prev.favorites.filter(chat => chat.id.toString() !== chatId.toString()),
-            recent: prev.recent.filter(chat => chat.id.toString() !== chatId.toString()),
-            yesterday: prev.yesterday.filter(chat => chat.id.toString() !== chatId.toString()),
-            previousWeek: prev.previousWeek.filter(chat => chat.id.toString() !== chatId.toString())
+            recent: prev.recent.filter(chat => chat.id.toString() !== chatId.toString())
           }));
           setWorkspaceChats(prev => {
             const next = { ...prev };
@@ -687,9 +640,7 @@ export function SidebarNav(props) {
           setAllThreads(prev => prev.filter(thread => thread.id.toString() !== chatId.toString()));
           setChatData(prev => ({
             favorites: prev.favorites.filter(chat => chat.id.toString() !== chatId.toString()),
-            recent: prev.recent.filter(chat => chat.id.toString() !== chatId.toString()),
-            yesterday: prev.yesterday.filter(chat => chat.id.toString() !== chatId.toString()),
-            previousWeek: prev.previousWeek.filter(chat => chat.id.toString() !== chatId.toString())
+            recent: prev.recent.filter(chat => chat.id.toString() !== chatId.toString())
           }));
           setWorkspaceChats(prev => {
             const next = { ...prev };
@@ -730,13 +681,13 @@ export function SidebarNav(props) {
 
       <div
         ref={sidebarRef}
-        className="relative bb-fix-sidebar pt-16 dark:bg-black bg-zinc-50 dark:text-gray-300 text-zinc-800 flex flex-col border-r transition-all duration-300"
+        className="fixed left-0 top-0 bottom-0 bb-fix-sidebar pt-16 dark:bg-black bg-zinc-50 dark:text-gray-300 text-zinc-800 flex flex-col border-r transition-all duration-300 h-screen"
         style={{
           width: isCollapsed ? '64px' : `${sidebarWidth}px`,
         }}
       >
       {/* Collapse/Expand Button */}
-      <div className={`absolute top-20 ${isCollapsed ? 'right-2' : 'right-4'} z-10`}>
+      <div className={`absolute top-20 ${isCollapsed ? 'right-4' : 'right-4'} z-10`}>
         <Button
           variant="ghost"
           size="sm"
@@ -784,7 +735,21 @@ export function SidebarNav(props) {
           {/* Workspaces section */}
           {workspaces.length > 0 && (
             <div className="mb-4">
-              <div className="px-4 py-1 text-sm font-medium text-gray-500">Workspaces</div>
+              <Button
+                variant="ghost"
+                className="w-full flex items-center justify-between px-4 py-1 h-auto text-left cursor-pointer"
+                onClick={() => toggleSection('workspaces')}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-500">Workspaces</span>
+                </div>
+                {expandedSections.workspaces ?
+                  <ChevronDown className="h-4 w-4 text-gray-500" /> :
+                  <ChevronRight className="h-4 w-4 text-gray-500" />
+                }
+              </Button>
+
+              {expandedSections.workspaces && (
               <div className="space-y-1 mt-1">
                 {workspaces.map(ws => (
                   <div key={`ws-${ws.id}`} className="rounded-md mx-2">
@@ -880,6 +845,7 @@ export function SidebarNav(props) {
                   </div>
                 ))}
               </div>
+              )}
             </div>
           )}
           {/* Admin-created chats list (simple) */}
@@ -997,109 +963,7 @@ export function SidebarNav(props) {
               )}
             </div>
           )}
-          
-          {/* Yesterday's chats */}
-          {chatData.yesterday.length > 0 && (
-            <div className="mb-4">
-              <Button
-                variant="ghost"
-                className="w-full flex items-center justify-between px-4 py-1 h-auto text-left cursor-pointer"
-                onClick={() => toggleSection('yesterday')}
-              >
-                <span className="text-sm font-medium text-gray-500">Yesterday</span>
-                {expandedSections.yesterday ? 
-                  <ChevronDown className="h-4 w-4 text-gray-500" /> : 
-                  <ChevronRight className="h-4 w-4 text-gray-500" />
-                }
-              </Button>
-              
-              {expandedSections.yesterday && (
-                <div className="space-y-1 mt-1">
-                  {chatData.yesterday.map(chat => (
-                    <div 
-                      key={`y-${chat.id}-${chat.updated_at ?? chat.timestamp ?? ''}`}
-                      className={`rounded-md overflow-hidden mx-2 mb-2 cursor-pointer transition-colors ${
-                        isChatActive(chat.id) 
-                          ? 'dark:bg-gray-800/60 bg-zinc-200/60 border-l-2 border-zinc-400 dark:border-gray-600' 
-                          : 'dark:hover:bg-gray-800/50 hover:bg-zinc-200/70'
-                      }`}
-                      onClick={() => handleChatClick(chat)}
-                    >
-                      <div className="p-3">
-                        <div className="flex justify-between items-start mb-1">
-                          <h4 className={`font-medium text-sm ${
-                            isChatActive(chat.id) 
-                              ? 'dark:text-gray-200 text-zinc-900' 
-                              : 'dark:text-gray-200 text-zinc-800'
-                          }`}>
-                            {(chat.title || '').replace(/\.+$/, '')}
-                          </h4>
-                          <span className="text-xs text-gray-500">
-                            {chat.timestamp}
-                          </span>
-                        </div>
-                        <p className="text-xs text-gray-500 line-clamp-2">
-                          {chat.description}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-          
-          {/* Previous week chats */}
-          {chatData.previousWeek.length > 0 && (
-            <div className="mb-4">
-              <Button
-                variant="ghost"
-                className="w-full flex items-center justify-between px-4 py-1 h-auto text-left cursor-pointer"
-                onClick={() => toggleSection('previousWeek')}
-              >
-                <span className="text-sm font-medium text-gray-500">Previous 7 Days</span>
-                {expandedSections.previousWeek ? 
-                  <ChevronDown className="h-4 w-4 text-gray-500" /> : 
-                  <ChevronRight className="h-4 w-4 text-gray-500" />
-                }
-              </Button>
-              
-              {expandedSections.previousWeek && (
-                <div className="space-y-1 mt-1">
-                  {chatData.previousWeek.map(chat => (
-                    <div 
-                      key={`pw-${chat.id}-${chat.updated_at ?? chat.timestamp ?? ''}`}
-                      className={`rounded-md overflow-hidden mx-2 mb-2 cursor-pointer transition-colors ${
-                        isChatActive(chat.id) 
-                          ? 'dark:bg-gray-800/60 bg-zinc-200/60 border-l-2 border-zinc-400 dark:border-gray-600' 
-                          : 'dark:hover:bg-gray-800/50 hover:bg-zinc-200/70'
-                      }`}
-                      onClick={() => handleChatClick(chat)}
-                    >
-                      <div className="p-3">
-                        <div className="flex justify-between items-start mb-1">
-                          <h4 className={`font-medium text-sm mr-2 ${
-                            isChatActive(chat.id) 
-                              ? 'dark:text-gray-200 text-zinc-900' 
-                              : 'dark:text-gray-200 text-zinc-800'
-                          }`}>
-                            {(chat.title || '').replace(/\.+$/, '')}
-                          </h4>
-                          <span className="text-xs text-gray-500 shrink-0">
-                            {chat.timestamp}
-                          </span>
-                        </div>
-                        <p className="text-xs text-gray-500 line-clamp-2">
-                          {chat.description}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-          
+
           {/* All Threads collapsible section */}
           <div className="mb-4">
             <Button
