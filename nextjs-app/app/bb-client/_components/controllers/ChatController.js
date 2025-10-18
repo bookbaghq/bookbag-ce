@@ -5,6 +5,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { contextService, modelService } from '../services/contextService';
 import { apiService } from '../services/apiService';
 import { calculateConversationTokenCount, preprocessInput } from '../tools/tokenUtils';
@@ -18,6 +19,8 @@ export function useChatController({
   initialMessages = [],
   chatTitle = null
 }) {
+  const router = useRouter();
+
   // Core chat state
   const [messages, setMessages] = useState(initialMessages);
   const [inputValue, setInputValue] = useState('');
@@ -65,9 +68,51 @@ export function useChatController({
   // Live streaming metrics for UI badges
   const [streamingStats, setStreamingStats] = useState({ tokenCount: 0, tps: null, elapsed: 0 });
 
+  // Image attachment state
+  const [attachedImages, setAttachedImages] = useState([]);
+
   // Update refs when state changes
   useEffect(() => {
     currentChatIdRef.current = currentChatId;
+  }, [currentChatId]);
+
+  // Load unsent images when chat changes
+  useEffect(() => {
+    const loadUnsentImages = async () => {
+      if (!currentChatId) {
+        setAttachedImages([]);
+        return;
+      }
+
+      try {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
+        const response = await fetch(`${backendUrl}/bb-media/api/media/unsent-images/${currentChatId}`, {
+          method: 'GET',
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          console.warn('Failed to load unsent images:', await response.text());
+          return;
+        }
+
+        const result = await response.json();
+        if (result.success && Array.isArray(result.images)) {
+          // Map backend images to attachedImages format
+          const loadedImages = result.images.map(img => ({
+            url: img.url,
+            fileId: img.id,
+            uploading: false,
+            preview: null // No preview for server images
+          }));
+          setAttachedImages(loadedImages);
+        }
+      } catch (error) {
+        console.error('Error loading unsent images:', error);
+      }
+    };
+
+    loadUnsentImages();
   }, [currentChatId]);
 
 
@@ -456,6 +501,34 @@ export function useChatController({
               continue;
             }
 
+            // Handle AI-generated image events
+            if (parsed && parsed.type === 'aiImage') {
+              try {
+                const imageMessageId = String(parsed.messageId || currentId);
+                const imageUrl = parsed.imageUrl;
+
+                console.log(`🖼️ Received AI-generated image event for message ${imageMessageId}:`, imageUrl);
+
+                // Add image to the assistant message's attachments
+                setMessages(prev => prev.map(msg => {
+                  if (String(msg.id) !== imageMessageId) return msg;
+
+                  const existingAttachments = msg.attachments || [];
+                  const newAttachments = Array.isArray(existingAttachments)
+                    ? [...existingAttachments, imageUrl]
+                    : [imageUrl];
+
+                  return {
+                    ...msg,
+                    attachments: newAttachments
+                  };
+                }));
+              } catch (err) {
+                console.error('Failed to handle AI image event:', err);
+              }
+              continue;
+            }
+
             const latestContent = (typeof parsed.fullText === 'string')
               ? parsed.fullText
               : (typeof parsed.responseBuffer === 'string')
@@ -561,6 +634,112 @@ export function useChatController({
   };
 
 
+  // Handle image attachment
+  const handleImageAttach = async (file) => {
+    try {
+      // Create preview URL for immediate display
+      const previewUrl = URL.createObjectURL(file);
+
+      // Add to attachedImages with loading state
+      const tempImg = {
+        file,
+        preview: previewUrl,
+        uploading: true
+      };
+      setAttachedImages(prev => [...prev, tempImg]);
+
+      // Upload to backend
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
+      const formData = new FormData();
+      formData.append('image', file);
+      if (currentChatId) {
+        formData.append('chatId', currentChatId);
+      }
+
+      const response = await fetch(`${backendUrl}/bb-media/api/media/upload-image`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Upload response not OK:', response.status, errorText);
+        throw new Error(`Failed to upload image: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      if (!result.success || !result.imageUrl) {
+        console.error('Upload failed with result:', result);
+        throw new Error(result.error || 'Upload failed');
+      }
+
+      // If a chat was created, navigate to it
+      if (result.chatId && !currentChatId) {
+        setCurrentChatId(result.chatId);
+        toast.success('Chat created! Navigating...');
+        router.push(`/bb-client/${result.chatId}`);
+      }
+
+      // Update with server URL and file ID
+      setAttachedImages(prev =>
+        prev.map(img =>
+          img.preview === previewUrl
+            ? { ...img, url: result.imageUrl, fileId: result.fileId, uploading: false }
+            : img
+        )
+      );
+    } catch (error) {
+      console.error('Image upload error:', error);
+      toast.error(`Failed to upload image: ${error.message}`);
+      // Remove failed upload
+      setAttachedImages(prev => prev.filter(img => img.file !== file));
+    }
+  };
+
+  // Handle image removal
+  const handleImageRemove = async (index) => {
+    try {
+      const img = attachedImages[index];
+
+      // If the image has been uploaded to the server, delete it from backend
+      if (img?.url && !img.uploading) {
+        // Extract file ID from URL: http://localhost:8080/bb-media/api/media/image/123
+        const urlParts = img.url.split('/');
+        const fileId = urlParts[urlParts.length - 1];
+
+        if (fileId) {
+          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
+
+          // Call backend delete endpoint
+          const response = await fetch(`${backendUrl}/bb-media/api/media/delete/media_${fileId}`, {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (!response.ok) {
+            console.warn('Failed to delete image from server:', await response.text());
+          }
+        }
+      }
+
+      // Revoke preview URL to free memory
+      if (img?.preview) {
+        URL.revokeObjectURL(img.preview);
+      }
+
+      // Remove from UI state
+      setAttachedImages(prev => prev.filter((_, i) => i !== index));
+    } catch (error) {
+      console.error('Error removing image:', error);
+      // Still remove from UI even if backend deletion fails
+      setAttachedImages(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
   const handleSubmit = async (e, retryCount = 0) => {
     e.preventDefault();
     
@@ -594,11 +773,28 @@ export function useChatController({
     setIsLoading(true);
 
     let userMessage, aiMessage;
+    let imageUrls = [];
+    let imageIds = [];
 
     try {
       if (!isRetry) {
-        // Clear input immediately for better UX
+        // Clear input and attachments immediately for better UX
         setInputValue('');
+
+        // Collect image URLs and IDs from attachments
+        imageUrls = attachedImages
+          .filter(img => img.url && !img.uploading)
+          .map(img => img.url);
+
+        imageIds = attachedImages
+          .filter(img => img.fileId && !img.uploading)
+          .map(img => img.fileId);
+
+        // Clear attachments after collecting URLs
+        attachedImages.forEach(img => {
+          if (img.preview) URL.revokeObjectURL(img.preview);
+        });
+        setAttachedImages([]);
 
         // Optimistic UI: add temporary user message only (do NOT show AI card yet)
         const tempUserId = `temp-user-${Date.now()}`;
@@ -608,15 +804,21 @@ export function useChatController({
           content: userInputContent,
           role: 'user',
           createdAt: Date.now(),
-          chatId: currentChatId
+          chatId: currentChatId,
+          attachments: imageUrls.length > 0 ? imageUrls : undefined
         };
         setMessages(prev => [...prev, tempUserMessage]);
         // Show streaming state immediately for better UX
         setIsStreaming(true);
 
         // ✅ DB-FIRST APPROACH: Create user message in database first
-       
-        const createResult = await apiService.createUserMessage(userInputContent, currentChatId, selectedModelId);
+
+        const createResult = await apiService.createUserMessage(
+          userInputContent,
+          currentChatId,
+          selectedModelId,
+          imageUrls.length > 0 ? imageUrls : undefined
+        );
         const serverUserMessage = createResult.message;
         if (!serverUserMessage) {
           throw new Error('Backend did not return created messages');
@@ -625,16 +827,43 @@ export function useChatController({
         userMessage = serverUserMessage;
         // Prepare a temporary AI message id; do NOT render the card until first tokens arrive
         aiMessage = { id: tempAiId };
-   
+
         // Update chat ID if this was a new chat
         if (userMessage.chatId && !currentChatId) {
           setCurrentChatId(userMessage.chatId);
           const newUrl = `/bb-client/${userMessage.chatId}`;
           window.history.pushState({}, '', newUrl);
         }
-        
-        // Replace temporary user message with server user message
-        setMessages(prev => prev.map(m => (m.id === tempUserId ? serverUserMessage : m)));
+
+        // Replace temporary user message with server user message (includes attachments from backend)
+        setMessages(prev => prev.map(m => (m.id === tempUserId ? {
+          ...serverUserMessage,
+          attachments: serverUserMessage.attachments || imageUrls || undefined
+        } : m)));
+
+        // Link images to the message if there are any
+        if (imageIds.length > 0 && userMessage.id) {
+          try {
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
+            const linkResponse = await fetch(`${backendUrl}/bb-media/api/media/link-images-to-message`, {
+              method: 'POST',
+              credentials: 'include',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                imageIds: imageIds,
+                messageId: userMessage.id
+              })
+            });
+
+            if (!linkResponse.ok) {
+              console.warn('Failed to link images to message:', await linkResponse.text());
+            }
+          } catch (error) {
+            console.error('Error linking images to message:', error);
+          }
+        }
 
         // Add placeholder assistant message immediately so UI can show "Thinking…" before first tokens
         try {
@@ -890,6 +1119,11 @@ The request failed due to network issues or the response was too large. This oft
     handleModelSelection,
     handleHeaderAction,
     handleDeleteChat,
-    handleArchiveChat
+    handleArchiveChat,
+
+    // Image attachments
+    attachedImages,
+    handleImageAttach,
+    handleImageRemove
   };
 }

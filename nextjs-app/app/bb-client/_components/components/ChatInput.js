@@ -46,9 +46,14 @@ export function ChatInput({
   contextLoading,
   contextError,
   inputTokenCount,
-  modelLimits
+  modelLimits,
+  // Image attachments
+  attachedImages,
+  onImageAttach,
+  onImageRemove
 }) {
   const textareaRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // Format large numbers for compact display
   const formatCompactNumber = (value, withDecimal = false) => {
@@ -77,6 +82,18 @@ export function ChatInput({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       onSubmit(e);
+    }
+  };
+
+  // Handle image file selection
+  const handleImageSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      onImageAttach?.(file);
+    }
+    // Reset file input so same file can be selected again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -142,8 +159,56 @@ export function ChatInput({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-end gap-2 p-3">
 
+              {/* Image Preview Section */}
+              {attachedImages && attachedImages.length > 0 && (
+                <div className="px-3 pb-2 pt-3">
+                  <div className="flex flex-wrap gap-2">
+                    {attachedImages.map((img, idx) => (
+                      <div key={idx} className="relative group">
+                        <img
+                          src={img.preview || img.url}
+                          alt="Attachment"
+                          className="w-20 h-20 object-cover rounded border"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => onImageRemove?.(idx)}
+                          className="absolute -top-2 -right-2 w-5 h-5 p-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          disabled={isLoading}
+                        >
+                          ×
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-end gap-2 p-3">
+                {/* Image Attachment Button */}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isLoading}
+                  className="flex-shrink-0"
+                  title="Attach image"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </Button>
+
+                {/* Hidden File Input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageSelect}
+                  className="hidden"
+                />
 
                 {/* Text Input */}
                 <div className="flex-1 relative">

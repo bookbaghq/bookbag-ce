@@ -112,20 +112,29 @@ export class ApiService {
    * Create user message in database first (DB-first approach)
    * @param {string} content - Message content
    * @param {string|null} chatId - Chat ID or null for new chat
+   * @param {string} modelId - Model ID
+   * @param {Array<string>} attachments - Optional array of image URLs
    * @returns {Promise<object>} - User message with real ID
    */
-  async createUserMessage(content, chatId, modelId) {
+  async createUserMessage(content, chatId, modelId, attachments) {
     try {
+      const payload = {
+        content: content,
+        chatId: chatId,
+        modelId: modelId
+      };
+
+      // Add attachments if provided
+      if (attachments && attachments.length > 0) {
+        payload.attachments = attachments;
+      }
+
       const response = await fetch(`${this.baseUrl}/bb-chat/api/message/createuser`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ 
-          content: content,
-          chatId: chatId,
-          modelId: modelId
-        }),
+        body: JSON.stringify(payload),
         credentials: 'include'
       });
 

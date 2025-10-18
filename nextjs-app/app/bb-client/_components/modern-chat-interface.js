@@ -69,7 +69,12 @@ export function ModernChatInterface({
     handleHeaderAction,
     handleDeleteChat,
     handleArchiveChat,
-    scrollToBottom
+    scrollToBottom,
+
+    // Image attachments
+    attachedImages,
+    handleImageAttach,
+    handleImageRemove
   } = useChatController({
     initialChatId,
     initialMessages,
@@ -161,9 +166,14 @@ export function ModernChatInterface({
         contextInfo={contextInfo}
         contextLoading={contextLoading}
         contextError={contextError}
-        
+
         inputTokenCount={inputTokenCount}
         modelLimits={modelLimits}
+
+        // Image attachments
+        attachedImages={attachedImages}
+        onImageAttach={handleImageAttach}
+        onImageRemove={handleImageRemove}
       />
       
       {/* Modals */}

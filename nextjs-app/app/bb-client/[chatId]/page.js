@@ -64,7 +64,9 @@ export default function ChatPage() {
           model_id: msg.model_id,
           meta: msg.meta || null,
           // ✅ CRITICAL FIX: Include thinking sections from backend
-          thinkingSections: msg.thinkingSections || []
+          thinkingSections: msg.thinkingSections || [],
+          // ✅ Include attachments from backend
+          attachments: msg.attachments || null
         };
       });
 

@@ -147,6 +147,20 @@ export class ChatMessageItem extends React.Component {
                 );
               })()}
 
+              {/* Display AI-generated images if present - BELOW the message card */}
+              {message.attachments && Array.isArray(message.attachments) && message.attachments.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2 justify-start">
+                  {message.attachments.map((imageUrl, idx) => (
+                    <img
+                      key={idx}
+                      src={imageUrl}
+                      alt={`AI-generated image ${idx + 1}`}
+                      className="max-w-[200px] rounded border border-border"
+                    />
+                  ))}
+                </div>
+              )}
+
               {/* Stats pills: tokens, TPS, model */}
               <div className="mt-2 flex justify-start gap-2">
                     {/* Tokens pill */}
@@ -182,11 +196,26 @@ export class ChatMessageItem extends React.Component {
                   </div>
                 </>
           ) : (
-            <Card className="p-4 relative group/message ml-auto bg-primary text-primary-foreground">
-              <div className="whitespace-pre-wrap text-left">
-                {message.content?.trim?.() || ''}
-              </div>
-            </Card>
+            <>
+              <Card className="p-4 relative group/message ml-auto bg-primary text-primary-foreground">
+                <div className="whitespace-pre-wrap text-left">
+                  {message.content?.trim?.() || ''}
+                </div>
+              </Card>
+              {/* Display attached images if present - BELOW the message card */}
+              {message.attachments && Array.isArray(message.attachments) && message.attachments.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2 justify-end">
+                  {message.attachments.map((imageUrl, idx) => (
+                    <img
+                      key={idx}
+                      src={imageUrl}
+                      alt={`Attachment ${idx + 1}`}
+                      className="max-w-[200px] rounded border border-border"
+                    />
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

@@ -54,9 +54,9 @@ export default function AuthLayout({ children }) {
        redirect('/bb-client');
     }
     else{
-      return ( 
+      return (
           <div className="h-full dark:bg-[#1F1F1F]">
-          <Navbar />
+          <Navbar hideSettings={true} />
             <main className="h-full">
               {children}
             </main>

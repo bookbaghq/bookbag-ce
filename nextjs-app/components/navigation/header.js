@@ -12,7 +12,7 @@ import authentication from "@/services/authentication"
 import { useEffect, useState } from 'react'
     
 
-export function Header() {
+export function Header({ hideSettings = false }) {
 
   const scrolled = useScrollTop()
   const [isTemp, setIsTemp] = useState(false)
@@ -40,7 +40,7 @@ export function Header() {
         <Logo/>
       </div>
       <div className="md:ml-auto md:justify-end flex gap-x-2 justify-between items-center w-full">
-        {!isTemp && (<DropdownMenuLoggedIn />)}
+        {!isTemp && !hideSettings && (<DropdownMenuLoggedIn />)}
         <ModeToggle/>
       </div>
     </div>
