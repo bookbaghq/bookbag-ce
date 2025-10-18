@@ -92,6 +92,10 @@ class MessagePersistenceService {
                     // Persist model info in meta so UI can display human-readable name
                     userMessage.meta = JSON.stringify({ modelId: formData.modelId });
                 }
+                // Add attachments if provided
+                if (formData.attachments && Array.isArray(formData.attachments) && formData.attachments.length > 0) {
+                    userMessage.attachments = JSON.stringify(formData.attachments);
+                }
                 userMessage.user_id = this._currentUser.id;
                 userMessage.token_count = userTokenCount;
                 userMessage.created_at = timestamp;
@@ -116,6 +120,10 @@ class MessagePersistenceService {
                 userMessage.model_id = Number.parseInt(formData.modelId, 10) || 0;
                 if (formData.modelId) {
                     userMessage.meta = JSON.stringify({ modelId: formData.modelId });
+                }
+                // Add attachments if provided
+                if (formData.attachments && Array.isArray(formData.attachments) && formData.attachments.length > 0) {
+                    userMessage.attachments = JSON.stringify(formData.attachments);
                 }
                 userMessage.user_id = this._currentUser.id;
                 userMessage.token_count = userTokenCount;
@@ -455,6 +463,49 @@ class MessagePersistenceService {
         } catch (error) {
             console.error('Error verifying message exists:', error);
             return false;
+        }
+    }
+
+    /**
+     * Update message attachments (for AI-generated images)
+     */
+    async updateMessageAttachments(messageId, imageUrls) {
+        try {
+            const message = this._chatContext.Messages
+                .where(m => m.id == $$, messageId)
+                .single();
+
+            if (!message) {
+                throw new Error('Message not found');
+            }
+
+            // Parse existing attachments if any
+            let existingAttachments = [];
+            if (message.attachments) {
+                try {
+                    existingAttachments = typeof message.attachments === 'string'
+                        ? JSON.parse(message.attachments)
+                        : message.attachments;
+                } catch (_) {
+                    existingAttachments = [];
+                }
+            }
+
+            // Merge with new image URLs
+            const allAttachments = Array.isArray(existingAttachments)
+                ? [...existingAttachments, ...imageUrls]
+                : imageUrls;
+
+            // Update message with attachments
+            message.attachments = JSON.stringify(allAttachments);
+            message.updated_at = Date.now().toString();
+
+            await this._saveWithRetry();
+
+            return { success: true, attachmentCount: allAttachments.length };
+        } catch (error) {
+            console.error('Error updating message attachments:', error);
+            throw error;
         }
     }
 }

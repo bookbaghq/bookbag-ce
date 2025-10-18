@@ -10,6 +10,10 @@ const errorService = require(`${master.root}/app/service/errorService`);
 const RAGContext = require(`${master.root}/components/rag/app/models/ragContext`);
 const RAGService = require(`${master.root}/components/rag/app/service/ragService`);
 
+// AI Image handling imports
+const ResponseNormalizationService = require(`${master.root}/components/chats/app/service/responseNormalizationService`);
+const MediaService = require(`${master.root}/components/media/app/service/mediaService`);
+
 class chatSocket {
 
 	constructor(dependencies) {
@@ -518,6 +522,80 @@ Answer the user's question using the information provided between the "Retrieved
 				this.streamingService.endStream(socket);
 				this.streamingService.cleanupStream(streamId);
 				return;
+			}
+
+			// 🖼️ AI Image Processing: Detect, download, and save AI-generated images
+			const savedImageUrls = [];
+			try {
+				const responseNormalizationService = new ResponseNormalizationService();
+				const mediaService = new MediaService();
+				const mediaContext = (master.requestList && master.requestList.mediaContext) ? master.requestList.mediaContext : null;
+
+				// Get vendor from model config
+				const vendor = this.modelConfig?.vendor || 'unknown';
+				const modelName = this.modelConfig?.name || 'unknown';
+
+				console.log(`\n🖼️ AI Image Detection: Checking response for images (vendor: ${vendor})...`);
+
+				// Normalize the LLM response to detect images
+				const normalized = responseNormalizationService.normalize(lastDisplayBuffer, vendor, modelName);
+
+				// Check if response contains images
+				if (responseNormalizationService.hasImages(normalized)) {
+					const imageUrls = responseNormalizationService.getImageUrls(normalized);
+					console.log(`✅ Found ${imageUrls.length} AI-generated image(s)`);
+
+					// Download and save each image
+					for (const imageUrl of imageUrls) {
+						try {
+							console.log(`📥 Downloading AI image: ${imageUrl}`);
+
+							const savedImage = await mediaService.saveAIGeneratedImage(imageUrl, {
+								messageId: aiMessageId,
+								chatId: chatId,
+								mediaContext: mediaContext,
+								source: 'ai',
+								vendor: vendor
+							});
+
+							savedImageUrls.push(savedImage.url);
+							console.log(`✅ Saved AI image: ${savedImage.url}`);
+
+							// Send image event to frontend
+							this.streamingService.sendEvent(socket, {
+								type: 'aiImage',
+								messageId: aiMessageId,
+								imageUrl: savedImage.url,
+								originalUrl: imageUrl,
+								fileId: savedImage.fileId
+							});
+						} catch (imageError) {
+							console.error(`❌ Failed to save AI image ${imageUrl}:`, imageError);
+						}
+					}
+
+					// Update assistant message with image attachments
+					if (savedImageUrls.length > 0) {
+						try {
+							await persistenceService.updateMessageAttachments(aiMessageId, savedImageUrls);
+							console.log(`✅ Updated message ${aiMessageId} with ${savedImageUrls.length} image attachment(s)`);
+						} catch (attachError) {
+							console.error(`❌ Failed to update message attachments:`, attachError);
+						}
+					}
+
+					// Get clean text content without image URLs
+					const cleanText = responseNormalizationService.getTextContent(normalized);
+					if (cleanText !== lastDisplayBuffer) {
+						// Update lastDisplayBuffer to clean text (without image markdown/URLs)
+						lastDisplayBuffer = cleanText;
+						console.log(`🧹 Cleaned text content (removed image URLs)`);
+					}
+				} else {
+					console.log(`ℹ️  No AI-generated images detected in response`);
+				}
+			} catch (imageProcessingError) {
+				console.error(`⚠️  AI image processing failed (non-fatal):`, imageProcessingError);
 			}
 
 			// Finalize: persist trailing update, send final clean chunk, completion event, and close stream

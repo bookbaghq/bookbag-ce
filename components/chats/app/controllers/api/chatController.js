@@ -2,6 +2,7 @@ const master = require('mastercontroller');
 const crypto = require('crypto');
 const chatEntity = require(`${master.root}/components/chats/app/models/chat`);
 const userChatEntity = require(`${master.root}/components/chats/app/models/userchat`);
+const MediaService = require(`${master.root}/components/media/app/service/mediaService`);
 
 class chatController {
 
@@ -9,6 +10,8 @@ class chatController {
         this._currentUser = req.authService.currentUser(req.request, req.userContext);
         this._chatContext = req.chatContext;
         this._workspaceContext = req.workspaceContext;
+        this._mediaContext = req.mediaContext;
+        this.mediaService = new MediaService();
         // Admin-only actions moved to adminChatController
     }
 
@@ -431,8 +434,25 @@ class chatController {
                     model_id: msg.model_id || null,
                     createdAt: parseInt(msg.created_at),
                     updated_at: parseInt(msg.updated_at),
-                    meta: msg.meta ? JSON.parse(msg.meta) : null
+                    meta: msg.meta ? JSON.parse(msg.meta) : null,
+                    attachments: msg.attachments ? JSON.parse(msg.attachments) : null
                 };
+
+                // Load images linked to this message using MediaService
+                try {
+                    const imageUrls = this.mediaService.getImageUrlsForMessage(msg.id, this._mediaContext);
+
+                    if (imageUrls && imageUrls.length > 0) {
+                        // Merge with existing attachments or set new ones
+                        if (messageData.attachments && Array.isArray(messageData.attachments)) {
+                            messageData.attachments = [...messageData.attachments, ...imageUrls];
+                        } else {
+                            messageData.attachments = imageUrls;
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error loading message images:', e.message);
+                }
 
                 // Ensure meta exists
                 if (!messageData.meta) {

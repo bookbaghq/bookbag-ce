@@ -1,5 +1,6 @@
 const master = require('mastercontroller');
 const ToolsService = require(`${master.root}/components/chats/app/service/toolsService`);
+const MediaService = require(`${master.root}/components/media/app/service/mediaService`);
 
 /**
  * ChatHistoryService - Handles conversation history management and context window optimization
@@ -13,6 +14,9 @@ class ChatHistoryService {
     constructor(chatContext, modelSettings) {
         this._chatContext = chatContext;
         this.modelSettings = modelSettings;
+        this.mediaService = new MediaService();
+        // Get mediaContext from master singleton
+        this._mediaContext = (master.requestList && master.requestList.mediaContext) ? master.requestList.mediaContext : null;
     }
 
 
@@ -40,17 +44,50 @@ class ChatHistoryService {
                 const role = msg.role;
                 const content = msg.content;
                 console.log(`Processing message - role: "${role}" (type: ${typeof role}), content length: ${content?.length || 0}`);
-                
+
                 if (role && content) {
                     // The role from DB is "Assistant", "User", or "System" (capitalized)
                     // We need to normalize to lowercase for consistency
                     const normalizedRole = role.toString().toLowerCase();
                     console.log(`  -> Normalized role: "${normalizedRole}"`);
-                    
-                    messageHistory.push({
+
+                    const historyItem = {
                         role: normalizedRole,
                         content: content
-                    });
+                    };
+
+                    // Get image URLs from MediaFile table via MediaService
+                    if (this._mediaContext) {
+                        try {
+                            const imageUrls = this.mediaService.getImageUrlsForMessage(msg.id, this._mediaContext);
+                            if (imageUrls && imageUrls.length > 0) {
+                                historyItem.attachments = imageUrls;
+                                console.log(`  -> Added ${imageUrls.length} image(s) from MediaFile for message ${msg.id}`);
+                            }
+                        } catch (e) {
+                            console.warn(`Failed to fetch image URLs for message ${msg.id}:`, e);
+                        }
+                    }
+
+                    // Also include any attachments already in the message
+                    if (msg.attachments) {
+                        try {
+                            const existingAttachments = typeof msg.attachments === 'string'
+                                ? JSON.parse(msg.attachments)
+                                : msg.attachments;
+
+                            // Merge with image URLs if both exist
+                            if (historyItem.attachments && Array.isArray(existingAttachments)) {
+                                historyItem.attachments = [...historyItem.attachments, ...existingAttachments];
+                            } else if (existingAttachments) {
+                                historyItem.attachments = existingAttachments;
+                            }
+                        } catch (e) {
+                            console.warn('Failed to parse attachments:', e);
+                        }
+                    }
+
+                    messageHistory.push(historyItem);
                 }
             }
             
@@ -181,10 +218,16 @@ class ChatHistoryService {
         console.log(`=== END CONTEXT WINDOW MANAGEMENT ===\n`);
         
         // Remove the token estimation properties before returning
-        return trimmedMessages.map(msg => ({
-            role: msg.role,
-            content: msg.content
-        }));
+        return trimmedMessages.map(msg => {
+            const result = {
+                role: msg.role,
+                content: msg.content
+            };
+            if (msg.attachments) {
+                result.attachments = msg.attachments;
+            }
+            return result;
+        });
     }
 
     /**

@@ -33,7 +33,7 @@
     "csv-parser": "^3.2.0",
     "jsonwebtoken": "^9.0.2",
     "mammoth": "^1.11.0",
-    "mastercontroller": "^1.2.8",
+    "mastercontroller": "^1.2.11",
     "masterrecord": "^0.2.31",
     "nodemailer": "^7.0.6",
     "object-mapper": "^6.2.0",

@@ -134,8 +134,9 @@ class authService {
 
     findByTempID(ses, userContext) {
 
-        var auth = userContext.Auth.raw(`select * from Auth where temp_access_token = '${ses}'`).single();
-        if (auth) {
+        var authResults = userContext.Auth.raw(`select * from Auth where temp_access_token = '${ses}'`).toList();
+        if (authResults && authResults.length > 0) {
+            var auth = authResults[0];
             var user = auth.User;
             if (user === null) {
                 return false;

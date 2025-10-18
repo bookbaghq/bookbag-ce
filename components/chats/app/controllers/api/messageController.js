@@ -7,6 +7,7 @@ const ModelService = require(`${master.root}/components/chats/app/service/modelS
 const ToolsService = require(`${master.root}/components/chats/app/service/toolsService`);
 const llmConfigService = require(`${master.root}/components/models/app/service/llmConfigService`);
 const ModelRouterService = require(`${master.root}/components/chats/app/service/modelRouterService`);
+const MediaService = require(`${master.root}/components/media/app/service/mediaService`);
 const crypto = require('crypto');
 
 class messageController {
@@ -18,9 +19,11 @@ class messageController {
         this._currentUser = req.authService.currentUser(req.request, req.userContext);
         this._chatContext = req.chatContext;
         this._modelContext = req.modelContext;
+        this._mediaContext = req.mediaContext;
 
         // Use ModelService singleton to prevent memory leaks
         this.modelService = ModelService.getInstance();
+        this.mediaService = new MediaService();
     }
 
 
@@ -393,7 +396,7 @@ class messageController {
             }
 
             const formData = obj.params.formData || obj.params;
-            let { content, chatId, modelId } = formData;
+            let { content, chatId, modelId, attachments } = formData;
 
             // Validate input
             if (!content || content.trim() === '') {
@@ -410,8 +413,9 @@ class messageController {
             // Initialize persistence service
             const persistenceService = new MessagePersistenceService(this._chatContext, this._currentUser);
 
-            // Save user message and get/create chat
-            const { userMessage, chatId: finalChatId } = await persistenceService.saveUserMessage(formData, chatId);
+            // Save user message and get/create chat (pass attachments if provided)
+            const messageData = { content, attachments };
+            const { userMessage, chatId: finalChatId } = await persistenceService.saveUserMessage(messageData, chatId);
 
             // Load model config (no model initialization here)
             const initResult = await llmConfigService.getModelConfig(modelId);
@@ -435,6 +439,14 @@ class messageController {
                 console.error('⚠️ Failed to persist model meta on user message:', metaErr?.message);
             }
 
+            // Load image URLs for this message using MediaService
+            let imageUrls = [];
+            try {
+                imageUrls = this.mediaService.getImageUrlsForMessage(userMessage.id, this._mediaContext);
+            } catch (imgErr) {
+                console.warn('Error loading message images:', imgErr.message);
+            }
+
             return this.returnJson({
                 success: true,
                 temp_user_id: master.sessions.getCookie('temp_user_id', obj.request) || null,
@@ -445,7 +457,8 @@ class messageController {
                     createdAt: userMessage.created_at,
                     chatId: finalChatId,
                     model_id: userMessage.model_id,
-                    meta: { model: this.modelConfig?.name, modelId: this.modelConfig?.id }
+                    meta: { model: this.modelConfig?.name, modelId: this.modelConfig?.id },
+                    attachments: imageUrls.length > 0 ? imageUrls : null
                 },
                 chatId: finalChatId
             });

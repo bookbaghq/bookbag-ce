@@ -83,7 +83,31 @@ class ModelService {
             for (const m of messageHistory) {
                 const role = (m.role || '').toLowerCase();
                 if (role === 'system' || role === 'user' || role === 'assistant') {
-                    oaiMessages.push({ role, content: String(m.content || '') });
+                    // Check if message has attachments (images)
+                    if (m.attachments && Array.isArray(m.attachments) && m.attachments.length > 0) {
+                        // Vision API format: content as array with text and image_url objects
+                        const contentArray = [
+                            {
+                                type: 'text',
+                                text: String(m.content || '')
+                            }
+                        ];
+
+                        // Add each image URL
+                        for (const imageUrl of m.attachments) {
+                            contentArray.push({
+                                type: 'image_url',
+                                image_url: {
+                                    url: imageUrl
+                                }
+                            });
+                        }
+
+                        oaiMessages.push({ role, content: contentArray });
+                    } else {
+                        // Regular text-only message
+                        oaiMessages.push({ role, content: String(m.content || '') });
+                    }
                 }
             }
         }

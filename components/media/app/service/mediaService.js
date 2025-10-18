@@ -6,6 +6,8 @@
 const fs = require('fs').promises;
 const path = require('path');
 const crypto = require('crypto');
+const https = require('https');
+const http = require('http');
 
 class MediaService {
   constructor() {
@@ -116,7 +118,7 @@ class MediaService {
    */
   async getStorageStats() {
     try {
-      
+
       const files = await fs.readdir(this.uploadDir);
       let totalSize = 0;
 
@@ -140,6 +142,228 @@ class MediaService {
         totalSize: 0,
         formattedSize: '0 Bytes'
       };
+    }
+  }
+
+  /**
+   * Get image URLs for a specific message
+   * @param {number} messageId - Message ID to get images for
+   * @param {object} mediaContext - Media context for database access
+   * @returns {Array<string>} Array of image URLs
+   */
+  getImageUrlsForMessage(messageId, mediaContext) {
+    try {
+      if (!mediaContext) {
+        console.warn('mediaContext not provided to getImageUrlsForMessage');
+        return [];
+      }
+
+      const linkedImages = mediaContext.MediaFile
+        .where(f => f.message_id == $$, messageId)
+        .toList();
+
+      if (!linkedImages || linkedImages.length === 0) {
+        return [];
+      }
+
+      const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
+      return linkedImages.map(file => `${backendUrl}/bb-media/api/media/image/${file.id}`);
+    } catch (error) {
+      console.error('Error getting image URLs for message:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Download image from URL
+   * @param {string} url - Image URL to download
+   * @returns {Promise<Buffer>} Image buffer
+   */
+  async downloadImageFromUrl(url) {
+    return new Promise((resolve, reject) => {
+      const protocol = url.startsWith('https') ? https : http;
+
+      protocol.get(url, (response) => {
+        if (response.statusCode !== 200) {
+          reject(new Error(`Failed to download image: ${response.statusCode}`));
+          return;
+        }
+
+        const chunks = [];
+        response.on('data', (chunk) => chunks.push(chunk));
+        response.on('end', () => resolve(Buffer.concat(chunks)));
+        response.on('error', reject);
+      }).on('error', reject);
+    });
+  }
+
+  /**
+   * Save AI-generated image from URL
+   * @param {string} imageUrl - URL of the generated image
+   * @param {object} options - Options including messageId, chatId, mediaContext
+   * @returns {Promise<object>} Saved file info with URL
+   */
+  async saveAIGeneratedImage(imageUrl, options = {}) {
+    try {
+      const { messageId, chatId, mediaContext, source = 'ai', vendor = 'unknown' } = options;
+
+      console.log(`📥 Downloading AI-generated image from: ${imageUrl}`);
+
+      // Download the image
+      const imageBuffer = await this.downloadImageFromUrl(imageUrl);
+
+      // Generate unique filename
+      const ext = this.getExtensionFromUrl(imageUrl) || 'png';
+      const uniqueFilename = `ai-${Date.now()}-${crypto.randomBytes(8).toString('hex')}.${ext}`;
+      const filePath = path.join(this.uploadDir, uniqueFilename);
+
+      // Save to disk
+      await fs.writeFile(filePath, imageBuffer);
+      console.log(`✅ Saved AI image to: ${filePath}`);
+
+      // Create MediaFile record if mediaContext is provided
+      if (mediaContext) {
+        try {
+          const fileSize = imageBuffer.length;
+          const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
+
+          const mediaFile = mediaContext.MediaFile.create({
+            filename: uniqueFilename,
+            original_filename: `${source}-${vendor}-generated.${ext}`,
+            mime_type: `image/${ext}`,
+            size: fileSize,
+            file_path: filePath,
+            chat_id: chatId || null,
+            message_id: messageId || null,
+            source: source,
+            vendor: vendor,
+            original_url: imageUrl,
+            created_at: new Date().toISOString()
+          });
+
+          await mediaFile.save();
+
+          console.log(`✅ Created MediaFile record: ${mediaFile.id}`);
+
+          return {
+            fileId: mediaFile.id,
+            filename: uniqueFilename,
+            filePath: filePath,
+            url: `${backendUrl}/bb-media/api/media/image/${mediaFile.id}`,
+            originalUrl: imageUrl,
+            size: fileSize
+          };
+        } catch (dbError) {
+          console.error('Failed to create MediaFile record:', dbError);
+          const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
+          return {
+            filename: uniqueFilename,
+            filePath: filePath,
+            url: `${backendUrl}/bb-media/api/media/file/${uniqueFilename}`,
+            originalUrl: imageUrl,
+            size: imageBuffer.length
+          };
+        }
+      }
+
+      const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
+      return {
+        filename: uniqueFilename,
+        filePath: filePath,
+        url: `${backendUrl}/bb-media/api/media/file/${uniqueFilename}`,
+        originalUrl: imageUrl,
+        size: imageBuffer.length
+      };
+    } catch (error) {
+      console.error('Error saving AI-generated image:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Save base64-encoded image
+   * @param {string} base64Data - Base64-encoded image data
+   * @param {object} options - Options including messageId, chatId, mediaContext
+   * @returns {Promise<object>} Saved file info with URL
+   */
+  async saveBase64Image(base64Data, options = {}) {
+    try {
+      const { messageId, chatId, mediaContext, source = 'ai', vendor = 'unknown', ext = 'png' } = options;
+
+      console.log(`💾 Saving base64 image (${base64Data.length} chars)`);
+
+      const imageBuffer = Buffer.from(base64Data, 'base64');
+      const uniqueFilename = `ai-${Date.now()}-${crypto.randomBytes(8).toString('hex')}.${ext}`;
+      const filePath = path.join(this.uploadDir, uniqueFilename);
+
+      await fs.writeFile(filePath, imageBuffer);
+      console.log(`✅ Saved base64 image to: ${filePath}`);
+
+      if (mediaContext) {
+        try {
+          const fileSize = imageBuffer.length;
+          const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
+
+          const mediaFile = mediaContext.MediaFile.create({
+            filename: uniqueFilename,
+            original_filename: `${source}-${vendor}-generated.${ext}`,
+            mime_type: `image/${ext}`,
+            size: fileSize,
+            file_path: filePath,
+            chat_id: chatId || null,
+            message_id: messageId || null,
+            source: source,
+            vendor: vendor,
+            created_at: new Date().toISOString()
+          });
+
+          await mediaFile.save();
+
+          return {
+            fileId: mediaFile.id,
+            filename: uniqueFilename,
+            filePath: filePath,
+            url: `${backendUrl}/bb-media/api/media/image/${mediaFile.id}`,
+            size: fileSize
+          };
+        } catch (dbError) {
+          console.error('Failed to create MediaFile record:', dbError);
+          const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
+          return {
+            filename: uniqueFilename,
+            filePath: filePath,
+            url: `${backendUrl}/bb-media/api/media/file/${uniqueFilename}`,
+            size: imageBuffer.length
+          };
+        }
+      }
+
+      const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
+      return {
+        filename: uniqueFilename,
+        filePath: filePath,
+        url: `${backendUrl}/bb-media/api/media/file/${uniqueFilename}`,
+        size: imageBuffer.length
+      };
+    } catch (error) {
+      console.error('Error saving base64 image:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Extract file extension from URL
+   * @param {string} url - URL to extract extension from
+   * @returns {string|null} File extension without dot
+   */
+  getExtensionFromUrl(url) {
+    try {
+      const urlPath = new URL(url).pathname;
+      const ext = path.extname(urlPath).slice(1).toLowerCase();
+      const validExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'];
+      return validExts.includes(ext) ? ext : 'png';
+    } catch {
+      return 'png';
     }
   }
 }

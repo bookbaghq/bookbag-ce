@@ -8,6 +8,14 @@ class MediaFile {
     db.integer().primary().auto();
   }
 
+  chat_id(db) {
+    db.integer().notNullable();
+  }
+
+  message_id(db) {
+    db.integer().nullable();
+  }
+
   filename(db) {
     db.string().notNullable();
   }
