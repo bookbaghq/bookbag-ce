@@ -158,6 +158,7 @@ const data = {
       url: "#",
       icon: BookOpen,
       items: [
+        { title: "Documents", url: "/bb-admin/rag/documents" },
         { title: "Settings", url: "/bb-admin/rag/settings" },
       ],
     },

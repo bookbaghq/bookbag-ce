@@ -12,6 +12,9 @@ router.route("bb-rag/api/rag/ingest", "api/rag#ingestDocument", "post");
 // Ingest content from a URL
 router.route("bb-rag/api/rag/ingest-url", "api/rag#ingestUrl", "post");
 
+// List ALL documents (admin panel)
+router.route("bb-rag/api/rag/admin/list", "api/rag#listAllDocuments", "get");
+
 // List all documents for the current tenant
 router.route("bb-rag/api/rag/list", "api/rag#listDocuments", "get");
 

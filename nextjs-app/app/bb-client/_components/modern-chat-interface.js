@@ -91,10 +91,10 @@ export function ModernChatInterface({
       />
 
       {/* Messages Area - ChatGPT Style */}
-      <div 
+      <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-4 flex flex-col gap-2 pt-[100px]">
+        className="flex-1 overflow-y-auto p-4 flex flex-col gap-2 pt-[100px] min-h-0">
         {messages.length === 0 && (
           <div className="text-center py-12">
             <Bot className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />

@@ -511,6 +511,85 @@ class ragController {
     }
 
     /**
+     * List ALL documents for admin panel
+     * GET /admin/list
+     */
+    async listAllDocuments(obj) {
+        try {
+            const search = obj?.params?.query?.search || '';
+
+            // Get all documents
+            let documents = this._ragContext.Document.toList();
+
+            // Filter by search term if provided
+            if (search) {
+                const searchLower = search.toLowerCase();
+                documents = documents.filter(doc =>
+                    (doc.title && doc.title.toLowerCase().includes(searchLower)) ||
+                    (doc.filename && doc.filename.toLowerCase().includes(searchLower))
+                );
+            }
+
+            // Sort by creation date (newest first)
+            documents.sort((a, b) => b.created_at - a.created_at);
+
+            // Get chunk counts for each document
+            const results = documents.map(doc => {
+                const chunks = this._ragContext.DocumentChunk
+                    .where(c => c.document_id == $$, doc.id)
+                    .toList();
+
+                let chatTitle = null;
+                let workspaceName = null;
+
+                // Get associated chat or workspace info
+                if (doc.chat_id) {
+                    try {
+                        const chat = this._chatContext.Chat
+                            .where(c => c.id == $$, doc.chat_id)
+                            .single();
+                        chatTitle = chat?.title || `Chat ${doc.chat_id}`;
+                    } catch (e) {
+                        chatTitle = `Chat ${doc.chat_id}`;
+                    }
+                }
+
+                if (doc.workspace_id) {
+                    workspaceName = `Workspace ${doc.workspace_id}`;
+                }
+
+                return {
+                    id: doc.id,
+                    title: doc.title,
+                    filename: doc.filename,
+                    mimeType: doc.mime_type,
+                    fileSize: doc.file_size || 0,
+                    chatId: doc.chat_id,
+                    chatTitle: chatTitle,
+                    workspaceId: doc.workspace_id,
+                    workspaceName: workspaceName,
+                    chunkCount: chunks.length,
+                    createdAt: doc.created_at,
+                    updatedAt: doc.updated_at
+                };
+            });
+
+            return this.returnJson({
+                success: true,
+                documents: results,
+                total: results.length
+            });
+
+        } catch (error) {
+            console.error('❌ Error listing all documents:', error);
+            return this.returnJson({
+                success: false,
+                error: error.message
+            });
+        }
+    }
+
+    /**
      * List all documents for a chat or workspace
      * GET /list?chatId=xxx OR /list?workspaceId=xxx
      */
