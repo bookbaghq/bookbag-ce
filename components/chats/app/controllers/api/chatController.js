@@ -15,6 +15,16 @@ class chatController {
         // Admin-only actions moved to adminChatController
     }
 
+    /**
+     * Build base URL from request headers
+     * Uses the actual host that the frontend used to reach the backend
+     */
+    _getBaseUrlFromRequest(req) {
+        const protocol = req.protocol || (req.secure ? 'https' : 'http');
+        const host = req.headers?.host || req.get?.('host') || 'localhost:8080';
+        return `${protocol}://${host}`;
+    }
+
     // API endpoint to edit chat title
     async editChat(obj) {
         try {
@@ -440,7 +450,8 @@ class chatController {
 
                 // Load images linked to this message using MediaService
                 try {
-                    const imageUrls = this.mediaService.getImageUrlsForMessage(msg.id, this._mediaContext);
+                    const baseUrl = this._getBaseUrlFromRequest(obj.request);
+                    const imageUrls = this.mediaService.getImageUrlsForMessage(msg.id, this._mediaContext, baseUrl);
 
                     if (imageUrls && imageUrls.length > 0) {
                         // Merge with existing attachments or set new ones

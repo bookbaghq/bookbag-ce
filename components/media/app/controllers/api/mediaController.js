@@ -23,6 +23,16 @@ class mediaController {
   }
 
   /**
+   * Build base URL from request headers
+   * Uses the actual host that the frontend used to reach the backend
+   */
+  _getBaseUrlFromRequest(req) {
+    const protocol = req.protocol || (req.secure ? 'https' : 'http');
+    const host = req.headers?.host || req.get?.('host') || 'localhost:8080';
+    return `${protocol}://${host}`;
+  }
+
+  /**
    * Upload a file
    * POST /upload
    * Requires multipart/form-data with 'file' field
@@ -80,7 +90,7 @@ class mediaController {
       mediaFile.file_path = filePath;
       mediaFile.mime_type = mimeType;
       mediaFile.file_size = fileSize;
-      mediaFile.uploaded_by = this._currentUser?.id || null;
+      mediaFile.uploaded_by = this._currentUser?.id ? parseInt(this._currentUser.id, 10) : null;
       mediaFile.upload_source = uploadSource;
       mediaFile.created_at = Date.now().toString();
       mediaFile.updated_at = Date.now().toString();
@@ -635,7 +645,7 @@ class mediaController {
       mediaFile.file_path = filePath;
       mediaFile.mime_type = mimeType;
       mediaFile.file_size = fileSize;
-      mediaFile.uploaded_by = this._currentUser?.id || null;
+      mediaFile.uploaded_by = this._currentUser?.id ? parseInt(this._currentUser.id, 10) : null;
       mediaFile.upload_source = uploadSource;
       mediaFile.chat_id = parseInt(chatId, 10);
       mediaFile.message_id = null; // Initially null, will be set when message is sent
@@ -645,9 +655,9 @@ class mediaController {
       this._mediaContext.MediaFile.add(mediaFile);
       this._mediaContext.saveChanges();
 
-      // Generate URL for the image
-      const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
-      const imageUrl = `${backendUrl}/bb-media/api/media/image/${mediaFile.id}`;
+      // Generate URL for the image using request host
+      const baseUrl = this._getBaseUrlFromRequest(obj.request);
+      const imageUrl = `${baseUrl}/bb-media/api/media/image/${mediaFile.id}`;
 
       return this.returnJson({
         success: true,
@@ -756,12 +766,12 @@ class mediaController {
         .where(f => f.chat_id == $$ && f.message_id == null, parseInt(chatId, 10))
         .toList();
 
-      // Generate URLs for each image
-      const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
+      // Generate URLs for each image using request host
+      const baseUrl = this._getBaseUrlFromRequest(obj.request);
       const images = unsentImages.map(file => ({
         id: file.id,
         filename: file.filename,
-        url: `${backendUrl}/bb-media/api/media/image/${file.id}`,
+        url: `${baseUrl}/bb-media/api/media/image/${file.id}`,
         mimeType: file.mime_type,
         fileSize: file.file_size,
         createdAt: file.created_at
@@ -873,9 +883,9 @@ class mediaController {
         });
       }
 
-      // Generate image URL
-      const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
-      const imageUrl = `${backendUrl}/bb-media/api/media/image/${file.id}`;
+      // Generate image URL using request host
+      const baseUrl = this._getBaseUrlFromRequest(obj.request);
+      const imageUrl = `${baseUrl}/bb-media/api/media/image/${file.id}`;
 
       // Call LLM API with image URL
       const axios = require('axios');
@@ -1097,7 +1107,7 @@ class mediaController {
       mediaFile.file_path = filePath;
       mediaFile.mime_type = detectedMimeType;
       mediaFile.file_size = fileSize;
-      mediaFile.uploaded_by = this._currentUser?.id || null;
+      mediaFile.uploaded_by = this._currentUser?.id ? parseInt(this._currentUser.id, 10) : null;
       mediaFile.upload_source = 'llm'; // Mark as LLM-generated
       mediaFile.chat_id = parseInt(chatId, 10);
       mediaFile.message_id = parseInt(messageId, 10);
@@ -1109,9 +1119,9 @@ class mediaController {
 
       console.log('✅ Database record created, ID:', mediaFile.id);
 
-      // Generate URL for the saved image
-      const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
-      const imageUrl = `${backendUrl}/bb-media/api/media/image/${mediaFile.id}`;
+      // Generate URL for the saved image using request host
+      const baseUrl = this._getBaseUrlFromRequest(obj.request);
+      const imageUrl = `${baseUrl}/bb-media/api/media/image/${mediaFile.id}`;
 
       return this.returnJson({
         success: true,

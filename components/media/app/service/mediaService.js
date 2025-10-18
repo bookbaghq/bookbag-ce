@@ -149,9 +149,10 @@ class MediaService {
    * Get image URLs for a specific message
    * @param {number} messageId - Message ID to get images for
    * @param {object} mediaContext - Media context for database access
+   * @param {string} baseUrl - Base URL for constructing image URLs (from request host)
    * @returns {Array<string>} Array of image URLs
    */
-  getImageUrlsForMessage(messageId, mediaContext) {
+  getImageUrlsForMessage(messageId, mediaContext, baseUrl = null) {
     try {
       if (!mediaContext) {
         console.warn('mediaContext not provided to getImageUrlsForMessage');
@@ -166,8 +167,12 @@ class MediaService {
         return [];
       }
 
-      const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
-      return linkedImages.map(file => `${backendUrl}/bb-media/api/media/image/${file.id}`);
+      // Use provided baseUrl, or fall back to localhost
+      if (!baseUrl) {
+        baseUrl = 'http://localhost:8080';
+      }
+
+      return linkedImages.map(file => `${baseUrl}/bb-media/api/media/image/${file.id}`);
     } catch (error) {
       console.error('Error getting image URLs for message:', error);
       return [];

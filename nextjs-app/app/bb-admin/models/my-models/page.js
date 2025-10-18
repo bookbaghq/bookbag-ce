@@ -572,9 +572,6 @@ function EditServerModelButton({ model, onUpdated, onError }) {
                 <select className="border rounded h-9 px-2 w-full" value={providerType} onChange={(e) => setProviderType(e.target.value)}>
                   <option value="openai">OpenAI</option>
                   <option value="grok">Grok</option>
-                  <option value="anthropic">Anthropic (Claude)</option>
-                  <option value="ollama">Ollama</option>
-                  <option value="azure">Azure OpenAI</option>
                 </select>
                 <p className="text-xs text-muted-foreground">Which provider API this model uses</p>
               </div>
@@ -807,9 +804,6 @@ function VllmCreateForm({ onCreated, registerSubmit, onSavingChange }) {
             <select className="border rounded h-9 px-2 w-full" value={providerType} onChange={(e) => setProviderType(e.target.value)}>
               <option value="openai">OpenAI</option>
               <option value="grok">Grok</option>
-              <option value="anthropic">Anthropic (Claude)</option>
-              <option value="ollama">Ollama</option>
-              <option value="azure">Azure OpenAI</option>
             </select>
             <p className="text-xs text-muted-foreground">Which provider API this model uses</p>
           </div>

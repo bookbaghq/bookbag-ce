@@ -22,8 +22,10 @@ class ChatHistoryService {
 
     /**
      * Load chat history from database
+     * @param {string|number} chatId - Chat ID to load history for
+     * @param {string} baseUrl - Base URL for constructing image URLs (from request host)
      */
-    async loadChatHistory(chatId) {
+    async loadChatHistory(chatId, baseUrl = null) {
         try {
             console.log(`\n=== LOADING CHAT HISTORY FOR CHAT ${chatId} ===`);
             
@@ -59,7 +61,7 @@ class ChatHistoryService {
                     // Get image URLs from MediaFile table via MediaService
                     if (this._mediaContext) {
                         try {
-                            const imageUrls = this.mediaService.getImageUrlsForMessage(msg.id, this._mediaContext);
+                            const imageUrls = this.mediaService.getImageUrlsForMessage(msg.id, this._mediaContext, baseUrl);
                             if (imageUrls && imageUrls.length > 0) {
                                 historyItem.attachments = imageUrls;
                                 console.log(`  -> Added ${imageUrls.length} image(s) from MediaFile for message ${msg.id}`);

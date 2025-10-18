@@ -289,13 +289,9 @@ class modelsController{
                 } catch (_) {}
                 let promptTemplates = [];
                 try {
-                    const specific = this._modelContext.PromptTemplates
-                        .where(r => r.model_id == $$, m.id)
-                        .toList();
-                    let global = [];
-                    try { global = this._modelContext.PromptTemplates.where(r => r.model_id == $$, null).toList(); } catch (_) {}
-                    const tlist = [...(Array.isArray(specific) ? specific : []), ...(Array.isArray(global) ? global : [])];
-                    promptTemplates = tlist.map(t => ({ id: t.id, name: t.name, template: t.template }));
+                    // Get all prompt templates (PromptTemplates table doesn't have model_id column yet)
+                    const allTemplates = this._modelContext.PromptTemplates.toList();
+                    promptTemplates = allTemplates.map(t => ({ id: t.id, name: t.name, template: t.template }));
                 } catch (_) {}
 
                 return {

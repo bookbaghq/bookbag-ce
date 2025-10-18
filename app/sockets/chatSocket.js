@@ -110,6 +110,8 @@ Answer the user's question using the information provided between the "Retrieved
 	// Client emits: socket.emit('start', { chatId, modelId, userMessageId, noThinking })
 	async start(data, socket /*, io */) {
 		// High-level flow: auth -> params -> model -> history -> placeholder -> stream -> persist -> finalize
+		console.log('\n🚀 === SOCKET STREAMING START ===');
+		console.log('📦 Data received:', JSON.stringify(data));
 		try {
 			// Resolve contexts/services from master singletons to ensure availability in socket scope
 			const chatContext = (master.requestList && master.requestList.chatContext) ? master.requestList.chatContext : null;
@@ -329,34 +331,52 @@ Answer the user's question using the information provided between the "Retrieved
 			let messageHistory;
 			try {
 				messageHistory = await chatHistoryService.loadChatHistory(chatId);
+				console.log(`✅ Chat history loaded successfully, ${messageHistory?.length || 0} messages`);
 			} catch (e) {
+				console.error(`❌ Failed to load chat history:`, e);
 				this.streamingService.sendEvent(socket, errorService.buildStreamErrorPayload(new Error('Failed to load chat history'), this.modelConfig?.name));
 				this.streamingService.endStream(socket);
 				return;
 			}
 
+			console.log(`🔄 About to start RAG integration...`);
+
 			// 🧠 RAG Integration: Query knowledge base before calling LLM
 			let ragContext = '';
 			let ragQueryText = ''; // Store the original query text for later use
 			try {
+				console.log(`\n🧠 === RAG INTEGRATION START (Chat ${chatId}) ===`);
 				// Initialize RAG service (using module-level imports for efficiency)
 				const ragCtx = new RAGContext();
+				console.log(`✓ RAG: Context initialized`);
 
 				// Check if RAG should be skipped based on settings
 				const shouldSkip = RAGService.shouldSkipRAG(ragCtx, chatContext, chatId);
+				console.log(`✓ RAG: shouldSkipRAG = ${shouldSkip}`);
 
 				if (shouldSkip) {
 					console.log('⏭️  RAG: Skipping due to settings');
 				} else {
 					const ragService = new RAGService(ragCtx);
+					console.log(`✓ RAG: Service created`);
 
 					// Get the user's last message to use as the query (reverse find is faster for long histories)
+					console.log(`✓ RAG: Message history length = ${messageHistory.length}`);
 					const lastUserMessage = [...messageHistory].reverse().find(m => m.role === 'user');
+					console.log(`✓ RAG: Last user message found = ${!!lastUserMessage}`);
+
 					if (lastUserMessage && lastUserMessage.content) {
 						ragQueryText = lastUserMessage.content; // Save the query text
 						console.log(`🔍 RAG: Querying knowledge base for chat ${chatId}${workspaceId ? ` (workspace ${workspaceId})` : ' (no workspace)'}...`);
 						console.log(`🔍 RAG: workspaceId = ${workspaceId}, chatId = ${chatId}`);
 						console.log(`🔍 RAG: Query text: "${ragQueryText}"`);
+
+						console.log(`🔍 RAG: Calling queryRAG with params:`, JSON.stringify({
+							chatId: parseInt(chatId, 10),
+							workspaceId: workspaceId ? parseInt(workspaceId, 10) : null,
+							question: ragQueryText,
+							k: 5
+						}));
 
 						// Query the knowledge base with layered retrieval (workspace + chat documents)
 						const results = await ragService.queryRAG({
@@ -366,21 +386,32 @@ Answer the user's question using the information provided between the "Retrieved
 							k: 5
 						});
 
+						console.log(`✓ RAG: Query completed, results = ${results ? results.length : 'null'}`);
+
 						if (results && results.length > 0) {
 							console.log(`✅ RAG: Found ${results.length} relevant chunks (top score: ${results[0].score.toFixed(4)})`);
+							console.log(`✅ RAG: Top 3 chunks:`, results.slice(0, 3).map(r => ({
+								score: r.score.toFixed(4),
+								contentPreview: r.content.substring(0, 100) + '...'
+							})));
 
 							// Build context string from retrieved documents
 							ragContext = ragService.buildContextString(results);
 
 							console.log(`📚 RAG: Context length: ${ragContext.length} characters`);
+							console.log(`📚 RAG: Context preview: ${ragContext.substring(0, 200)}...`);
 						} else {
 							console.log(`ℹ️  RAG: No relevant documents found for this query`);
 						}
+					} else {
+						console.log(`⚠️  RAG: No user message found in history or message has no content`);
 					}
 				}
+				console.log(`🧠 === RAG INTEGRATION END ===\n`);
 			} catch (ragErr) {
 				// Non-fatal: if RAG fails, continue without it
-				console.warn('⚠️  RAG query failed (non-fatal):', ragErr.message);
+				console.error('⚠️  RAG query failed (non-fatal):', ragErr);
+				console.error('⚠️  RAG error stack:', ragErr.stack);
 			}
 
 			// 🔥 ALWAYS inject RAG grounding - even when no context is found

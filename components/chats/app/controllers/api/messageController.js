@@ -26,6 +26,15 @@ class messageController {
         this.mediaService = new MediaService();
     }
 
+    /**
+     * Build base URL from request headers
+     * Uses the actual host that the frontend used to reach the backend
+     */
+    _getBaseUrlFromRequest(req) {
+        const protocol = req.protocol || (req.secure ? 'https' : 'http');
+        const host = req.headers?.host || req.get?.('host') || 'localhost:8080';
+        return `${protocol}://${host}`;
+    }
 
     generateSessionId(length = 32) {
         const toolsService = new ToolsService();
@@ -223,7 +232,8 @@ class messageController {
             let currentContextSize = 0;
             let messageCount = 0;
             if (chatId) {
-                const existingHistory = await chatHistoryService.loadChatHistory(chatId);
+                const baseUrl = this._getBaseUrlFromRequest(obj.request);
+                const existingHistory = await chatHistoryService.loadChatHistory(chatId, baseUrl);
                 messageCount = existingHistory.length;
                 
                 // ✅ CRITICAL: DON'T call manageContextWindow here - just calculate size
@@ -246,7 +256,8 @@ class messageController {
             let contextSizeWithInput = currentContextSize;
             if (currentInput && currentInput.trim()) {
                 // Create temporary history with new input for size calculation ONLY
-                const existingHistory = chatId ? await chatHistoryService.loadChatHistory(chatId) : [];
+                const baseUrl = this._getBaseUrlFromRequest(obj.request);
+                const existingHistory = chatId ? await chatHistoryService.loadChatHistory(chatId, baseUrl) : [];
                 const tempHistoryWithInput = [...existingHistory, { role: 'user', content: currentInput.trim() }];
                 
                 // Directly estimate tokens for messages + new input, no tag parsing
@@ -442,7 +453,8 @@ class messageController {
             // Load image URLs for this message using MediaService
             let imageUrls = [];
             try {
-                imageUrls = this.mediaService.getImageUrlsForMessage(userMessage.id, this._mediaContext);
+                const baseUrl = this._getBaseUrlFromRequest(obj.request);
+                imageUrls = this.mediaService.getImageUrlsForMessage(userMessage.id, this._mediaContext, baseUrl);
             } catch (imgErr) {
                 console.warn('Error loading message images:', imgErr.message);
             }
