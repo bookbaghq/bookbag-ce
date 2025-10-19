@@ -38,6 +38,7 @@ export default function RAGDocumentsPage() {
 
   useEffect(() => {
     fetchDocuments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm]);
 
   const fetchDocuments = async () => {
@@ -263,7 +264,7 @@ export default function RAGDocumentsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Document</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{selectedDocument?.title || selectedDocument?.filename}"?
+              Are you sure you want to delete &quot;{selectedDocument?.title || selectedDocument?.filename}&quot;?
               This will also delete all {selectedDocument?.chunkCount || 0} associated chunks. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
