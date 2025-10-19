@@ -414,11 +414,8 @@ Answer the user's question using the information provided between the "Retrieved
 				console.error('⚠️  RAG error stack:', ragErr.stack);
 			}
 
-			// 🔥 ALWAYS inject RAG grounding - even when no context is found
-			// This prevents the model from hallucinating when RAG returns no results
-			this._injectRAGGrounding(messageHistory, ragContext, ragQueryText);
-
 			// Apply server-side auto-trim if enabled and model defines a real context_size
+			// 🔥 CRITICAL: Trim BEFORE injecting RAG context to ensure RAG context is never removed
 			try {
 				const hasContextRule = Number(this.modelConfig?.context_size || 0) > 0;
 				const dbAutoTrim = !!(this.modelConfig && this.modelConfig.auto_trim_on);
@@ -429,6 +426,18 @@ Answer the user's question using the information provided between the "Retrieved
 					} catch (_) {}
 				}
 			} catch (_) {}
+
+			// 🔥 ALWAYS inject RAG grounding AFTER trimming - even when no context is found
+			// This prevents the model from hallucinating when RAG returns no results
+			// By injecting after trim, we ensure RAG context is ALWAYS present in the final prompt
+			this._injectRAGGrounding(messageHistory, ragContext, ragQueryText);
+
+			// 🔍 DEBUG: Log final message history to verify RAG context is present
+			console.log(`📨 FINAL MESSAGE HISTORY BEFORE GENERATE (${messageHistory.length} messages):`);
+			messageHistory.forEach((msg, idx) => {
+				const preview = (msg.content || '').substring(0, 150).replace(/\n/g, ' ');
+				console.log(`  [${idx}] ${msg.role}: ${preview}...`);
+			});
 
 			// Thinking detection service
 			const ThinkingDetectionService = require(`${master.root}/components/chats/app/service/thinkingDetectionService`);

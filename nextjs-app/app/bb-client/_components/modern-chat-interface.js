@@ -82,7 +82,7 @@ export function ModernChatInterface({
   });
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full max-h-full bg-background relative overflow-hidden">
       {/* Header */}
       <ChatHeader 
         title={title}
@@ -94,7 +94,7 @@ export function ModernChatInterface({
       <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-4 flex flex-col gap-2 pt-[100px] min-h-0">
+        className="flex-1 overflow-y-auto p-4 flex flex-col gap-2 pt-20 min-h-0">
         {messages.length === 0 && (
           <div className="text-center py-12">
             <Bot className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />

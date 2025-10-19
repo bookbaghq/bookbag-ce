@@ -91,7 +91,7 @@ function ClientLayoutInner({ children }) {
                       <Header />
                       <SidebarNav />
                       <SidebarInset style={{ marginLeft: `${actualWidth}px` }}>
-                        <main className="flex-1 h-screen overflow-y-auto relative pt-16 group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-svh w-full">
+                        <main className="fixed h-screen overflow-hidden relative pt-16 group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-svh w-full">
                           {children}
                         </main>
                       </SidebarInset>
