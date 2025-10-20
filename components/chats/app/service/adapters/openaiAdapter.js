@@ -67,19 +67,26 @@ class OpenAIAdapter {
      */
     _buildMessages(messageHistory, modelConfig) {
         const templateString = String(modelConfig.prompt_template || '').trim();
-        const systemPrompt = (typeof modelConfig.system_prompt === 'string' && modelConfig.system_prompt.trim().length > 0)
-            ? modelConfig.system_prompt.trim()
-            : '';
+
+        // 🔥 CRITICAL RAG FIX: Extract system message from messageHistory (which may contain RAG context)
+        // DON'T use modelConfig.system_prompt as it doesn't have RAG context injected
+        const systemMessageFromHistory = messageHistory.find(m => m.role === 'system');
+        const systemPrompt = systemMessageFromHistory
+            ? String(systemMessageFromHistory.content || '').trim()
+            : (typeof modelConfig.system_prompt === 'string' && modelConfig.system_prompt.trim().length > 0)
+                ? modelConfig.system_prompt.trim()
+                : '';
 
         let oaiMessages = [];
 
         // Try to use prompt template if available
         if (templateString) {
             try {
+                // Pass the system prompt from messageHistory (with RAG context) to template renderer
                 oaiMessages = promptTemplateService.renderToOpenAIMessages(
                     templateString,
                     messageHistory,
-                    systemPrompt
+                    systemPrompt  // Now contains RAG context if present
                 );
             } catch (e) {
                 console.error('⚠️ Template rendering failed, falling back to naive messages:', e?.message);

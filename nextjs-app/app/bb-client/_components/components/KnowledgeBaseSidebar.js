@@ -42,9 +42,19 @@ const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main;
  * - Delete documents
  * - Creates chat if none exists when uploading
  */
-export function KnowledgeBaseSidebar({ chatId = null, isWorkspaceCreated = false }) {
+export function KnowledgeBaseSidebar({ chatId: propChatId = null, isWorkspaceCreated = false }) {
   const router = useRouter();
   const pathname = usePathname();
+
+  // 🔥 FIX: Always get current chatId from URL pathname to handle dynamic navigation
+  // When user sends first message in new chat, URL changes but component doesn't remount
+  const getCurrentChatId = () => {
+    // Extract chatId from pathname like /bb-client/123
+    const match = pathname?.match(/\/bb-client\/(\d+)/);
+    return match ? match[1] : propChatId;
+  };
+
+  const chatId = getCurrentChatId();
 
   const [documents, setDocuments] = useState([]);
   const [stats, setStats] = useState({ documentCount: 0, chunkCount: 0 });
