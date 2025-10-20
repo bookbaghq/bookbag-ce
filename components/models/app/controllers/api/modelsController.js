@@ -1,6 +1,6 @@
 
 const master = require('mastercontroller');
-const ModelService = require(`${master.root}/components/chats/app/service/modelService`);
+//const ModelService = require(`${master.root}/components/chats/app/service/modelService`);
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -13,7 +13,7 @@ class modelsController{
         this._modelContext = req.modelContext;
 
         // Initialize ModelService
-        this.modelService = new ModelService();
+        //this.modelService = new ModelService();
         
     }
 

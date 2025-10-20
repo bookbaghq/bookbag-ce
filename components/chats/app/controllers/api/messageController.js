@@ -3,7 +3,7 @@ const master = require('mastercontroller');
 // Import services
 const MessagePersistenceService = require(`${master.root}/components/chats/app/service/messagePersistenceService`);
 const ChatHistoryService = require(`${master.root}/components/chats/app/service/chatHistoryService`);
-const ModelService = require(`${master.root}/components/chats/app/service/modelService`);
+//const ModelService = require(`${master.root}/components/chats/app/service/modelService`);
 const ToolsService = require(`${master.root}/components/chats/app/service/toolsService`);
 const llmConfigService = require(`${master.root}/components/models/app/service/llmConfigService`);
 const ModelRouterService = require(`${master.root}/components/chats/app/service/modelRouterService`);
@@ -22,7 +22,7 @@ class messageController {
         this._mediaContext = req.mediaContext;
 
         // Use ModelService singleton to prevent memory leaks
-        this.modelService = ModelService.getInstance();
+        //this.modelService = ModelService.getInstance();
         this.mediaService = new MediaService();
     }
 

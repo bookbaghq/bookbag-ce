@@ -109,9 +109,7 @@ Answer the user's question using the information provided between the "Retrieved
 
 	// Client emits: socket.emit('start', { chatId, modelId, userMessageId, noThinking })
 	async start(data, socket /*, io */) {
-		// High-level flow: auth -> params -> model -> history -> placeholder -> stream -> persist -> finalize
-		console.log('\n🚀 === SOCKET STREAMING START ===');
-		console.log('📦 Data received:', JSON.stringify(data));
+	
 		try {
 			// Resolve contexts/services from master singletons to ensure availability in socket scope
 			const chatContext = (master.requestList && master.requestList.chatContext) ? master.requestList.chatContext : null;
