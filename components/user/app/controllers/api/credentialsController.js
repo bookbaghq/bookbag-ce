@@ -155,14 +155,21 @@ class credentialsController{
                 }
             } catch (_) {}
 
-            // Secure cookie options with proper CORS support
+            // Dynamic cookie options that work for any domain/IP
+            const protocol = req.request?.headers?.['x-forwarded-proto'] ||
+                           (req.request?.connection?.encrypted ? 'https' : 'http');
+            const isSecure = protocol === 'https';
+
             const cookieOptions = {
                 path: '/',
                 httpOnly: true,
                 maxAge: 24 * 60 * 60 * 1000,
-                secure: false, // set to true in production with HTTPS
-                sameSite: 'lax' // allows cookies to work across subdomains
+                secure: isSecure,
+                sameSite: isSecure ? 'none' : 'lax'
+                // domain not set - allows cookie to work with any domain/IP
             };
+            console.log('🍪 DEBUG register - Protocol:', protocol);
+            console.log('🍪 DEBUG register - Setting cookie with options:', JSON.stringify(cookieOptions, null, 2));
             master.sessions.setCookie("login", user.Auth.temp_access_token, req.response, cookieOptions);
         }
         catch(error){
@@ -257,14 +264,20 @@ class credentialsController{
                 authObj.user.Auth.temp_access_token = refreshToken;
                 req.userContext.saveChanges();
 
-                // Secure cookie options with proper CORS support
+                // Dynamic cookie options that work for any domain/IP
+                const protocol = req.request?.headers?.['x-forwarded-proto'] ||
+                               (req.request?.connection?.encrypted ? 'https' : 'http');
+                const isSecure = protocol === 'https';
+
                 const cookieOptions = {
                     path: '/',
                     httpOnly: true,
                     maxAge: 24 * 60 * 60 * 1000,
-                    secure: false, // set to true in production with HTTPS
-                    sameSite: 'lax' // allows cookies to work across subdomains
+                    secure: isSecure,
+                    sameSite: isSecure ? 'none' : 'lax'
+                    // domain not set - allows cookie to work with any domain/IP
                 };
+                console.log('🍪 DEBUG login - Protocol:', protocol);
                 console.log('🍪 DEBUG login - Setting cookie with options:', JSON.stringify(cookieOptions, null, 2));
                 console.log('🍪 DEBUG login - Token to set:', refreshToken);
                 master.sessions.setCookie("login", refreshToken, req.response, cookieOptions);

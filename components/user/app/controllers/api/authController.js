@@ -4,14 +4,19 @@
 
   
         logout(obj){
-            // Secure cookie deletion matching login settings
+            // Dynamic cookie deletion matching login settings
+            const protocol = obj.request?.headers?.['x-forwarded-proto'] ||
+                           (obj.request?.connection?.encrypted ? 'https' : 'http');
+            const isSecure = protocol === 'https';
+
             const cookieOptions = {
                 path: '/',
                 httpOnly: true,
-                secure: false,
-                sameSite: 'lax',
+                secure: isSecure,
+                sameSite: isSecure ? 'none' : 'lax',
                 maxAge: 0
             };
+            console.log('🍪 DEBUG logout - Deleting cookie with options:', JSON.stringify(cookieOptions, null, 2));
             master.sessions.deleteCookie("login", obj.response, cookieOptions);
             return this.returnJson({ message: "logged out" });
         }
