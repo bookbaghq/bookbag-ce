@@ -167,9 +167,10 @@ class MediaService {
         return [];
       }
 
-      // Use provided baseUrl, or fall back to localhost
+      // Use provided baseUrl, or warn and return relative URLs
       if (!baseUrl) {
-        baseUrl = 'http://localhost:8080';
+        console.warn('⚠️  No baseUrl provided to getImageUrlsForMessage - using relative URLs');
+        return linkedImages.map(file => `/bb-media/api/media/image/${file.id}`);
       }
 
       return linkedImages.map(file => `${baseUrl}/bb-media/api/media/image/${file.id}`);
@@ -230,7 +231,8 @@ class MediaService {
       if (mediaContext) {
         try {
           const fileSize = imageBuffer.length;
-          const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
+          // Note: URL will be relative until accessed through proper request context
+          const backendUrl = process.env.BACKEND_URL || '';
 
           const mediaFile = mediaContext.MediaFile.create({
             filename: uniqueFilename,
@@ -260,22 +262,22 @@ class MediaService {
           };
         } catch (dbError) {
           console.error('Failed to create MediaFile record:', dbError);
-          const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
+          const backendUrl = process.env.BACKEND_URL || '';
           return {
             filename: uniqueFilename,
             filePath: filePath,
-            url: `${backendUrl}/bb-media/api/media/file/${uniqueFilename}`,
+            url: backendUrl ? `${backendUrl}/bb-media/api/media/file/${uniqueFilename}` : `/bb-media/api/media/file/${uniqueFilename}`,
             originalUrl: imageUrl,
             size: imageBuffer.length
           };
         }
       }
 
-      const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
+      const backendUrl = process.env.BACKEND_URL || '';
       return {
         filename: uniqueFilename,
         filePath: filePath,
-        url: `${backendUrl}/bb-media/api/media/file/${uniqueFilename}`,
+        url: backendUrl ? `${backendUrl}/bb-media/api/media/file/${uniqueFilename}` : `/bb-media/api/media/file/${uniqueFilename}`,
         originalUrl: imageUrl,
         size: imageBuffer.length
       };
@@ -307,7 +309,7 @@ class MediaService {
       if (mediaContext) {
         try {
           const fileSize = imageBuffer.length;
-          const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
+          const backendUrl = process.env.BACKEND_URL || '';
 
           const mediaFile = mediaContext.MediaFile.create({
             filename: uniqueFilename,
@@ -333,21 +335,21 @@ class MediaService {
           };
         } catch (dbError) {
           console.error('Failed to create MediaFile record:', dbError);
-          const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
+          const backendUrl = process.env.BACKEND_URL || '';
           return {
             filename: uniqueFilename,
             filePath: filePath,
-            url: `${backendUrl}/bb-media/api/media/file/${uniqueFilename}`,
+            url: backendUrl ? `${backendUrl}/bb-media/api/media/file/${uniqueFilename}` : `/bb-media/api/media/file/${uniqueFilename}`,
             size: imageBuffer.length
           };
         }
       }
 
-      const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
+      const backendUrl = process.env.BACKEND_URL || '';
       return {
         filename: uniqueFilename,
         filePath: filePath,
-        url: `${backendUrl}/bb-media/api/media/file/${uniqueFilename}`,
+        url: backendUrl ? `${backendUrl}/bb-media/api/media/file/${uniqueFilename}` : `/bb-media/api/media/file/${uniqueFilename}`,
         size: imageBuffer.length
       };
     } catch (error) {

@@ -24,6 +24,35 @@ class chatSocket {
 	}
 
 	/**
+	 * Extract base URL from HTTP request
+	 * @param {Object} req - HTTP request object
+	 * @returns {string} Base URL (e.g., "http://147.182.251.85:8080")
+	 */
+	_getBaseUrlFromRequest(req) {
+		if (!req) {
+			console.warn('⚠️  No request object available, using fallback URL');
+			return 'http://localhost:8080';
+		}
+
+		try {
+			// Get protocol from request or socket
+			const protocol = req.protocol ||
+				(req.connection?.encrypted ? 'https' : 'http') ||
+				(req.secure ? 'https' : 'http');
+
+			// Get host from headers (includes port if non-standard)
+			const host = req.headers?.host || req.get?.('host') || 'localhost:8080';
+
+			const baseUrl = `${protocol}://${host}`;
+			console.log(`🌐 Base URL extracted from request: ${baseUrl}`);
+			return baseUrl;
+		} catch (e) {
+			console.error('⚠️  Error extracting base URL from request:', e);
+			return 'http://localhost:8080';
+		}
+	}
+
+	/**
 	 * Inject RAG grounding instructions into message history
 	 *
 	 * ⚠️ CRITICAL: This runs ALWAYS, even when ragContext is empty.
@@ -323,12 +352,15 @@ Answer the user's question using the information provided between the "Retrieved
 				temp_user_id: (currentUser && currentUser.isTemp) ? currentUser.id : null
 			});
 
+			// Extract base URL from request for image URLs
+			const baseUrl = this._getBaseUrlFromRequest(httpRequest);
+
 			// Prepare services
 			const chatHistoryService = new ChatHistoryService(chatContext, this.modelSettings);
 
 			let messageHistory;
 			try {
-				messageHistory = await chatHistoryService.loadChatHistory(chatId);
+				messageHistory = await chatHistoryService.loadChatHistory(chatId, baseUrl);
 				console.log(`✅ Chat history loaded successfully, ${messageHistory?.length || 0} messages`);
 			} catch (e) {
 				console.error(`❌ Failed to load chat history:`, e);
