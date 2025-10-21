@@ -337,11 +337,20 @@ export default function WorkspacesPage(){
     if (!deleteTarget || !deleteTarget.id) return
     setDeleting(true)
     try {
-      await svc.remove(deleteTarget.id)
-      setDeleteOpen(false)
-      setDeleteTarget(null)
-      await load()
-    } catch (_) {
+      const result = await svc.remove(deleteTarget.id)
+      console.log('Delete result:', result)
+
+      if (result?.success) {
+        setDeleteOpen(false)
+        setDeleteTarget(null)
+        await load()
+      } else {
+        console.error('Delete failed:', result?.error || 'Unknown error')
+        alert(`Failed to delete workspace: ${result?.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Delete error:', error)
+      alert(`Failed to delete workspace: ${error.message || 'Unknown error'}`)
     } finally {
       setDeleting(false)
     }
