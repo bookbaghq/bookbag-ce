@@ -59,11 +59,7 @@ class Model {
     }
 
     prompt_template(db){
-        db.string().nullable().default(`{{#system}}{"role":"system","content":"{{system}}"},{{/system}}
-            {{#history}}
-            {"role":"{{role}}","content":"{{content}}"},
-            {{/history}}
-            {"role":"user","content":"{{user}}"}`);
+        db.string().nullable();
     }
 
     system_prompt(db){

@@ -82,12 +82,19 @@ class OpenAIAdapter {
         // Try to use prompt template if available
         if (templateString) {
             try {
+                console.log('🔧 Template rendering - Input:');
+                console.log('  Template:', templateString);
+                console.log('  System prompt length:', systemPrompt?.length || 0);
+                console.log('  Message history length:', messageHistory?.length || 0);
+
                 // Pass the system prompt from messageHistory (with RAG context) to template renderer
                 oaiMessages = promptTemplateService.renderToOpenAIMessages(
                     templateString,
                     messageHistory,
                     systemPrompt  // Now contains RAG context if present
                 );
+
+                console.log('✅ Template rendering - Output:', JSON.stringify(oaiMessages, null, 2));
             } catch (e) {
                 console.error('⚠️ Template rendering failed, falling back to naive messages:', e?.message);
             }

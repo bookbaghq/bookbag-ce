@@ -22,24 +22,26 @@ class Init extends masterrecord.schema {
       // Insert settings
       this.seed('PromptTemplates', {
         name: 'gpt',
-        template: '{{#system}}{"role":"system","content":"{{system}}"},{{/system}}\n{{#history}}\n{"role":"{{role}}","content":"{{content}}"},\n{{/history}}\n{"role":"user","content":"{{user}}"}',
+        template: `[{{#system}}{"role":"system","content":"{{system}}"},{{/system}}{{#history}}{"role":"{{role}}","content":"{{content}}"},{{/history}}{"role":"user","content":"{{u
+  ser}}"}]`,
         created_at: Date.now().toString(),
         updated_at: Date.now().toString()
       });
 
       this.seed('PromptTemplates', {
         name: 'grok',
-        template: '{{#system}}System: {{system}}\\n\\n{{/system}}\n{{#history}}\n{{#isUser}}Human: {{content}}\\n{{/isUser}}\n{{#isAssistant}}Assistant: {{content}}\\n{{/isAssistant}}\n{{/history}}\nHuman: {{user}}\\nAssistant: ',
+        template: `{{#system}}{{system}}
+
+  {{/system}}{{#history}}{{#isUser}}Human: {{content}}
+
+  {{/isUser}}{{#isAssistant}}Assistant: {{content}}
+
+  {{/isAssistant}}{{/history}}Human: {{user}}
+  Assistant:`,
         created_at: Date.now().toString(),
         updated_at: Date.now().toString()
       });
 
-      this.seed('PromptTemplates', {
-        name: 'meta',
-        template: '<s>{{#system}}<<SYS>>\\n{{system}}\\n<</SYS>>\\n\\n{{/system}}\n{{#history}}\n{{#isUser}}[INST] {{content}} [/INST]{{/isUser}}\n{{#isAssistant}} {{content}} </s><s>{{/isAssistant}}\n{{/history}}\n[INST] {{user}} [/INST]',
-        created_at: Date.now().toString(),
-        updated_at: Date.now().toString()
-      });
 
       this.seed('Profiles', {
         name: 'OpenAI',
