@@ -41,6 +41,10 @@ class OpenAIAdapter {
         // Build payload dynamically from settings
         const payload = this._buildPayload(modelName, oaiMessages, settings);
 
+        // Debug: Log final payload to verify image format
+        console.log('📤 Final payload to OpenAI:');
+        console.log(JSON.stringify(payload, null, 2));
+
         // Make API request
         const res = await fetch(url, {
             method: 'POST',
@@ -134,7 +138,77 @@ class OpenAIAdapter {
             }
         }
 
+        // 🔥 CRITICAL: Add image attachments to template-rendered messages
+        // Templates only handle text content, so we need to post-process to add images
+        if (oaiMessages.length > 0) {
+            oaiMessages = this._addImageAttachments(oaiMessages, messageHistory);
+        }
+
         return oaiMessages;
+    }
+
+    /**
+     * Add image attachments to messages
+     * @private
+     */
+    _addImageAttachments(oaiMessages, messageHistory) {
+        // Create a map of message content to original message for quick lookup
+        const contentToOriginal = new Map();
+        for (const m of messageHistory) {
+            if (m.attachments && Array.isArray(m.attachments) && m.attachments.length > 0) {
+                const key = String(m.content || '').trim();
+                contentToOriginal.set(key, m);
+            }
+        }
+
+        // If no attachments in any message, return as-is
+        if (contentToOriginal.size === 0) {
+            return oaiMessages;
+        }
+
+        // Process each message and add image attachments if needed
+        return oaiMessages.map(msg => {
+            // Skip system messages
+            if (msg.role === 'system') {
+                return msg;
+            }
+
+            // If content is already an array (shouldn't happen from template, but be safe)
+            if (Array.isArray(msg.content)) {
+                return msg;
+            }
+
+            // Look up original message by content
+            const contentKey = String(msg.content || '').trim();
+            const original = contentToOriginal.get(contentKey);
+
+            // If no attachments found for this message, return as-is
+            if (!original) {
+                return msg;
+            }
+
+            // Convert to Vision API format
+            const contentArray = [
+                {
+                    type: 'text',
+                    text: String(msg.content || '')
+                }
+            ];
+
+            // Add each image URL
+            for (const imageUrl of original.attachments) {
+                contentArray.push({
+                    type: 'image_url',
+                    image_url: {
+                        url: imageUrl
+                    }
+                });
+            }
+
+            console.log(`🖼️  Added ${original.attachments.length} image(s) to ${msg.role} message`);
+
+            return { ...msg, content: contentArray };
+        });
     }
 
     /**
