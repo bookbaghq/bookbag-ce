@@ -240,18 +240,37 @@ export function useChatController({
     initializeModels();
   }, [initializeModels]);
 
-  // Auto-scroll to bottom when new messages arrive if the user is already at bottom
+  // Scroll to bottom on initial mount/chat load
   useEffect(() => {
-    if (isUserAtBottomRef.current) {
-      try {
-        const container = messagesContainerRef.current;
-        if (container) {
-          container.scrollTo({ top: container.scrollHeight, behavior: 'auto' });
-        }
-        if (messagesEndRef.current && typeof messagesEndRef.current.scrollIntoView === 'function') {
-          messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
-        }
-      } catch (_) {}
+    if (messages.length > 0) {
+      // Force scroll to bottom after initial messages load
+      const timer = setTimeout(() => {
+        isUserAtBottomRef.current = true;
+        setIsUserAtBottom(true);
+        scrollToBottom(false);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [currentChatId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    // Always scroll on initial load or when user is at bottom
+    if (isUserAtBottomRef.current || messages.length === 0) {
+      // Use setTimeout to ensure DOM has updated
+      const timer = setTimeout(() => {
+        try {
+          const container = messagesContainerRef.current;
+          if (container) {
+            container.scrollTo({ top: container.scrollHeight, behavior: 'auto' });
+          }
+          if (messagesEndRef.current && typeof messagesEndRef.current.scrollIntoView === 'function') {
+            messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+          }
+        } catch (_) {}
+      }, 0);
+
+      return () => clearTimeout(timer);
     }
   }, [messages]);
 
@@ -808,6 +827,13 @@ export function useChatController({
           attachments: imageUrls.length > 0 ? imageUrls : undefined
         };
         setMessages(prev => [...prev, tempUserMessage]);
+
+        // Scroll to bottom to show new user message
+        isUserAtBottomRef.current = true;
+        setIsUserAtBottom(true);
+        // Use timeout to ensure DOM has updated
+        setTimeout(() => scrollToBottom(false), 0);
+
         // Show streaming state immediately for better UX
         setIsStreaming(true);
 
