@@ -22,22 +22,14 @@ class Init extends masterrecord.schema {
       // Insert settings
       this.seed('PromptTemplates', {
         name: 'gpt',
-        template: `[{{#system}}{"role":"system","content":"{{system}}"},{{/system}}{{#history}}{"role":"{{role}}","content":"{{content}}"},{{/history}}{"role":"user","content":"{{u
-  ser}}"}]`,
+        template: `[{{#system}}{"role":"system","content":"{{system}}"},{{/system}}{{#history}}{"role":"{{role}}","content":"{{content}}"},{{/history}}{"role":"user","content":"{{user}}"}]`,
         created_at: Date.now().toString(),
         updated_at: Date.now().toString()
       });
 
       this.seed('PromptTemplates', {
         name: 'grok',
-        template: `{{#system}}{{system}}
-
-  {{/system}}{{#history}}{{#isUser}}Human: {{content}}
-
-  {{/isUser}}{{#isAssistant}}Assistant: {{content}}
-
-  {{/isAssistant}}{{/history}}Human: {{user}}
-  Assistant:`,
+        template: `{{#system}}{{system}}{{/system}}{{#history}}{{#isUser}}Human: {{content}}{{/isUser}}{{#isAssistant}}Assistant: {{content}}{{/isAssistant}}{{/history}}Human: {{user}}Assistant:`,
         created_at: Date.now().toString(),
         updated_at: Date.now().toString()
       });
