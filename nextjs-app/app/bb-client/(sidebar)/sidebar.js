@@ -352,7 +352,7 @@ export function SidebarNav(props) {
   const fetchFavorites = async () => {
     try {
       setLoading(true);
-      const base = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
+      const base = (await import('@/apiConfig.json')).default.ApiConfig.main;
       const resp = await fetch(`${base}/bb-chat/api/favorites/list`, { method: 'GET', credentials: 'include' });
       const data = await resp.json();
       if (data?.success) {
@@ -363,7 +363,7 @@ export function SidebarNav(props) {
 
   const fetchRecent = async () => {
     try {
-      const base = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
+      const base = (await import('@/apiConfig.json')).default.ApiConfig.main;
       const resp = await fetch(`${base}/bb-chat/api/chat/recent`, { method: 'GET', credentials: 'include' });
       const data = await resp.json();
       if (data?.success) {
@@ -383,7 +383,7 @@ export function SidebarNav(props) {
   const fetchAllThreads = useCallback(async () => {
     try {
       setAllThreadsLoading(true);
-      const apiUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main}/bb-chat/api/chat/all?limit=20`;
+      const apiUrl = `${(await import('@/apiConfig.json')).default.ApiConfig.main}/bb-chat/api/chat/all?limit=20`;
       
       const response = await fetch(apiUrl, {
         method: 'GET',
@@ -433,7 +433,7 @@ export function SidebarNav(props) {
 
   const fetchAdminChats = async () => {
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main}/bb-chat/api/chat/admin-created`;
+      const apiUrl = `${(await import('@/apiConfig.json')).default.ApiConfig.main}/bb-chat/api/chat/admin-created`;
       const response = await fetch(apiUrl, { method: 'GET', credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
@@ -562,7 +562,7 @@ export function SidebarNav(props) {
       console.log('Deleting chat:', chatId);
       
       // Call DELETE API endpoint
-      const apiUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main}/bb-chat/api/chat/${chatId}/delete`;
+      const apiUrl = `${(await import('@/apiConfig.json')).default.ApiConfig.main}/bb-chat/api/chat/${chatId}/delete`;
       const response = await fetch(apiUrl, {
         method: 'DELETE',
         credentials: 'include'
@@ -619,7 +619,7 @@ export function SidebarNav(props) {
       console.log('Archiving chat:', chatId);
 
       // Call PATCH API endpoint
-      const apiUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main}/bb-chat/api/chat/${chatId}/archive`;
+      const apiUrl = `${(await import('@/apiConfig.json')).default.ApiConfig.main}/bb-chat/api/chat/${chatId}/archive`;
       const response = await fetch(apiUrl, {
         method: 'PATCH',
         credentials: 'include'

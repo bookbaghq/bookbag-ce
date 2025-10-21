@@ -85,7 +85,7 @@ export function useChatController({
       }
 
       try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
+        const backendUrl = (await import('@/apiConfig.json')).default.ApiConfig.main;
         const response = await fetch(`${backendUrl}/bb-media/api/media/unsent-images/${currentChatId}`, {
           method: 'GET',
           credentials: 'include'
@@ -182,7 +182,7 @@ export function useChatController({
 
   const isWorkspaceCreated = useCallback(async (chatId) => {
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
+      const backendUrl = (await import('@/apiConfig.json')).default.ApiConfig.main;
       const res = await fetch(`${backendUrl}/bb-chat/api/chat/${chatId}`, { method: 'GET', credentials: 'include' });
       if (!res.ok) return false;
       const data = await res.json();
@@ -668,7 +668,7 @@ export function useChatController({
       setAttachedImages(prev => [...prev, tempImg]);
 
       // Upload to backend
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
+      const backendUrl = (await import('@/apiConfig.json')).default.ApiConfig.main;
       const formData = new FormData();
       formData.append('image', file);
       if (currentChatId) {
@@ -728,7 +728,7 @@ export function useChatController({
         const fileId = urlParts[urlParts.length - 1];
 
         if (fileId) {
-          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
+          const backendUrl = (await import('@/apiConfig.json')).default.ApiConfig.main;
 
           // Call backend delete endpoint
           const response = await fetch(`${backendUrl}/bb-media/api/media/delete/media_${fileId}`, {
@@ -870,7 +870,7 @@ export function useChatController({
         // Link images to the message if there are any
         if (imageIds.length > 0 && userMessage.id) {
           try {
-            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
+            const backendUrl = (await import('@/apiConfig.json')).default.ApiConfig.main;
             const linkResponse = await fetch(`${backendUrl}/bb-media/api/media/link-images-to-message`, {
               method: 'POST',
               credentials: 'include',

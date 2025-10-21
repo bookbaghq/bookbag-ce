@@ -1,6 +1,5 @@
 import api from "../apiConfig.json"
-import getBackendBaseUrl from "../lib/backendUrl";
-const BASE = getBackendBaseUrl();
+const BASE = api.ApiConfig.main;
 
 export default class Credentials {
 

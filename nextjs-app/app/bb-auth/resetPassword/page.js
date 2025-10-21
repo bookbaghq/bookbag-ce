@@ -60,7 +60,7 @@ export default function ResetPasswordPage(){
     }
     setSubmitting(true);
     try{
-      const base = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
+      const base = (await import('@/apiConfig.json')).default.ApiConfig.main;
       const res = await fetch(`${base}/bb-user/api/auth/changePassword`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, password }) });
       const json = await res.json();
       if (!json?.success && json?.status !== 'ok') {

@@ -3,7 +3,7 @@
  * Handles context size calculation, model limits, and auto-trimming
  */
 import api from "../../../../apiConfig.json";
-const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main;
+const BASE = api.ApiConfig.main;
 
 /**
  * Context Service class to manage chat context and model limits

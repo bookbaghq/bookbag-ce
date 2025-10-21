@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { Loader2, Save } from 'lucide-react';
 import api from '@/apiConfig.json';
 
-const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main;
+const BASE_URL = api.ApiConfig.main;
 
 export default function RagSettingsPage() {
   const [loading, setLoading] = useState(true);

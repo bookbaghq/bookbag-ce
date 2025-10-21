@@ -10,8 +10,8 @@ import api from '@/apiConfig.json'
 
 export class ApiService {
   constructor() {
-    // Prefer env then fallback to config
-    this.baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main;
+    // Always use apiConfig.json
+    this.baseUrl = api.ApiConfig.main;
     this.socket = null;
   }
 

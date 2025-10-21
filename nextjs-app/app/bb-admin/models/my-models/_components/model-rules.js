@@ -30,7 +30,7 @@ export default function ModelRules({ model }) {
 
   const fetchTypes = async () => {
     try {
-      const res = await fetch(`${(process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main)}/bb-models/api/pfrules/types`, { credentials: 'include' })
+      const res = await fetch(`${api.ApiConfig.main}/bb-models/api/pfrules/types`, { credentials: 'include' })
       const data = await res.json()
       if (data?.success && Array.isArray(data.types)) {
         // Backend now restricts types to: string, text, float, number, boolean, json, range
@@ -46,7 +46,7 @@ export default function ModelRules({ model }) {
   const load = async () => {
     setLoading(true)
     try {
-      const url = new URL(`${(process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main)}/bb-models/api/pfrules/list`)
+      const url = new URL(`${api.ApiConfig.main}/bb-models/api/pfrules/list`)
       url.searchParams.set('modelId', model.id)
       const res = await fetch(url.toString(), { credentials: 'include' })
       const data = await res.json()
@@ -92,7 +92,7 @@ export default function ModelRules({ model }) {
     if ((payload.field_type || '').toLowerCase() === 'range') {
       payload.range = buildRangeString()
     }
-    const BASE = (process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main)
+    const BASE = api.ApiConfig.main
     const url = editing?.id ? `${BASE}/bb-models/api/pfrules/update` : `${BASE}/bb-models/api/pfrules/create`
     try {
       const res = await fetch(url, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
@@ -105,7 +105,7 @@ export default function ModelRules({ model }) {
 
   const deleteRule = async (rule) => {
     try {
-      const res = await fetch(`${(process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main)}/bb-models/api/pfrules/delete`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: rule.id, modelId: model.id }) })
+      const res = await fetch(`${api.ApiConfig.main}/bb-models/api/pfrules/delete`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: rule.id, modelId: model.id }) })
       const data = await res.json()
       if (data?.success) await load()
     } catch (_) {}
@@ -286,7 +286,7 @@ export default function ModelRules({ model }) {
               payload.range = buildRangeString()
             }
             try {
-              const res = await fetch(`${(process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main)}/bb-models/api/pfrules/create`, {
+              const res = await fetch(`${api.ApiConfig.main}/bb-models/api/pfrules/create`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
@@ -383,7 +383,7 @@ export default function ModelRules({ model }) {
               payload.range = buildRangeString()
             }
             try {
-              const res = await fetch(`${(process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main)}/bb-models/api/pfrules/update`, {
+              const res = await fetch(`${api.ApiConfig.main}/bb-models/api/pfrules/update`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },

@@ -39,7 +39,7 @@ export default function AdminChatsSearchPage() {
       if (!term || term.length < 2) { setUserResults([]); return }
       try {
         setLoadingUsers(true)
-        const url = new URL(`${(process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main)}/${api.ApiConfig.profile.search.url}`)
+        const url = new URL(`${api.ApiConfig.main}/${api.ApiConfig.profile.search.url}`)
         url.searchParams.set('q', term)
         url.searchParams.set('limit', '20')
         const res = await fetch(url.toString(), { credentials: 'include' })

@@ -76,7 +76,7 @@ export default function WorkspacesPage(){
     let stop = false
     const loadProfiles = async () => {
       try {
-        const res = await fetch(`${(process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main)}/bb-models/api/profiles/list`, { credentials: 'include' })
+        const res = await fetch(`${api.ApiConfig.main}/bb-models/api/profiles/list`, { credentials: 'include' })
         const data = await res.json()
         if (!stop && data?.success && Array.isArray(data.profiles)) setProfiles(data.profiles)
       } catch (_) {}

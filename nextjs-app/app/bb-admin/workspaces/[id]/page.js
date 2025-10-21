@@ -31,7 +31,7 @@ export default function WorkspaceEditPage(){
       if (!id) { setLoading(false); return }
       try {
         setLoading(true)
-        const BASE = (process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main)
+        const BASE = api.ApiConfig.main
         const [ws, us, ms] = await Promise.all([
           svc.get(id),
           fetch(`${BASE}/bb-user/api/profile/all`, { credentials: 'include' }).then(r => r.json()).catch(() => ({})),

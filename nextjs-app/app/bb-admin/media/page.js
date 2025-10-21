@@ -28,7 +28,7 @@ import {
 import { toast } from 'sonner';
 import api from '@/apiConfig.json';
 
-const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main;
+const BASE_URL = api.ApiConfig.main;
 
 export default function MediaPage() {
   const [files, setFiles] = useState([]);

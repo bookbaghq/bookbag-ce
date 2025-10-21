@@ -45,7 +45,7 @@ export function SidebarNav (props) {
 
   const fetchStorageUsage = async () => {
     try {
-      const base = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
+      const base = (await import('@/apiConfig.json')).default.ApiConfig.main;
       const response = await fetch(`${base}/bb-media/api/media/storage`, {
         credentials: 'include'
       });

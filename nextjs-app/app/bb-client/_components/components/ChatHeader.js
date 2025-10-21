@@ -35,7 +35,7 @@ export function ChatHeader({
       try {
         if (!currentChatId) { setFavorite(false); return; }
         const cfg = (await import('@/apiConfig.json')).default;
-        const base = process.env.NEXT_PUBLIC_BACKEND_URL || cfg.ApiConfig.main;
+        const base = cfg.ApiConfig.main;
         const url = new URL(`${base}/bb-chat/api/favorites/status`);
         url.searchParams.set('chatId', String(currentChatId));
         const res = await fetch(url.toString(), { method: 'GET', credentials: 'include' });
@@ -59,7 +59,7 @@ export function ChatHeader({
   const toggleFavorite = async () => {
     if (!currentChatId) return;
     try {
-      const base = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
+      const base = (await import('@/apiConfig.json')).default.ApiConfig.main;
       const res = await fetch(`${base}/bb-chat/api/favorites/toggle`, {
         method: 'POST',
         credentials: 'include',
@@ -81,7 +81,7 @@ export function ChatHeader({
         setPendingTitle((title || 'AI Assistant').replace(/\.+$/, ''));
         return;
       }
-      const base = process.env.NEXT_PUBLIC_BACKEND_URL || (await import('@/apiConfig.json')).default.ApiConfig.main;
+      const base = (await import('@/apiConfig.json')).default.ApiConfig.main;
       const res = await fetch(`${base}/bb-chat/api/chat/edit`, {
         method: 'PUT',
         credentials: 'include',

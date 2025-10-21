@@ -1,4 +1,7 @@
 // Utility to get the backend base URL consistently across the app
+// Always uses apiConfig.json - never environment variables
+
+import apiConfig from "../apiConfig.json";
 
 function trimTrailingSlash(url) {
   if (typeof url !== "string") return url;
@@ -7,10 +10,9 @@ function trimTrailingSlash(url) {
 }
 
 export function getBackendBaseUrl() {
-  const fromEnv = typeof process !== "undefined" ? process.env?.NEXT_PUBLIC_BACKEND_URL : undefined;
-  const base = trimTrailingSlash((fromEnv || "").trim());
+  const base = trimTrailingSlash((apiConfig?.ApiConfig?.main || "").trim());
   if (!/^https?:\/\//.test(base)) {
-    throw new Error("Missing or invalid NEXT_PUBLIC_BACKEND_URL. Set it in the environment.");
+    throw new Error("Missing or invalid backend URL in apiConfig.json. Update ApiConfig.main.");
   }
   return base;
 }

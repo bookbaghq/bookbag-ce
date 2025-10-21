@@ -1,7 +1,7 @@
 'use client';
 
- import api from "../apiConfig.json" 
- const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main;
+ import api from "../apiConfig.json"
+ const BASE = api.ApiConfig.main;
 
 export default  class ProfileService{
     _isLoading = false;

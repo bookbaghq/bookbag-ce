@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import api from '@/apiConfig.json';
 
-const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || api.ApiConfig.main;
+const BASE_URL = api.ApiConfig.main;
 
 export default function MediaSettingsPage() {
   const [settings, setSettings] = useState({

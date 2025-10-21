@@ -2,7 +2,7 @@
 var master = require('mastercontroller');
 var mimes = require('./mime.json');
 var request = require('./request.json');
-var cors = require('./cors.json');
+var cors = require('./cors-dynamic.js');
 const mapObject = require('object-mapper');
 const path = require('path');
 
