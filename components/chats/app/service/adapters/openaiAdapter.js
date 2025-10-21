@@ -172,12 +172,25 @@ class OpenAIAdapter {
         const txt = await res.text().catch(() => "");
         const errorService = require(`${master.root}/app/service/errorService`);
         const normalized = errorService.normalizeProviderError(txt, res.status, 'openai-compatible');
-        const err = new Error(normalized.message || `OpenAI-compatible request failed (${res.status})`);
+
+        // Check if this is an unsupported image input error
+        let errorMessage = normalized.message || `OpenAI-compatible request failed (${res.status})`;
+        const messageLower = errorMessage.toLowerCase();
+
+        // Detect image not supported errors by code or message content
+        if (normalized.code === 'UNSUPPORTED_IMAGE_INPUT' ||
+            messageLower.includes('does not support image') ||
+            messageLower.includes('vision') && messageLower.includes('not supported')) {
+            errorMessage = 'This model does not support image inputs. Please use a vision-capable model (e.g., GPT-4 Vision, GPT-4o, or Claude 3).';
+        }
+
+        const err = new Error(errorMessage);
         err.status = normalized.status;
         err.code = normalized.code;
         err.type = normalized.type;
         err.provider = normalized.provider;
         err.details = normalized.details;
+        err.userFriendly = true; // Flag to indicate this should be shown to user
         throw err;
     }
 
