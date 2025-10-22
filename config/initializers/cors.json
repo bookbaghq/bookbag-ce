@@ -1,5 +1,5 @@
 {
-    "origin": "dynamic",
+    "origin": [],
     "methods": [
         "GET",
         "HEAD",

@@ -13,14 +13,14 @@ export const Logo = () => {
     <Link href='/'>
     <div className="hidden md:flex items-center gap-x-2">
       <Image
-        src="/logo.svg"
+        src="/Logo-D3.png"
         height="40"
         width="40"
         alt="Logo"
         className="dark:hidden"
       />
       <Image
-        src="/logo-dark.svg"
+        src="/Logo-D3.png"
         height="40"
         width="40"
         alt="Logo"
