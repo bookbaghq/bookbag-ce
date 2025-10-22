@@ -14,21 +14,18 @@ export const Logo = () => {
     <div className="hidden md:flex items-center gap-x-2">
       <Image
         src="/Logo-D3.png"
-        height="40"
-        width="40"
+        height="30"
+        width="30"
         alt="Logo"
         className="dark:hidden"
       />
       <Image
         src="/Logo-D3.png"
-        height="40"
-        width="40"
+        height="30"
+        width="30"
         alt="Logo"
         className="hidden dark:block"
       />
-      <p className={cn("font-semibold", font.className)}>
-        Bookbag
-      </p>
     </div>
     </Link>
   )
