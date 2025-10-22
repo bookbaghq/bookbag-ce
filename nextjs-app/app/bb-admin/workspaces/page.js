@@ -10,6 +10,7 @@ import api from '@/apiConfig.json'
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Separator } from '@/components/ui/separator'
 import { Trash2, Upload, File, Database } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function WorkspacesPage(){
   const svc = useMemo(() => new WorkspaceService(), [])
@@ -243,7 +244,20 @@ export default function WorkspacesPage(){
   const saveBasics = async () => {
     if (!editId) return
     setEditLoading(true)
-    try { await svc.update({ id: editId, name: editName, description: editDescription, system_prompt: editSystemPrompt, prompt_template: editPromptTemplate }); await load() } finally { setEditLoading(false) }
+    try {
+      const result = await svc.update({ id: editId, name: editName, description: editDescription, system_prompt: editSystemPrompt, prompt_template: editPromptTemplate })
+      if (result?.success) {
+        toast.success('Workspace updated successfully')
+        await load()
+      } else {
+        toast.error(result?.error || 'Failed to update workspace')
+      }
+    } catch (error) {
+      console.error('Error updating workspace:', error)
+      toast.error(error.message || 'An unexpected error occurred while updating the workspace')
+    } finally {
+      setEditLoading(false)
+    }
   }
 
   const toggleUser = async (u) => {
@@ -251,6 +265,7 @@ export default function WorkspacesPage(){
 
     // Update local state first for immediate UI feedback
     const exists = editUsers.some(x => String(x.user_id || x.id) === String(u.id))
+    const previousUsers = [...editUsers]
     const newUsers = exists
       ? editUsers.filter(x => String(x.user_id || x.id) !== String(u.id))
       : [...editUsers, { user_id: u.id, role: 'member', name: `${u.first_name || ''} ${u.last_name || ''}`.trim(), email: u.email }]
@@ -260,17 +275,24 @@ export default function WorkspacesPage(){
     // Immediately save to database
     try {
       const payload = newUsers.map(user => ({ user_id: user.user_id || user.id, role: user.role || 'member' }))
-      await svc.assignUsers(editId, payload)
+      const result = await svc.assignUsers(editId, payload)
 
-      // Refresh from backend to ensure consistency
-      const ws = await svc.get(editId)
-      if (ws?.success && ws.workspace && Array.isArray(ws.workspace.users)) {
-        setEditUsers(ws.workspace.users)
+      if (result?.success) {
+        // Refresh from backend to ensure consistency
+        const ws = await svc.get(editId)
+        if (ws?.success && ws.workspace && Array.isArray(ws.workspace.users)) {
+          setEditUsers(ws.workspace.users)
+        }
+        await load()
+      } else {
+        toast.error(result?.error || 'Failed to update workspace users')
+        setEditUsers(previousUsers)
       }
-      await load()
     } catch (error) {
+      console.error('Error updating workspace users:', error)
+      toast.error(error.message || 'An unexpected error occurred while updating workspace users')
       // Revert on error
-      setEditUsers(editUsers)
+      setEditUsers(previousUsers)
     }
   }
 
@@ -341,16 +363,17 @@ export default function WorkspacesPage(){
       console.log('Delete result:', result)
 
       if (result?.success) {
+        toast.success(result?.message || 'Workspace deleted successfully')
         setDeleteOpen(false)
         setDeleteTarget(null)
         await load()
       } else {
         console.error('Delete failed:', result?.error || 'Unknown error')
-        alert(`Failed to delete workspace: ${result?.error || 'Unknown error'}`)
+        toast.error(result?.error || 'Failed to delete workspace')
       }
     } catch (error) {
       console.error('Delete error:', error)
-      alert(`Failed to delete workspace: ${error.message || 'Unknown error'}`)
+      toast.error(error.message || 'An unexpected error occurred while deleting the workspace')
     } finally {
       setDeleting(false)
     }

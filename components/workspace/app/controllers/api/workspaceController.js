@@ -154,72 +154,20 @@ class workspaceController {
 
     async remove(obj){
         try{
-            console.log('🗑️  Remove method called');
-            console.log('   obj exists?', !!obj);
-            console.log('   obj.params exists?', !!obj?.params);
-            console.log('   obj.params.formData exists?', !!obj?.params?.formData);
-
             const f = obj?.params?.formData || obj?.params || {};
-            console.log('   f type:', typeof f);
-            console.log('   f.id:', f?.id);
-
             const id = parseInt(f.id, 10);
-            console.log(`   Parsed ID: ${id}`);
-
-            if(!id) return this.returnJson({ success: false, error: 'id is required' });
+            if(!id) return this.returnJson({ success: false, error: 'Workspace ID is required' });
 
             const w = this._workspaceContext.Workspace.where(r => r.id == $$, id).single();
             if(!w) return this.returnJson({ success: false, error: 'Workspace not found' });
 
-            console.log(`   Found workspace: ${w.name}`);
-
-            // Remove workspace users
-            try{
-                const links = this._workspaceContext.WorkspaceUser.where(r => r.workspace_id == $$, id).toList();
-                console.log(`   Removing ${links.length} workspace user links`);
-                for(const l of links) this._workspaceContext.WorkspaceUser.remove(l);
-            }catch(err){
-                console.error('   Error removing workspace users:', err.message);
-            }
-
-            // Remove workspace models
-            try{
-                const links = this._workspaceContext.WorkspaceModel.where(r => r.workspace_id == $$, id).toList();
-                console.log(`   Removing ${links.length} workspace model links`);
-                for(const l of links) this._workspaceContext.WorkspaceModel.remove(l);
-            }catch(err){
-                console.error('   Error removing workspace models:', err.message);
-            }
-
-            // Remove model overrides
-            try{
-                const links = this._modelContext.ModelOverrides.where(r => r.workspace_id == $$, id).toList();
-                console.log(`   Removing ${links.length} model overrides`);
-                for(const l of links) this._modelContext.ModelOverrides.remove(l);
-                this._modelContext.saveChanges();
-            }catch(err){
-                console.error('   Error removing model overrides:', err.message);
-            }
-
-            // Remove workspace chats
-            try{
-                const links = this._workspaceContext.WorkspaceChat.where(r => r.workspace_id == $$, id).toList();
-                console.log(`   Removing ${links.length} workspace chat links`);
-                for(const l of links) this._workspaceContext.WorkspaceChat.remove(l);
-            }catch(err){
-                console.error('   Error removing workspace chats:', err.message);
-            }
-
-            // Remove the workspace itself
-            console.log(`   Removing workspace entity`);
             this._workspaceContext.Workspace.remove(w);
             this._workspaceContext.saveChanges();
 
-            console.log(`✅ Workspace ${id} deleted successfully`);
-            return this.returnJson({ success: true });
+            return this.returnJson({ success: true, message: 'Workspace deleted successfully' });
         }catch(error){
             console.error(`❌ Error deleting workspace:`, error);
-            return this.returnJson({ success: false, error: error.message });
+            return this.returnJson({ success: false, error: error.message || 'Failed to delete workspace' });
         }
     }
 

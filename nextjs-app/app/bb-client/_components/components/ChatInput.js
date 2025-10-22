@@ -24,6 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export function ChatInput({
   inputValue,
@@ -188,24 +194,35 @@ export function ChatInput({
               )}
 
               <div className="flex items-end gap-2 p-3">
-                {/* Image Attachment Button */}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isLoading}
-                  className="flex-shrink-0"
-                  title="Attach image"
-                >
-                  <Paperclip className="w-4 h-4" />
-                </Button>
+                {/* Image Attachment Button with Tooltip */}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isLoading}
+                        className="flex-shrink-0"
+                      >
+                        <Paperclip className="w-4 h-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs">
+                      <p className="font-semibold text-xs mb-1">Attach Image</p>
+                      <p className="text-xs text-muted-foreground">
+                        Supported formats: PNG, JPEG, WEBP, GIF (non-animated)
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
 
                 {/* Hidden File Input */}
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
                   onChange={handleImageSelect}
                   className="hidden"
                 />

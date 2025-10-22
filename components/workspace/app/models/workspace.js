@@ -30,10 +30,6 @@ class Workspace {
         db.integer().nullable();
     }
 
-    ModelOverrides(db){
-        // Use global ModelOverrides with workspace_id
-        db.hasMany("ModelOverrides").nullable();
-    }
 
     prompt_template(db){
         db.string().nullable().default(`{{#system}}{"role":"system","content":"{{system}}"},{{/system}}
