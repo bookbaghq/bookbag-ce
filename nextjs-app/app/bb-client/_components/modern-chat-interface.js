@@ -8,7 +8,7 @@ import { Bot, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatHeader } from "./components/ChatHeader";
 import { ChatInput } from "./components/ChatInput";
-import { ChatMessageItem } from "./components/ChatMessageItem";
+import { ChatMessageItemAI } from "./components/ChatMessageItemAI";
 import { ChatModals } from "./components/ChatModals";
 import { useChatController } from "./controllers/ChatController";
 import { useMemo } from "react";
@@ -43,6 +43,9 @@ export function ModernChatInterface({
     setNoThinking,
     streamingStats,
     thinkingState,
+    streamingThinking,
+    streamingResponse,
+    streamingThinkingSections,
     deleteDialogOpen,
     setDeleteDialogOpen,
     archiveDialogOpen,
@@ -111,23 +114,23 @@ export function ModernChatInterface({
             const isStreamingCurrentMessage = !isUser && isStreaming && isLastMessage;
 
             return (
-              <div 
+              <div
                 key={String(message.id)}
                 className={`max-w-4xl mx-auto w-full ${isStreamingCurrentMessage ? 'pt-4' : ''}`}
               >
-                <ChatMessageItem 
-                  message={message} 
-                  isUser={isUser} 
+                <ChatMessageItemAI
+                  message={message}
+                  isUser={isUser}
                   modelLimits={modelLimits}
-                  streamingStats={streamingStats}
                   isStreamingCurrentMessage={isStreamingCurrentMessage}
-                  thinkingState={thinkingState}
-                  frontendStreamingService={frontendStreamingService}
+                  streamingThinking={isStreamingCurrentMessage ? streamingThinking : ''}
+                  streamingResponse={isStreamingCurrentMessage ? streamingResponse : ''}
+                  streamingThinkingSections={isStreamingCurrentMessage ? streamingThinkingSections : []}
                 />
               </div>
             );
           })
-        ), [messages, isStreaming, frontendStreamingService, streamingStats, modelLimits, thinkingState])}
+        ), [messages, isStreaming, modelLimits, streamingThinking, streamingResponse, streamingThinkingSections])}
 
         {/* Bottom sentinel for intersection detection */}
         <div ref={messagesEndRef} className="h-1 w-full" />

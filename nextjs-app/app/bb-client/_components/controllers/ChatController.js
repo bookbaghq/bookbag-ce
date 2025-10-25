@@ -13,6 +13,7 @@ import { createFrontendStreamingService } from '../services/frontendStreamingSer
 import { bindBusForMessage } from '../services/uiStreamStore';
 import { thinkingBubbleManager } from '../services/thinkingBubbleManager';
 import { toast } from 'sonner';
+import { AISdkStreamAdapter } from '../services/aiSdkStreamAdapter';
 
 export function useChatController({
   initialChatId = null,
@@ -70,6 +71,12 @@ export function useChatController({
 
   // Image attachment state
   const [attachedImages, setAttachedImages] = useState([]);
+
+  // AI SDK Streaming state for enhanced display
+  const [streamingThinking, setStreamingThinking] = useState('');
+  const [streamingResponse, setStreamingResponse] = useState('');
+  const [streamingThinkingSections, setStreamingThinkingSections] = useState([]);
+  const aiSdkAdapterRef = useRef(null);
 
   // Update refs when state changes
   useEffect(() => {
@@ -144,6 +151,26 @@ export function useChatController({
     const totalTokens = calculateConversationTokenCount(messages);
     setConversationTokenCount(totalTokens);
   }, [messages]);
+
+  // Auto-scroll during streaming when content updates
+  useEffect(() => {
+    if (isStreaming && (streamingResponse || streamingThinking)) {
+      // Use requestAnimationFrame to ensure DOM has updated
+      requestAnimationFrame(() => {
+        try {
+          const container = messagesContainerRef.current;
+          if (container) {
+            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+          }
+          if (messagesEndRef.current && typeof messagesEndRef.current.scrollIntoView === 'function') {
+            messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+          }
+          isUserAtBottomRef.current = true;
+          setIsUserAtBottom(true);
+        } catch (_) {}
+      });
+    }
+  }, [streamingResponse, streamingThinking, isStreaming]);
 
   // Stable helpers and actions
   const buildModelStorageKey = useCallback((chatId) => {
@@ -397,6 +424,11 @@ export function useChatController({
       frontendStreamingServiceRef.current = null;
     }
     
+    // Finalize AI SDK adapter
+    if (aiSdkAdapterRef.current) {
+      aiSdkAdapterRef.current.finalizeStreams();
+    }
+
     // Reset streaming state
     setIsLoading(false);
     setIsStreaming(false);
@@ -446,6 +478,19 @@ export function useChatController({
   const handleStreamProcessing = async (reader, decoder, aiMessageId, response) => {
     let buffer = '';
     let currentId = aiMessageId;
+
+    // Reset AI SDK streaming state for new message
+    setStreamingThinking('');
+    setStreamingResponse('');
+    setStreamingThinkingSections([]);
+
+    // Initialize AI SDK adapter for this stream
+    if (!aiSdkAdapterRef.current) {
+      aiSdkAdapterRef.current = new AISdkStreamAdapter();
+    }
+    const adapter = aiSdkAdapterRef.current;
+    adapter.reset();
+
     try {
       while (true) {
         const { done, value } = await reader.read();
@@ -461,6 +506,18 @@ export function useChatController({
           if (data === '[TIMEOUT]') { break; }
           try {
             const parsed = JSON.parse(data);
+
+            // Feed parsed data to AI SDK adapter for enhanced display
+            try {
+              adapter.handleStreamEvent(parsed);
+              // Update React state from adapter
+              setStreamingThinking(adapter.thinkingBuffer);
+              setStreamingResponse(adapter.responseBuffer);
+              setStreamingThinkingSections([...adapter.thinkingSections]);
+            } catch (adapterError) {
+              console.error('AI SDK Adapter error:', adapterError);
+            }
+
             // Simple bubble tracking based on growing thinkingBuffer
             try {
               const mid = String((parsed && (parsed.messageId || parsed.realMessageId)) || aiMessageId);
@@ -530,7 +587,13 @@ export function useChatController({
 
                 // Add image to the assistant message's attachments
                 setMessages(prev => prev.map(msg => {
-                  if (String(msg.id) !== imageMessageId) return msg;
+                  // Match either by imageMessageId or if it's an empty temp assistant message
+                  const isTargetMessage = String(msg.id) === imageMessageId ||
+                    (msg.role === 'assistant' &&
+                     (!msg.content || msg.content.trim() === '') &&
+                     String(msg.id).startsWith('temp-ai-'));
+
+                  if (!isTargetMessage) return msg;
 
                   const existingAttachments = msg.attachments || [];
                   const newAttachments = Array.isArray(existingAttachments)
@@ -539,6 +602,7 @@ export function useChatController({
 
                   return {
                     ...msg,
+                    id: imageMessageId, // Update to real ID if it was temp
                     attachments: newAttachments
                   };
                 }));
@@ -555,6 +619,28 @@ export function useChatController({
                 : null;
             if (latestContent !== null) {
               setMessages(prev => {
+                // First, try to find an empty assistant message (placeholder) to reuse
+                const emptyAssistantIndex = prev.findIndex(m =>
+                  m.role === 'assistant' &&
+                  (!m.content || m.content.trim() === '') &&
+                  String(m.id).startsWith('temp-ai-')
+                );
+
+                // If we found an empty placeholder, update it with content and correct ID
+                if (emptyAssistantIndex !== -1) {
+                  return prev.map((msg, idx) => {
+                    if (idx === emptyAssistantIndex) {
+                      return {
+                        ...msg,
+                        id: currentId, // Update to real ID
+                        content: latestContent
+                      };
+                    }
+                    return msg;
+                  });
+                }
+
+                // Otherwise, check if message with currentId already exists
                 const hasAi = prev.some(m => String(m.id) === String(currentId));
                 if (!hasAi) {
                   // First tokens: insert the AI card now
@@ -567,6 +653,8 @@ export function useChatController({
                   };
                   return [...prev, aiCard];
                 }
+
+                // Update existing message with currentId
                 return prev.map(msg => {
                   if (String(msg.id) !== String(currentId)) return msg;
                   const current = String(msg.content || '');
@@ -582,7 +670,14 @@ export function useChatController({
               const incomingCount = (typeof parsed.tokenCount === 'number') ? (Number(parsed.tokenCount) || 0) : null;
               const incomingTps = (typeof parsed.tps === 'number') ? parsed.tps : null;
               setMessages(prev => prev.map(msg => {
-                if (String(msg.id) !== String(currentId)) return msg;
+                // Match either by currentId or if it's an empty temp assistant message
+                const isTargetMessage = String(msg.id) === String(currentId) ||
+                  (msg.role === 'assistant' &&
+                   (!msg.content || msg.content.trim() === '') &&
+                   String(msg.id).startsWith('temp-ai-'));
+
+                if (!isTargetMessage) return msg;
+
                 const nextTokenCount = (incomingCount !== null)
                   ? Math.max(
                       typeof msg.token_count === 'number' ? msg.token_count : 0,
@@ -591,6 +686,7 @@ export function useChatController({
                   : msg.token_count;
                 return {
                   ...msg,
+                  id: currentId, // Update to real ID if it was temp
                   token_count: nextTokenCount,
                   tokens_per_seconds: (incomingTps !== null) ? incomingTps : msg.tokens_per_seconds
                 };
@@ -620,13 +716,21 @@ export function useChatController({
             if (parsed && parsed.type === 'aiMessageComplete' && parsed.finalMessage) {
               const fm = parsed.finalMessage || {};
               setMessages(prev => prev.map(msg => {
-                if (String(msg.id) !== String(currentId)) return msg;
+                // Match either by currentId or if it's an empty temp assistant message
+                const isTargetMessage = String(msg.id) === String(currentId) ||
+                  (msg.role === 'assistant' &&
+                   (!msg.content || msg.content.trim() === '') &&
+                   String(msg.id).startsWith('temp-ai-'));
+
+                if (!isTargetMessage) return msg;
+
                 const current = String(msg.content || '');
                 const finalContent = (typeof fm.content === 'string') ? fm.content : current;
                 // Guard: do not overwrite longer in-memory content with shorter final payload
                 const safeContent = (finalContent.length >= current.length) ? finalContent : current;
                 return {
                   ...msg,
+                  id: currentId, // Update to real ID if it was temp
                   content: safeContent,
                   token_count: (typeof fm.token_count === 'number') ? fm.token_count : msg.token_count,
                   max_tokens: (typeof fm.max_tokens === 'number') ? fm.max_tokens : msg.max_tokens,
@@ -1045,6 +1149,11 @@ The request failed due to network issues or the response was too large. This oft
           return true;
         }));
 
+        // Finalize AI SDK adapter on error
+        if (aiSdkAdapterRef.current) {
+          aiSdkAdapterRef.current.finalizeStreams();
+        }
+
         // Reset streaming/loading flags and restore input so user can retry
         setIsStreaming(false);
         setIsLoading(false);
@@ -1127,7 +1236,12 @@ The request failed due to network issues or the response was too large. This oft
     
     // Live streaming metrics
     streamingStats,
-    
+
+    // AI SDK Streaming state for enhanced display
+    streamingThinking,
+    streamingResponse,
+    streamingThinkingSections,
+
     // Service instance for ChatMessageItem
     frontendStreamingService: frontendStreamingServiceRef.current,
    
