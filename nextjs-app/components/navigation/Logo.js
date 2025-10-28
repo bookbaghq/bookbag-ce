@@ -12,15 +12,15 @@ export const Logo = () => {
   return (
     <Link href='/'>
     <div className="hidden md:flex items-center gap-x-2">
-      <Image
-        src="/Logo-D3.png"
+      <Image 
+        src="/Logo-D3-black.png"
         height="30"
         width="30"
         alt="Logo"
         className="dark:hidden"
       />
       <Image
-        src="/Logo-D3-black.png"
+        src="/Logo-D3.png"
         height="30"
         width="30"
         alt="Logo"
