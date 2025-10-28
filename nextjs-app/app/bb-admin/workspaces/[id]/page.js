@@ -18,8 +18,6 @@ export default function WorkspaceEditPage(){
   const [saving, setSaving] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [systemPrompt, setSystemPrompt] = useState('')
-  const [promptTemplate, setPromptTemplate] = useState('')
   const [users, setUsers] = useState([])
   const [models, setModels] = useState([])
   const [allUsers, setAllUsers] = useState([])
@@ -41,8 +39,6 @@ export default function WorkspaceEditPage(){
           const w = ws.workspace
           setName(w.name || '')
           setDescription(w.description || '')
-          setSystemPrompt(w.system_prompt || '')
-          setPromptTemplate(w.prompt_template || '')
           setUsers(Array.isArray(w.users) ? w.users : [])
           setModels(Array.isArray(w.models) ? w.models : [])
         }
@@ -59,7 +55,7 @@ export default function WorkspaceEditPage(){
 
   const saveBasics = async () => {
     setSaving(true)
-    try { await svc.update({ id, name, description, system_prompt: systemPrompt, prompt_template: promptTemplate }); } catch(_) {}
+    try { await svc.update({ id, name, description }); } catch(_) {}
     finally { setSaving(false) }
   }
 
@@ -103,16 +99,6 @@ export default function WorkspaceEditPage(){
       <Card className="p-4 space-y-3">
         <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
         <Input placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <div className="text-sm font-medium mb-2">System Prompt</div>
-            <textarea className="w-full min-h-[140px] p-2 border rounded font-mono text-sm" value={systemPrompt} onChange={e => setSystemPrompt(e.target.value)} />
-          </div>
-          <div>
-            <div className="text-sm font-medium mb-2">Prompt Template</div>
-            <textarea className="w-full min-h-[140px] p-2 border rounded font-mono text-sm" value={promptTemplate} onChange={e => setPromptTemplate(e.target.value)} />
-          </div>
-        </div>
       </Card>
       <Separator />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

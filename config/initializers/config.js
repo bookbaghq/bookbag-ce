@@ -15,11 +15,13 @@ var mailContext = require(`${master.root}/components/mail/app/models/mailContext
 var workspaceContext = require(`${master.root}/components/workspace/app/models/workspaceContext`);
 var mediaContext = require(`${master.root}/components/media/app/models/mediaContext`);
 var ragContext = require(`${master.root}/components/rag/app/models/ragContext`);
+var pluginContext = require(`${master.root}/components/plugins/app/models/pluginContext`);
+var adminContext = require(`${master.root}/components/admin/app/models/adminContext`);
 
 const MailTemplateService = require(`${master.root}/components/mail/app/service/mailTemplateService`);
 const MailDeliveryService = require(`${master.root}/components/mail/app/service/mailDeliveryService`);
 const templateConfigPath = path.join(master.root, 'components', 'mail', 'config', 'mail-templates.json');
-
+const hookService = require(`${master.root}/components/plugins/app/core/hookRegistration.js`);
 // initlaizing the tools we need for Master to run properly
 master.serverSettings(master.env.server);
 master.request.init(request);
@@ -43,6 +45,8 @@ master.addSingleton("mailContext", mailContext);
 master.addSingleton("workspaceContext", workspaceContext);
 master.addSingleton("mediaContext", mediaContext);
 master.addSingleton("ragContext", ragContext);
+master.addSingleton("pluginContext", pluginContext);
+master.addSingleton("adminContext", adminContext);
 master.register("_mapper", mapObject);
 
 // Initialize and register mail services so controllers can use them
@@ -51,6 +55,7 @@ const deliveryService = new MailDeliveryService(mailContext);
 // Register instances (not constructors)
 master.register('mailTemplateService', templateService);
 master.register('mailDeliveryService', deliveryService);
+master.register('hookService', hookService);
 
 master.component("components", "user");
 master.component("components", "chats");
@@ -59,6 +64,10 @@ master.component("components", "mail");
 master.component("components", "workspace");
 master.component("components", "media");
 master.component("components", "rag");
+master.component("components", "plugins");
+master.component("components", "admin");
+
+
 
 // register these apps to have access to them in the controller.
 // example: master.register("mainContext", { anyobject : "name"});

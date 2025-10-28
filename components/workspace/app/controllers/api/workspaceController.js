@@ -68,7 +68,7 @@ class workspaceController {
             if (q) {
                 results = results.filter(w => (String(w.name || '').toLowerCase().includes(q)) || (String(w.description || '').toLowerCase().includes(q)));
             }
-            const mapped = results.map(w => ({ id: w.id, name: w.name, description: w.description || '', profile_id: w.profile_id || w.Profile || null, created_at: w.created_at, updated_at: w.updated_at }));
+            const mapped = results.map(w => ({ id: w.id, name: w.name, description: w.description || '', created_at: w.created_at, updated_at: w.updated_at }));
             return this.returnJson({ success: true, workspaces: mapped });
         }catch(error){
             return this.returnJson({ success: false, error: error.message });
@@ -104,7 +104,7 @@ class workspaceController {
                 })
             }catch(_){}
 
-            return this.returnJson({ success: true, workspace: { id: w.id, name: w.name, description: w.description || '', profile_id: w.profile_id || null, prompt_template: w.prompt_template || '', system_prompt: w.system_prompt || '', created_at: w.created_at, updated_at: w.updated_at, users, models } });
+            return this.returnJson({ success: true, workspace: { id: w.id, name: w.name, description: w.description || '', created_at: w.created_at, updated_at: w.updated_at, users, models } });
         }catch(error){
             return this.returnJson({ success: false, error: error.message });
         }
@@ -120,9 +120,6 @@ class workspaceController {
             const now = Date.now().toString();
             w.name = name;
             w.description = String(f.description || '');
-            if (f.profile_id || f.profileId) w.Profile = parseInt(f.profile_id || f.profileId, 10);
-            if (typeof f.prompt_template === 'string') w.prompt_template = f.prompt_template;
-            if (typeof f.system_prompt === 'string') w.system_prompt = f.system_prompt;
             w.created_at = now; w.updated_at = now;
             this._workspaceContext.Workspace.add(w);
             this._workspaceContext.saveChanges();
@@ -141,9 +138,6 @@ class workspaceController {
             if(!w) return this.returnJson({ success: false, error: 'Workspace not found' });
             if (typeof f.name === 'string') w.name = f.name;
             if (typeof f.description === 'string') w.description = f.description;
-            if (f.profile_id || f.profileId) w.Profile = parseInt(f.profile_id || f.profileId, 10);
-            if (typeof f.prompt_template === 'string') w.prompt_template = f.prompt_template;
-            if (typeof f.system_prompt === 'string') w.system_prompt = f.system_prompt;
             w.updated_at = Date.now().toString();
             this._workspaceContext.saveChanges();
             return this.returnJson({ success: true });

@@ -24,25 +24,6 @@ class Workspace {
         db.hasMany('WorkspaceModel', 'model_id'); 
     }
 
-    Profile(db){
-        // Reuse global Profiles entity (registered in context)
-        db.belongsTo("Profiles", "profile_id");
-        db.integer().nullable();
-    }
-
-
-    prompt_template(db){
-        db.string().nullable().default(`{{#system}}{"role":"system","content":"{{system}}"},{{/system}}
-            {{#history}}
-            {"role":"{{role}}","content":"{{content}}"},
-            {{/history}}
-            {"role":"user","content":"{{user}}"}`);
-    }
-
-    system_prompt(db){
-        db.string().nullable();
-    }
-
     created_at(db){
         db.string().notNullable();
         db.get(function(value){

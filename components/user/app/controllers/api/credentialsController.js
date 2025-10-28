@@ -217,7 +217,7 @@ class credentialsController{
     }
 
     login(req){
-        console.log("asdsa")
+        
         // get email and password and find in db
         //var kk = req.authService();
         try{

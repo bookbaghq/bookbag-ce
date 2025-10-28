@@ -5,25 +5,7 @@ import { TeamSwitcher } from "./team-switcher";
 import { NavMain } from "./nav-main";
 import { NavProjects } from "./nav-projects";
 import { NavUser } from "./nav-user";
-import {
-  AudioWaveform,
-  BookOpen,
-  Bot,
-  Command,
-  Frame,
-  GalleryVerticalEnd,
-  Map,
-  PieChart,
-  Settings2,
-  SquareTerminal,
-  LayoutDashboard,
-  Users,
-  MessageSquare,
-  HardDrive,
-  FolderOpen,
-  Activity
-} from "lucide-react"
-
+import * as LucideIcons from "lucide-react";
 
 import {
   Sidebar,
@@ -33,15 +15,61 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 
-
+// Icon mapping helper
+const getIconComponent = (iconName) => {
+  if (!iconName) return null;
+  return LucideIcons[iconName] || null;
+};
 
 export function SidebarNav (props) {
   const [storageUsage, setStorageUsage] = useState({ mb: 0, quota: 1024, percentUsed: 0 });
+  const [menuItems, setMenuItems] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Fetch storage usage on mount
+  // Fetch menu items and storage usage on mount
   useEffect(() => {
+    fetchMenuItems();
     fetchStorageUsage();
   }, []);
+
+  const fetchMenuItems = async () => {
+    try {
+      const base = (await import('@/apiConfig.json')).default.ApiConfig.main;
+      const response = await fetch(`${base}/api/layout/sidebar`, {
+        credentials: 'include'
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        // Transform backend data to frontend format
+        const transformedMenu = data.menu.map(menuItem => {
+          const item = {
+            title: menuItem.label,
+            url: menuItem.url,
+            icon: getIconComponent(menuItem.icon),
+          };
+
+          // Check if this menu item has submenus
+          const submenus = data.submenu[menuItem.id];
+          if (submenus && submenus.length > 0) {
+            // Has submenus - add items array
+            item.items = submenus.map(sub => ({
+              title: sub.label,
+              url: sub.url
+            }));
+          }
+
+          return item;
+        });
+
+        setMenuItems(transformedMenu);
+      }
+    } catch (error) {
+      console.error('Error fetching menu items:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchStorageUsage = async () => {
     try {
@@ -65,135 +93,23 @@ export function SidebarNav (props) {
 
 
 
-  // This is sample data.
-const data = {
-
-  navMain: [
-    {
-      title: "Dashboard",
-      url: "/bb-admin",
-      icon: LayoutDashboard,
-    },
-    {
-      title: "Users",
-      url: "/",
-      icon: SquareTerminal,
-      items: [
-        {
-          title: "Dashboard",
-          url: "/bb-admin/users",
-        },
-        {
-          title: "All Users",
-          url: "/bb-admin/users/all",
-        },
-        {
-          title: "Add New",
-          url: "/bb-admin/users/add-new",
-        },
-        {
-          title: "Profile",
-          url: "/bb-admin/users/profile",
-        },
-        {
-          title: "Settings",
-          url: "/bb-admin/users/settings",
-        },
-      ],
-    },
-    {
-      title: "Models",
-      url: "#",
-      icon: Bot,
-      items: [
-        {
-          title: "Library",
-          url: "/bb-admin/models/library",
-        },
-        {
-          title: "My Models",
-          url: "/bb-admin/models/my-models",
-        },
-        {
-          title: "Settings",
-          url: "/bb-admin/models/settings",
-        },
-      ],
-    },
-    {
-      title: "Workspaces",
-      url: "#",
-      icon: LayoutDashboard,
-      items: [
-        { title: "All", url: "/bb-admin/workspaces" },
-      ],
-    },
-    {
-      title: "Chats",
-      url: "#",
-      icon: MessageSquare,
-      items: [
-        {
-          title: "Search",
-          url: "/bb-admin/chats/search",
-        }
-        ,
-        {
-          title: "Create",
-          url: "/bb-admin/chats/create",
-        }
-      ],
-    },
-    {
-      title: "Media",
-      url: "#",
-      icon: FolderOpen,
-      items: [
-        { title: "All Media", url: "/bb-admin/media" },
-        { title: "Settings", url: "/bb-admin/media/settings" },
-      ],
-    },
-    {
-      title: "RAG",
-      url: "#",
-      icon: BookOpen,
-      items: [
-        { title: "Documents", url: "/bb-admin/rag/documents" },
-        { title: "Settings", url: "/bb-admin/rag/settings" },
-      ],
-    },
-    {
-      title: "Tokens",
-      url: "#",
-      icon: Activity,
-      items: [
-        { title: "Analytics", url: "/bb-admin/tokens/analytics" },
-      ],
-    },
-    {
-      title: "Mail",
-      url: "#",
-      icon: Settings2,
-      items: [
-        { title: "Settings", url: "/bb-admin/mail/settings" },
-        { title: "Email Logs", url: "/bb-admin/mail/logs" }
-      ],
-    },
-
-
-  ],
-  projects: [
-
-  ],
-}
-
-return (
-    <>
-
-      <Sidebar  collapsible="icon" {...props} className="pt-16">
-
+  if (loading) {
+    return (
+      <Sidebar collapsible="icon" {...props} className="pt-16">
         <SidebarContent>
-          <NavMain items={data.navMain} />
+          <div className="flex items-center justify-center h-full">
+            <p className="text-sm text-muted-foreground">Loading menu...</p>
+          </div>
+        </SidebarContent>
+      </Sidebar>
+    );
+  }
+
+  return (
+    <>
+      <Sidebar collapsible="icon" {...props} className="pt-16">
+        <SidebarContent>
+          <NavMain items={menuItems} />
         </SidebarContent>
 
         {/* Storage Footer */}
@@ -202,11 +118,7 @@ return (
             Storage: {storageUsage.mb.toFixed(2)} / {storageUsage.quota} MB ({storageUsage.percentUsed.toFixed(1)}%)
           </p>
         </SidebarFooter>
-
-    </Sidebar>
-
-
-
+      </Sidebar>
     </>
-)
+  );
 }

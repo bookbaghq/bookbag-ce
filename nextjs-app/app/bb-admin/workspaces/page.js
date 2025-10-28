@@ -21,8 +21,6 @@ export default function WorkspacesPage(){
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [saving, setSaving] = useState(false)
-  const [profiles, setProfiles] = useState([])
-  const [profileId, setProfileId] = useState('')
   const [createUsers, setCreateUsers] = useState([])
   const [createUserSearch, setCreateUserSearch] = useState('')
   const [createSearchResults, setCreateSearchResults] = useState([])
@@ -43,8 +41,6 @@ export default function WorkspacesPage(){
   const [editId, setEditId] = useState(null)
   const [editName, setEditName] = useState('')
   const [editDescription, setEditDescription] = useState('')
-  const [editSystemPrompt, setEditSystemPrompt] = useState('')
-  const [editPromptTemplate, setEditPromptTemplate] = useState('')
   const [editUsers, setEditUsers] = useState([])
   const [editModels, setEditModels] = useState([])
   const [allUsers, setAllUsers] = useState([])
@@ -71,20 +67,6 @@ export default function WorkspacesPage(){
     const handle = setTimeout(() => { load() }, 300)
     return () => clearTimeout(handle)
   }, [q, load])
-
-  // Load profiles list for optional association
-  useEffect(() => {
-    let stop = false
-    const loadProfiles = async () => {
-      try {
-        const res = await fetch(`${api.ApiConfig.main}/bb-models/api/profiles/list`, { credentials: 'include' })
-        const data = await res.json()
-        if (!stop && data?.success && Array.isArray(data.profiles)) setProfiles(data.profiles)
-      } catch (_) {}
-    }
-    loadProfiles()
-    return () => { stop = true }
-  }, [])
 
   // Debounced user search for create dialog
   useEffect(() => {
@@ -170,8 +152,6 @@ export default function WorkspacesPage(){
         const w = ws.workspace
         setEditName(w.name || '')
         setEditDescription(w.description || '')
-        setEditSystemPrompt(w.system_prompt || '')
-        setEditPromptTemplate(w.prompt_template || '')
         setEditUsers(Array.isArray(w.users) ? w.users : [])
         setEditModels(Array.isArray(w.models) ? w.models : [])
       }
@@ -245,7 +225,7 @@ export default function WorkspacesPage(){
     if (!editId) return
     setEditLoading(true)
     try {
-      const result = await svc.update({ id: editId, name: editName, description: editDescription, system_prompt: editSystemPrompt, prompt_template: editPromptTemplate })
+      const result = await svc.update({ id: editId, name: editName, description: editDescription })
       if (result?.success) {
         toast.success('Workspace updated successfully')
         await load()
@@ -418,15 +398,6 @@ export default function WorkspacesPage(){
           <div className="space-y-4">
             <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
             <Input placeholder="Description (optional)" value={description} onChange={(e) => setDescription(e.target.value)} />
-            <div>
-              <label className="text-sm block mb-1">Profile (optional)</label>
-              <select className="border rounded h-9 px-2 w-full" value={profileId} onChange={(e) => setProfileId(e.target.value)}>
-                <option value="">Select profile…</option>
-                {profiles.map(p => (
-                  <option key={`p-${p.id}`} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            </div>
 
             <Separator />
 
@@ -575,7 +546,6 @@ export default function WorkspacesPage(){
               setCreateOpen(false);
               setName('');
               setDescription('');
-              setProfileId('');
               setCreateUsers([]);
               setCreateUserSearch('');
               setCreateModels([]);
@@ -585,7 +555,6 @@ export default function WorkspacesPage(){
               setSaving(true)
               try {
                 const payload = { name, description };
-                if (profileId) payload.profile_id = parseInt(profileId, 10);
                 const res = await svc.create(payload);
                 if (res?.success && res.id) {
                   // Assign users if any were selected
@@ -601,7 +570,6 @@ export default function WorkspacesPage(){
                   setCreateOpen(false);
                   setName('');
                   setDescription('');
-                  setProfileId('');
                   setCreateUsers([]);
                   setCreateUserSearch('');
                   setCreateModels([]);
@@ -630,16 +598,6 @@ export default function WorkspacesPage(){
             <div className="space-y-3">
               <Input placeholder="Name" value={editName} onChange={(e) => setEditName(e.target.value)} />
               <Input placeholder="Description" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <div className="text-sm font-medium mb-2">System Prompt</div>
-                  <textarea className="w-full min-h-[120px] p-2 border rounded font-mono text-sm" value={editSystemPrompt} onChange={e => setEditSystemPrompt(e.target.value)} />
-                </div>
-                <div>
-                  <div className="text-sm font-medium mb-2">Prompt Template</div>
-                  <textarea className="w-full min-h-[120px] p-2 border rounded font-mono text-sm" value={editPromptTemplate} onChange={e => setEditPromptTemplate(e.target.value)} />
-                </div>
-              </div>
               <div className="flex justify-end"><Button onClick={saveBasics} disabled={editLoading}>{editLoading ? 'Saving…' : 'Save'}</Button></div>
             </div>
 

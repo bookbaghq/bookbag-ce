@@ -1,6 +1,7 @@
 
 const master = require('mastercontroller');
 const userEntity = require(`${master.root}/components/user/app/models/user`);
+const authEntity = require(`${master.root}/components/user/app/models/auth`);
 const bcrypt = require('bcryptjs');
 
 
@@ -35,14 +36,19 @@ class userController{
             user.updated_at = dateNow;
             user.user_name = req.params.formData.username;
             user.role = req.params.formData.role;
-            user.Auth.created_at = dateNow;
-            user.Auth.updated_at = dateNow;
             user.first_name = req.params.formData.firstName;
             user.last_name = req.params.formData.lastName;
             user.email = req.params.formData.email;
+
+            // Initialize Auth as empty object before setting properties
+            // MasterRecord hasOne relationships must be initialized before use
+            user.Auth = new authEntity();
+            user.Auth.created_at = dateNow;
+            user.Auth.updated_at = dateNow;
             user.Auth.password_salt = bcrypt.genSaltSync(10);
             user.Auth.password_hash = bcrypt.hashSync(req.params.formData.password, user.Auth.password_salt); // combine the password given and password salt
             user.Auth.login_counter = 1;
+
             req.userContext.User.add(user);
             req.userContext.saveChanges();
 
