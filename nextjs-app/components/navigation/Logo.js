@@ -20,7 +20,7 @@ export const Logo = () => {
         className="dark:hidden"
       />
       <Image
-        src="/Logo-D3.png"
+        src="/Logo-D3-black.png"
         height="30"
         width="30"
         alt="Logo"
