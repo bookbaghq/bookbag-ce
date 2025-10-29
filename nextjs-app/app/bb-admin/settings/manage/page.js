@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
@@ -21,11 +21,12 @@ export default function ManagePluginsPage() {
   const [toggling, setToggling] = useState(null);
   const [message, setMessage] = useState(null);
 
-  useEffect(() => {
-    fetchSettings();
+  const showMessage = useCallback((text, type) => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage(null), 5000);
   }, []);
 
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     try {
       const backendUrl = (await import('@/apiConfig.json')).default.ApiConfig.main;
       const response = await fetch(`${backendUrl}/api/settings/list`, {
@@ -45,7 +46,11 @@ export default function ManagePluginsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showMessage]);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
 
   const handleToggle = async (settingName) => {
     setToggling(settingName);
@@ -76,11 +81,6 @@ export default function ManagePluginsPage() {
     } finally {
       setToggling(null);
     }
-  };
-
-  const showMessage = (text, type) => {
-    setMessage({ text, type });
-    setTimeout(() => setMessage(null), 5000);
   };
 
   if (loading) {
