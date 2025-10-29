@@ -43,7 +43,7 @@ class Init extends masterrecord.schema {
             name: "chat-plugin",
             label: 'Chat Management',
             description: "Chat LLM Communication",
-            file_path : "/chat-plugins/index.js",
+            file_path : "/chat-plugin/index.js",
             is_active : true,
             priority : 3,
             category : "admin-sidebar",
