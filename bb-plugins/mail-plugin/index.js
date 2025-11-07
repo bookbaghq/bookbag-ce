@@ -1,50 +1,39 @@
 /**
  * Mail Plugin
  * Registers Email Integration menu items
+ *
+ * Uses: Generic Hooks System
  */
-
-const MasterRecord = require('masterrecord');
 
 /**
  * Load method - called by pluginLoader with API
- * @param {Object} pluginAPI - { hookService, pluginLoader, sidebarHook }
+ * @param {Object} pluginAPI - { hookService, HOOKS, pluginLoader }
  */
 function load(pluginAPI) {
-  const { sidebarHook } = pluginAPI;
+  const { hookService, HOOKS } = pluginAPI;
 
-  // Register admin_menu hook callback
-  sidebarHook.onAdminMenu(async ({ req, res, user, tenant, tenantId }) => {
-
+  // Register admin_menu hook using generic hooks
+  hookService.addAction(HOOKS.ADMIN_MENU, async (context) => {
     // Add top-level Mail menu
-    sidebarHook.add_menu_page({
+    context.addMenuItem({
       id: 'mail',
       label: 'Mail',
+      url: '/bb-admin/mail',
       icon: 'Mail',
-      capability: 'read',
-      priority: 40,
-      render: null
+      position: 40
     });
 
     // Add submenus
-    sidebarHook.add_submenu_page('mail', {
-      id: 'settings',
+    context.addSubmenuItem('mail', {
       label: 'Settings',
-      path: '/bb-admin/mail/settings',
-      capability: 'read',
-      priority: 5
+      url: '/bb-admin/mail/settings'
     });
 
-    sidebarHook.add_submenu_page('mail', {
-      id: 'email-logs',
+    context.addSubmenuItem('mail', {
       label: 'Email Logs',
-      path: '/bb-admin/mail/logs',
-      capability: 'read',
-      priority: 10
+      url: '/bb-admin/mail/logs'
     });
-
-
-  });
-
+  }, 10);
 }
 
 module.exports = { load };

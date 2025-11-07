@@ -52,6 +52,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useSidebarWidth } from "../_components/SidebarWidthContext";
 import { toast } from 'sonner';
+import api from '@/apiConfig.json';
+
+const BASE_URL = api.ApiConfig.main;
 
 // Navigation data structure
 const navigationData = {
@@ -175,6 +178,11 @@ export function SidebarNav(props) {
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [selectedThreadId, setSelectedThreadId] = useState(null);
 
+  // Chat settings state
+  const [chatSettings, setChatSettings] = useState({
+    disableChatCreation: false
+  });
+
   // Extract chat ID from pathname
   useEffect(() => {
     const pathParts = pathname.split('/');
@@ -260,6 +268,26 @@ export function SidebarNav(props) {
   useEffect(() => {
     try { localStorage.setItem('sidebarWorkspacesExpanded', JSON.stringify(expandedSections.workspaces)); } catch (_) {}
   }, [expandedSections.workspaces]);
+
+  // Fetch chat settings on mount
+  useEffect(() => {
+    const fetchChatSettings = async () => {
+      try {
+        const response = await fetch(`${BASE_URL}/bb-chat/api/chat/settings`, {
+          credentials: 'include'
+        });
+        const data = await response.json();
+        if (data.success) {
+          setChatSettings({
+            disableChatCreation: data.settings.disableChatCreation || false
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching chat settings:', error);
+      }
+    };
+    fetchChatSettings();
+  }, []);
 
   useEffect(() => {
     // Handle global deletion/archival events to keep sidebar in sync
@@ -493,6 +521,11 @@ export function SidebarNav(props) {
 
   const handleNavItemClick = (itemId) => {
     if (itemId === "new-chat") {
+      // Check if chat creation is disabled (workspace-only mode)
+      if (chatSettings.disableChatCreation) {
+        toast.error('Chat creation is restricted to workspaces only. Please create a chat from within a workspace.');
+        return;
+      }
       // Navigate to new chat
       window.location.href = '/bb-client/';
     } else if (itemId === "search-chats") {
@@ -703,7 +736,13 @@ export function SidebarNav(props) {
       <div className="space-y-4 pb-4 flex-shrink-0 pt-12">
         <div className={`${isCollapsed ? 'px-2' : 'px-2'} space-y-0.5`}>
           {/* Top nav items from the image */}
-          {navigationData.topNav.map(item => (
+          {navigationData.topNav.filter(item => {
+            // Hide "new-chat" button if chat creation is disabled
+            if (item.id === 'new-chat' && chatSettings.disableChatCreation) {
+              return false;
+            }
+            return true;
+          }).map(item => (
             <Button
               key={item.id}
               variant="ghost"

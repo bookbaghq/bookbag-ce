@@ -1,0 +1,11 @@
+{
+  "name": "Media Plugin",
+  "slug": "media-plugin",
+  "version": "1.0.0",
+  "description": "Media library management system for uploads, images, and files",
+  "author": "Bookbag Team",
+  "entry": "index.js",
+  "category": "admin-sidebar",
+  "icon": "Image",
+  "priority": 7
+}

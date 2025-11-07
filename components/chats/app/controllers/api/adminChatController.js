@@ -214,7 +214,7 @@ class adminChatController {
             chat.session_id = crypto.randomBytes(16).toString('hex');
             chat.total_token_count = 0;
             chat.title = title;
-            chat.is_admin_created = true;
+            chat.created_by = 'Admin';
 
             this._chatContext.Chat.add(chat);
             this._chatContext.saveChanges();

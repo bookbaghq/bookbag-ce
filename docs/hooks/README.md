@@ -1,729 +1,480 @@
-# BookBag Hook System Documentation
+# Bookbag Hooks & Plugin System Documentation
 
-Welcome to the BookBag WordPress-style hook and plugin system! This system allows you to extend and customize BookBag's functionality through a familiar WordPress-like API.
+> **Version:** 0.0.14
+> **Last Updated:** November 5, 2024
+> **Total Hooks:** 23
 
-## Table of Contents
+---
 
-1. [Overview](#overview)
-2. [Core Concepts](#core-concepts)
-3. [Getting Started](#getting-started)
-4. [Hook System](#hook-system)
-5. [Menu System](#menu-system)
-6. [Creating Plugins](#creating-plugins)
-7. [Settings Management](#settings-management)
-8. [API Reference](#api-reference)
-9. [Examples](#examples)
+## 📚 Documentation Index
 
-## Overview
+Welcome to the comprehensive documentation for Bookbag's WordPress-style hook system and plugin architecture.
 
-BookBag's plugin system is inspired by WordPress and provides:
+---
 
-- **Hook System**: Actions and filters with priority support
-- **Menu Registry**: Dynamic menu management
-- **Plugin Architecture**: Modular, toggle-able plugins
-- **Settings Management**: Database-backed plugin settings
-- **Per-Request Firing**: Conditional menu registration based on user/tenant
+### Core Documentation
 
-## Core Concepts
+#### 📦 [Plugin Development Guide](../PLUGIN_DEVELOPMENT_GUIDE.md) ⭐ NEW
+**Complete guide to creating Bookbag plugins**
+- Pre-bundled plugin architecture (like VS Code extensions)
+- Step-by-step plugin creation
+- Plugin structure and best practices
+- ESM module system
+- Building and testing plugins
 
-### Hooks
+**Use this when:** You're starting a new plugin or learning the plugin system
 
-Hooks allow plugins to "hook into" specific points in the application lifecycle. There are two types:
+---
 
-- **Actions**: Execute code at specific points (e.g., `admin_menu`)
-- **Filters**: Modify data before it's used (planned feature)
+#### 🔧 [Dependency Compilation Guide](../DEPENDENCY_COMPILATION_GUIDE.md) ⭐ NEW
+**How to bundle dependencies with esbuild**
+- Understanding bundled vs external dependencies
+- Adding npm packages to your plugin
+- Build configuration with esbuild
+- Bundle optimization techniques
+- Troubleshooting build issues
 
-### Priority
+**Use this when:** You need to add dependencies to your plugin or optimize bundle size
 
-Functions attached to hooks execute in order of priority (lowest first):
+---
 
-```javascript
-addAction('admin_menu', myFunction, 10);  // Runs first
-addAction('admin_menu', otherFunction, 20); // Runs second
+#### 🔍 [Hooks Directory](./HOOKS_DIRECTORY.md)
+**Complete reference of all 23 available hooks**
+- Organized by category (System, User, Chat, Content, Plugin, Client)
+- Usage examples for each hook
+- Hook implementation details
+- Best practices and patterns
+
+**Use this when:** You need to find a specific hook or understand what hooks are available
+
+---
+
+#### 📝 [Hooks Changelog](./HOOKS_CHANGELOG.md)
+**Version-by-version history of hook changes**
+- New hooks added
+- Modified hooks
+- Breaking changes and migration guides
+- Future roadmap
+
+**Use this when:** You're upgrading between versions or need to track hook evolution
+
+---
+
+#### 🔌 [Plugin Activation System](./PLUGIN_ACTIVATION_SYSTEM.md)
+**WordPress-style plugin activation and deactivation**
+- Complete activation workflow
+- Plugin structure requirements
+- `activate()` and `deactivate()` method implementation
+- Self-contained plugins with own dependencies
+- Troubleshooting guide
+
+**Use this when:** You're creating a new plugin or adding activation logic
+
+---
+
+#### ⚡ [Dynamic Component Loading](./DYNAMIC_COMPONENT_LOADING.md)
+**Runtime component registration and loading**
+- Client-side component architecture
+- DynamicPluginSidebar usage
+- Component registration API
+- Multiple sidebar positions (left, right, menu)
+- Performance considerations
+
+**Use this when:** You need to add UI components to the client interface
+
+---
+
+## 🚀 Quick Start
+
+### For Plugin Developers
+
+**1. Create a new plugin:**
+```bash
+mkdir -p bb-plugins/my-plugin
+cd bb-plugins/my-plugin
 ```
 
-### Plugins
-
-Plugins are self-contained modules that register hooks and provide functionality. They can be enabled/disabled via the Settings UI.
-
-## Getting Started
-
-### File Structure
-
-```
-bb-hooks/src/
-├── core/
-│   ├── hooks.js              # Core hook system
-│   └── admin/
-│       ├── menuRegistry.js   # Menu management
-│       ├── sidebarRegistration.js        # WordPress-style API
-│       └── middleware.js     # Express integration
-└── plugins/
-    ├── index.js              # Plugin bootstrap
-    ├── ragPlugin.js          # RAG plugin
-    ├── mediaPlugin.js        # Media plugin
-    ├── mailPlugin.js         # Mail plugin
-    ├── workspacePlugin.js    # Workspace plugin
-    ├── userPlugin.js         # User plugin
-    └── settingsPlugin.js     # Settings plugin
-
-components/settings/
-├── app/
-│   ├── models/
-│   │   └── Setting.js        # Settings model
-│   └── controllers/
-│       └── api/
-│           └── settingsController.js  # Settings API
-└── config/
-    └── routes.js             # Settings routes
-```
-
-### Basic Usage
-
-```javascript
-const { onAdminMenu, add_menu_page } = require('./bb-hooks/src/core/admin/sidebarRegistration.js');
-
-// Register a callback for admin_menu hook
-onAdminMenu(async ({ req, user, tenant, tenantId }) => {
-  add_menu_page({
-    id: 'my-plugin',
-    label: 'My Plugin',
-    path: '/admin/my-plugin',
-    icon: 'Star',
-    capability: 'manage_options',
-    priority: 50
-  });
-}, 10);
-```
-
-## Hook System
-
-### Available Hooks
-
-#### `admin_menu`
-
-Fires when building the admin menu. Use this to register menu items.
-
-**Context:**
-- `req` - Express request object
-- `res` - Express response object
-- `user` - Current user object
-- `tenant` - Tenant object
-- `tenantId` - Tenant ID string
-
-**Example:**
-
-```javascript
-onAdminMenu(async (context) => {
-  const { user, tenantId } = context;
-
-  // Add menu items here
-}, priority);
-```
-
-### Core Functions
-
-#### `addAction(name, fn, priority = 10)`
-
-Register a callback for an action hook.
-
-```javascript
-import { addAction } from './bb-hooks/src/core/hooks.js';
-
-addAction('admin_menu', async (context) => {
-  console.log('Admin menu is building!');
-}, 10);
-```
-
-#### `doAction(name, context = {})`
-
-Execute all callbacks registered for an action.
-
-```javascript
-import { doAction } from './bb-hooks/src/core/hooks.js';
-
-await doAction('admin_menu', { req, res, user, tenant, tenantId });
-```
-
-#### `removeAction(name, fn)`
-
-Remove a specific callback from a hook.
-
-```javascript
-import { removeAction } from './bb-hooks/src/core/hooks.js';
-
-const myCallback = async (context) => { /* ... */ };
-addAction('admin_menu', myCallback);
-removeAction('admin_menu', myCallback); // Removes it
-```
-
-## Menu System
-
-### Menu Structure
-
-Menus have two levels:
-
-1. **Top-level menus**: Main navigation items
-2. **Submenus**: Items under a parent menu
-
-### Adding Menus
-
-#### `add_menu_page(options)`
-
-Add a top-level menu item.
-
-**Options:**
-- `id` (required): Unique identifier
-- `label` (required): Display text
-- `path` (required): URL path
-- `icon`: Icon name (Lucide icon)
-- `capability`: Required user capability
-- `priority`: Display order (default: 10)
-- `render`: Render function (optional)
-
-```javascript
-add_menu_page({
-  id: 'analytics',
-  label: 'Analytics',
-  path: '/admin/analytics',
-  icon: 'BarChart',
-  capability: 'view_analytics',
-  priority: 25
-});
-```
-
-#### `add_submenu_page(parentId, options)`
-
-Add a submenu under a parent menu.
-
-**Options:**
-- `id` (required): Unique identifier
-- `label` (required): Display text
-- `path` (required): URL path
-- `capability`: Required user capability
-- `priority`: Display order (default: 10)
-- `render`: Render function (optional)
-
-```javascript
-add_submenu_page('analytics', {
-  id: 'analytics-dashboard',
-  label: 'Dashboard',
-  path: '/admin/analytics/dashboard',
-  capability: 'view_analytics',
-  priority: 5
-});
-```
-
-### Removing Menus
-
-#### `remove_menu_page(id)`
-
-Remove a top-level menu and all its submenus.
-
-```javascript
-remove_menu_page('analytics');
-```
-
-#### `remove_submenu_page(parentId, id)`
-
-Remove a specific submenu item.
-
-```javascript
-remove_submenu_page('analytics', 'analytics-dashboard');
-```
-
-### Capabilities
-
-Capabilities control who can see menu items. Common capabilities:
-
-- `manage_options` - Site administrators
-- `manage_rag` - RAG management
-- `upload_files` - Media upload
-- `manage_mail` - Email management
-- `list_users` - View users
-- `create_users` - Create users
-
-Users with role `admin` bypass all capability checks.
-
-## Creating Plugins
-
-### Plugin Structure
-
-A plugin is a JavaScript module that registers hooks.
-
-```javascript
-// bb-hooks/src/plugins/myPlugin.js
-
-const { onAdminMenu, add_menu_page, add_submenu_page } = require('../core/admin/sidebarRegistration.js');
-const MasterRecord = require('masterrecord');
-
-/**
- * Check if plugin is enabled
- */
-async function isMyPluginEnabled(tenantId) {
-  try {
-    const Setting = MasterRecord('Setting', tenantId);
-    const setting = await Setting.findOne({ where: { name: 'my-plugin' } });
-    return setting && setting.is_active;
-  } catch (error) {
-    console.error('Error checking plugin status:', error);
-    return true; // Default to enabled
-  }
-}
-
-/**
- * Initialize plugin
- */
-function initMyPlugin() {
-  onAdminMenu(async ({ req, res, user, tenant, tenantId }) => {
-    // Check if enabled for this tenant
-    const enabled = await isMyPluginEnabled(tenantId || 'default');
-    if (!enabled) return;
-
-    // Register menu items
-    add_menu_page({
-      id: 'my-plugin',
-      label: 'My Plugin',
-      path: '/admin/my-plugin',
-      icon: 'Star',
-      capability: 'manage_options',
-      priority: 50
-    });
-
-    add_submenu_page('my-plugin', {
-      id: 'my-plugin-settings',
-      label: 'Settings',
-      path: '/admin/my-plugin/settings',
-      capability: 'manage_options',
-      priority: 10
-    });
-  }, 10);
-}
-
-module.exports = { initMyPlugin, isMyPluginEnabled };
-```
-
-### Registering Your Plugin
-
-1. Create your plugin file in `bb-hooks/src/plugins/`
-2. Import and initialize in `bb-hooks/src/plugins/index.js`:
-
-```javascript
-const { initMyPlugin } = require('./myPlugin.js');
-
-function initializePlugins() {
-  console.log('🔌 Initializing plugins...');
-
-  // ... existing plugins
-  initMyPlugin();
-
-  console.log('✓ All plugins initialized');
-}
-```
-
-### Adding Plugin Settings
-
-1. Add to default settings in `components/settings/app/controllers/api/settingsController.js`:
-
-```javascript
-const defaults = [
-  // ... existing settings
-  {
-    name: 'my-plugin',
-    label: 'My Plugin',
-    description: 'Enable my awesome plugin functionality',
-    is_active: true,
-    priority: 60,
-    icon: 'Star',
-    category: 'plugin'
-  }
-];
-```
-
-## Settings Management
-
-### Settings Model
-
-Settings are stored in the database with these fields:
-
-- `name`: Unique identifier (e.g., 'rag', 'media')
-- `label`: Display name
-- `description`: Human-readable description
-- `is_active`: Boolean toggle state
-- `priority`: Display order
-- `icon`: Icon name
-- `category`: Grouping (e.g., 'core', 'plugin')
-- `created_at`: Creation timestamp
-- `updated_at`: Last update timestamp
-
-### Settings API
-
-#### `GET /api/settings/list`
-
-Get all settings ordered by priority.
-
-```javascript
-const response = await fetch('/api/settings/list', {
-  credentials: 'include'
-});
-const { success, settings } = await response.json();
-```
-
-#### `GET /api/settings/:name`
-
-Get a specific setting.
-
-```javascript
-const response = await fetch('/api/settings/rag', {
-  credentials: 'include'
-});
-const { success, setting } = await response.json();
-```
-
-#### `POST /api/settings/:name/toggle`
-
-Toggle a setting's `is_active` status.
-
-```javascript
-const response = await fetch('/api/settings/rag/toggle', {
-  method: 'POST',
-  credentials: 'include'
-});
-const { success, setting, message } = await response.json();
-```
-
-#### `PUT /api/settings/:name`
-
-Update a setting.
-
-```javascript
-const response = await fetch('/api/settings/rag', {
-  method: 'PUT',
-  headers: { 'Content-Type': 'application/json' },
-  credentials: 'include',
-  body: JSON.stringify({
-    description: 'Updated description',
-    priority: 15
-  })
-});
-```
-
-#### `POST /api/settings`
-
-Create or update a setting.
-
-```javascript
-const response = await fetch('/api/settings', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  credentials: 'include',
-  body: JSON.stringify({
-    name: 'my-plugin',
-    label: 'My Plugin',
-    description: 'My plugin description',
-    is_active: true,
-    priority: 60,
-    icon: 'Star',
-    category: 'plugin'
-  })
-});
-```
-
-## API Reference
-
-### Core Hooks (`bb-hooks/src/core/hooks.js`)
-
-```javascript
-// Register action callback
-addAction(name: string, fn: Function, priority?: number): void
-
-// Remove action callback
-removeAction(name: string, fn: Function): void
-
-// Execute action callbacks
-doAction(name: string, context?: Object): Promise<void>
-
-// Check if action has callbacks
-hasAction(name: string): boolean
-
-// Get callback count
-actionCount(name: string): number
-
-// Get all registered hook names
-getRegisteredHooks(): string[]
-
-// Reset all hooks (testing)
-_resetHooks(): void
-```
-
-### Menu Registry (`bb-hooks/src/core/admin/menuRegistry.js`)
-
-```javascript
-// Add top-level menu
-addMenuPage(options: MenuOptions): void
-
-// Add submenu
-addSubmenuPage(parentId: string, options: SubmenuOptions): void
-
-// Remove top-level menu
-removeMenuPage(id: string): void
-
-// Remove submenu
-removeSubmenuPage(parentId: string, id: string): void
-
-// Get menu snapshot
-buildMenuSnapshot(): { menu: Array, submenu: Object }
-
-// Get menu IDs
-getMenuIds(): string[]
-
-// Get submenu IDs
-getSubmenuIds(parentId: string): string[]
-
-// Check if menu exists
-hasMenu(id: string): boolean
-
-// Check if submenu exists
-hasSubmenu(parentId: string, id: string): boolean
-```
-
-### Sidebar Registration API (`bb-hooks/src/core/admin/sidebarRegistration.js`)
-
-```javascript
-// Register admin_menu callback
-onAdminMenu(fn: Function, priority?: number): void
-
-// Fire admin_menu hook and get snapshot
-fireAdminMenuHook(context?: Object): Promise<Object>
-
-// Check user capability
-currentUserCan(user: Object, capability: string): boolean
-
-// Filter menu by capability
-filterMenuByCapability(items: Array, user: Object): Array
-
-// Get filtered menu for user
-getFilteredMenu(snapshot: Object, user: Object): Object
-
-// WordPress-style aliases
-add_menu_page = addMenuPage
-add_submenu_page = addSubmenuPage
-remove_menu_page = removeMenuPage
-remove_submenu_page = removeSubmenuPage
-get_menu_snapshot = buildMenuSnapshot
-```
-
-### Express Middleware (`bb-hooks/src/core/admin/middleware.js`)
-
-```javascript
-// Admin menu middleware
-adminMenuMiddleware(): Function
-
-// Menu API handler
-adminMenuApiHandler(req, res): void
-
-// Require capability middleware
-requireCapability(capability: string): Function
-
-// Get admin menu from res.locals
-getAdminMenu(res): Object
-```
-
-## Examples
-
-### Example 1: Basic Plugin
-
-```javascript
-// bb-hooks/src/plugins/notificationsPlugin.js
-
-const { onAdminMenu, add_menu_page, add_submenu_page } = require('../core/admin/sidebarRegistration.js');
-
-function initNotificationsPlugin() {
-  onAdminMenu(async ({ user, tenantId }) => {
-    add_menu_page({
-      id: 'notifications',
-      label: 'Notifications',
-      path: '/admin/notifications',
-      icon: 'Bell',
-      capability: 'manage_notifications',
-      priority: 35
-    });
-
-    add_submenu_page('notifications', {
-      id: 'notifications-inbox',
-      label: 'Inbox',
-      path: '/admin/notifications/inbox',
-      capability: null, // Everyone
-      priority: 5
-    });
-
-    add_submenu_page('notifications', {
-      id: 'notifications-settings',
-      label: 'Settings',
-      path: '/admin/notifications/settings',
-      capability: 'manage_options',
-      priority: 10
-    });
-  });
-}
-
-module.exports = { initNotificationsPlugin };
-```
-
-### Example 2: Conditional Menu Registration
-
-```javascript
-// Show different menus based on user role
-
-onAdminMenu(async ({ user, tenantId }) => {
-  if (user.role === 'admin') {
-    add_menu_page({
-      id: 'system',
-      label: 'System',
-      path: '/admin/system',
-      icon: 'Cog',
-      capability: 'manage_system',
-      priority: 999
-    });
-  }
-
-  // Regular users see different menu
-  if (user.role === 'user') {
-    add_menu_page({
-      id: 'dashboard',
-      label: 'Dashboard',
-      path: '/admin/dashboard',
-      icon: 'Home',
-      priority: 1
-    });
-  }
-});
-```
-
-### Example 3: Removing Default Menus
-
-```javascript
-// Remove a menu that was added by another plugin
-
-const { onAdminMenu, remove_menu_page } = require('../core/admin/sidebarRegistration.js');
-
-function initCustomizer() {
-  onAdminMenu(async () => {
-    // Remove the default comments menu
-    remove_menu_page('comments');
-  }, 999); // High priority runs last
-}
-```
-
-### Example 4: Tenant-Specific Menus
-
-```javascript
-// Show menus only for specific tenants
-
-const { onAdminMenu, add_menu_page } = require('../core/admin/sidebarRegistration.js');
-const MasterRecord = require('masterrecord');
-
-function initEnterprisePlugin() {
-  onAdminMenu(async ({ tenantId }) => {
-    // Check if tenant has enterprise features
-    const Tenant = MasterRecord('Tenant', tenantId);
-    const tenant = await Tenant.findOne({ where: { id: tenantId } });
-
-    if (tenant && tenant.plan === 'enterprise') {
-      add_menu_page({
-        id: 'analytics',
-        label: 'Analytics',
-        path: '/admin/analytics',
-        icon: 'BarChart',
-        capability: 'view_analytics',
-        priority: 25
-      });
-    }
-  });
-}
-```
-
-### Example 5: Using the Menu API
-
-```javascript
-// In your Express route
-
-app.get('/admin/menu', adminMenuMiddleware(), adminMenuApiHandler);
-
-// Response:
+**2. Create package.json:**
+```json
 {
-  "success": true,
-  "menu": [
-    {
-      "id": "rag",
-      "label": "RAG Knowledge Base",
-      "path": "/admin/rag",
-      "icon": "Database",
-      "capability": "manage_rag",
-      "priority": 30
-    }
-  ],
-  "submenu": {
-    "rag": [
-      {
-        "id": "rag-index",
-        "label": "Index Management",
-        "path": "/admin/rag/index",
-        "capability": "manage_rag",
-        "priority": 5
-      }
-    ]
+  "name": "@bookbag/my-plugin",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "dependencies": {
+    "your-dependency": "^1.0.0"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "lucide-react": "^0.485.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.0"
   }
 }
 ```
 
-## Best Practices
+**3. Create build.js (see [Plugin Development Guide](../PLUGIN_DEVELOPMENT_GUIDE.md) for full version)**
 
-1. **Check Plugin Status**: Always check if your plugin is enabled before registering menus
-2. **Use Appropriate Priority**: Lower numbers for important items, higher for less important
-3. **Set Capabilities**: Protect sensitive menus with appropriate capabilities
-4. **Conditional Registration**: Use per-request firing to show/hide menus based on context
-5. **Clean Removal**: When removing menus, use high priority (999) to run after registrations
-6. **Error Handling**: Always wrap database queries in try-catch blocks
-7. **Default to Enabled**: If checking plugin status fails, default to enabled for better UX
+**4. Create index.js with ESM exports:**
+```javascript
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-## Troubleshooting
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-### Menu Not Showing
+async function load(pluginAPI) {
+  const { hookService, HOOKS, registerView, registerClientComponent } = pluginAPI;
 
-1. Check plugin is enabled in Settings → Manage Plugins
-2. Verify user has required capability
-3. Check console for errors during plugin initialization
-4. Ensure `onAdminMenu` callback is being fired
+  // Register admin views
+  registerView('my-settings', 'pages/admin/settings', {
+    title: 'My Plugin Settings',
+    icon: 'settings'
+  });
 
-### Settings Not Persisting
+  // Register client components
+  registerClientComponent('MySidebar', 'pages/client/MySidebar.js', {
+    usage: 'sidebar-left'
+  });
 
-1. Check database connection
-2. Verify MasterRecord is initialized
-3. Check console for database errors
-4. Ensure settings table exists (migrations run)
+  // Add hook listeners
+  hookService.addAction(HOOKS.USER_LOGIN, async (user) => {
+    console.log('User logged in:', user.email);
+  });
+}
 
-### Capability Issues
+async function activate(pluginAPI) {
+  // Setup tasks (install dependencies, run migrations, etc.)
+  return { success: true, message: 'Activated' };
+}
 
-1. Verify user object has `capabilities` array
-2. Check that capability name matches exactly
-3. Remember: `admin` role bypasses all checks
-4. Use `null` capability for public menu items
+async function deactivate(pluginAPI) {
+  // Cleanup tasks
+  return { success: true, message: 'Deactivated' };
+}
 
-## Contributing
+export { load, activate, deactivate };
+```
 
-To contribute a new plugin:
+**5. Build your plugin:**
+```bash
+npm install
+npm run build
+```
 
-1. Create plugin file in `bb-hooks/src/plugins/yourPlugin.js`
-2. Add to `bb-hooks/src/plugins/index.js`
-3. Add default settings if needed
-4. Document in this README
-5. Submit pull request
+**6. Activate your plugin:**
+```bash
+curl -X POST http://localhost:8080/api/plugins/activate \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-plugin"}'
+```
 
-## License
+📖 **For complete instructions, see [Plugin Development Guide](../PLUGIN_DEVELOPMENT_GUIDE.md)**
 
-MIT
+---
 
-## Support
+## 📊 Hook Statistics (v0.0.14)
 
-For questions or issues, please open a GitHub issue or contact the BookBag team.
+| Category | Hooks | Description |
+|----------|-------|-------------|
+| System | 5 | Core system lifecycle (init, ready, shutdown, error, config) |
+| User | 5 | User management (register, login, logout, update, delete) |
+| Chat | 4 | Chat functionality (message sent/received, chat created/deleted) |
+| Content | 3 | Content operations (create, update, delete) |
+| Plugin | 3 | Plugin lifecycle (loaded, activated, deactivated) |
+| **Client** ⭐ | **3** | **Client UI components (sidebar-left, sidebar-right, menu)** |
+| **Total** | **23** | |
+
+---
+
+## 🆕 What's New in v0.0.14
+
+### New Hooks (3)
+- ✅ `CLIENT_SIDEBAR_LEFT` - Register left sidebar components
+- ✅ `CLIENT_SIDEBAR_RIGHT` - Register right sidebar components
+- ✅ `CLIENT_MENU` - Register client menu items
+
+### New Features
+- ✅ **Pre-bundled plugin architecture** (like VS Code extensions)
+- ✅ **ESM module system** with esbuild compilation
+- ✅ **Dependency bundling** - plugins compile their own dependencies
+- ✅ WordPress-style plugin activation system
+- ✅ Dynamic component loading (no hardcoded imports)
+- ✅ Self-contained plugins with own `package.json`
+- ✅ Plugin-specific database locations
+- ✅ Enhanced masterrecord plugin path support
+
+### Infrastructure Improvements
+- ✅ `DynamicPluginSidebar` component for automatic component loading
+- ✅ API endpoints: `/api/plugins/activate`, `/api/plugins/deactivate`
+- ✅ API endpoint: `/api/plugins/components/list?usage=sidebar-left`
+- ✅ Smart plugin path detection in masterrecord
+- ✅ esbuild-based plugin compilation with external dependency support
+
+### Documentation
+- ✅ [Plugin Development Guide](../PLUGIN_DEVELOPMENT_GUIDE.md) - Complete plugin creation guide
+- ✅ [Dependency Compilation Guide](../DEPENDENCY_COMPILATION_GUIDE.md) - Bundling dependencies
+
+---
+
+## 🎯 Common Use Cases
+
+### Use Case 1: Add a Sidebar to Chat Interface
+
+**Goal:** Display a custom sidebar with tools/info
+
+**Steps:**
+1. Create React component in `bb-plugins/my-plugin/pages/client/MySidebar.js`
+2. Register component in plugin's `load()` method with `usage: 'sidebar-left'`
+3. Component automatically appears in chat interface
+
+**Read:** [Dynamic Component Loading](./DYNAMIC_COMPONENT_LOADING.md)
+
+---
+
+### Use Case 2: Run Code When User Logs In
+
+**Goal:** Execute custom logic on user login
+
+**Steps:**
+1. Use `hookService.addAction(HOOKS.USER_LOGIN, callback)`
+2. Callback receives user object
+3. Perform your custom logic
+
+**Read:** [Hooks Directory - USER_LOGIN](./HOOKS_DIRECTORY.md#user_login)
+
+---
+
+### Use Case 3: Create Database Tables on Plugin Activation
+
+**Goal:** Setup database when plugin activates
+
+**Steps:**
+1. Create migrations in `bb-plugins/my-plugin/app/models/db/migrations/`
+2. Add `activate()` method that runs `masterrecord update-database`
+3. Activate plugin via API or admin UI
+
+**Read:** [Plugin Activation System](./PLUGIN_ACTIVATION_SYSTEM.md)
+
+---
+
+### Use Case 4: Install Plugin Dependencies Automatically
+
+**Goal:** Plugin has npm dependencies that install automatically
+
+**Steps:**
+1. Create `package.json` in plugin folder
+2. Add dependencies
+3. In `activate()` method, run `npm install`
+4. Dependencies install automatically when plugin activates
+
+**Read:** [Plugin Activation System - Step 1](./PLUGIN_ACTIVATION_SYSTEM.md#step-1-create-pluginpackagejson)
+
+---
+
+## 🏗️ Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Bookbag Core                         │
+│                                                          │
+│  ┌────────────────────────────────────────────────┐   │
+│  │         Hook Service (hookService.js)           │   │
+│  │  • Manages hook registration and execution      │   │
+│  │  • addAction(), doAction()                      │   │
+│  │  • addFilter(), applyFilters()                  │   │
+│  └────────────────────────────────────────────────┘   │
+│                         │                                │
+│                         │ Provides hook access           │
+│                         ↓                                │
+│  ┌────────────────────────────────────────────────┐   │
+│  │       Plugin Loader (pluginLoader.js)           │   │
+│  │  • Loads plugins from bb-plugins/               │   │
+│  │  • Manages plugin lifecycle                     │   │
+│  │  • Provides pluginAPI to plugins                │   │
+│  │  • activatePlugin(), deactivatePlugin()         │   │
+│  └────────────────────────────────────────────────┘   │
+│                         │                                │
+│                         │ Loads and manages              │
+│                         ↓                                │
+│  ┌────────────────────────────────────────────────┐   │
+│  │         Plugins (bb-plugins/*)                   │   │
+│  │                                                  │   │
+│  │  Each plugin has:                               │   │
+│  │  • load() - Called every server start           │   │
+│  │  • activate() - Called once on activation       │   │
+│  │  • deactivate() - Called once on deactivation   │   │
+│  │  • package.json - Own dependencies              │   │
+│  │  • node_modules/ - Isolated dependencies        │   │
+│  │  • config/environments/ - Own config            │   │
+│  │  • db/ - Own database                           │   │
+│  └────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🔧 API Reference
+
+### Plugin API Object
+
+Every plugin's `load()`, `activate()`, and `deactivate()` methods receive a `pluginAPI` object:
+
+```javascript
+const pluginAPI = {
+  // Hook system
+  hookService: HookService,
+  HOOKS: HookConstants,
+
+  // Registration functions
+  registerView: (name, path, metadata) => void,
+  registerClientComponent: (name, path, metadata) => void,
+
+  // Plugin management
+  pluginLoader: PluginLoader,
+  pluginPath: string
+};
+```
+
+---
+
+### Hook Service Methods
+
+```javascript
+// Action hooks (execute callbacks)
+hookService.addAction(hookName, callback, priority = 10)
+hookService.doAction(hookName, data)
+hookService.removeAction(hookName, callback)
+
+// Filter hooks (modify values)
+hookService.addFilter(hookName, callback, priority = 10)
+hookService.applyFilters(hookName, value, ...args)
+hookService.removeFilter(hookName, callback)
+```
+
+---
+
+### API Endpoints
+
+#### Plugin Management
+```bash
+# Activate plugin
+POST /api/plugins/activate
+Body: { "name": "plugin-name" }
+
+# Deactivate plugin
+POST /api/plugins/deactivate
+Body: { "name": "plugin-name" }
+```
+
+#### Component Queries
+```bash
+# List components by usage
+GET /api/plugins/components/list?usage=sidebar-left
+
+# Get specific component
+GET /api/plugins/components/get?name=ComponentName
+```
+
+#### View Queries
+```bash
+# List admin views
+GET /api/plugins/views/list
+
+# Get specific view
+GET /api/plugins/views/get?name=view-name
+```
+
+---
+
+## 📖 Additional Resources
+
+### Internal Documentation
+- Plugin loader source: `components/plugins/app/core/pluginLoader.js`
+- Hook service source: `components/plugins/app/core/hookService.js`
+- Hook constants: `components/plugins/app/core/hookConstants.js`
+
+### Example Plugins
+- RAG Plugin: `bb-plugins/rag-plugin/` - Full featured plugin with:
+  - Database migrations
+  - Admin views
+  - Client components
+  - Activation/deactivation
+  - Own dependencies
+
+### External Resources
+- [WordPress Plugin Handbook](https://developer.wordpress.org/plugins/) - Inspiration for our system
+- [Next.js Dynamic Imports](https://nextjs.org/docs/advanced-features/dynamic-import) - Used in component loading
+- [MasterRecord Documentation](https://github.com/yourusername/masterrecord) - Database ORM
+
+---
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**Plugin won't activate**
+- Check plugin name matches folder name
+- Verify plugin has `activate()` method
+- Check server logs for errors
+
+**Hook not firing**
+- Verify hook name is correct (check `HOOKS` constants)
+- Ensure plugin is loaded
+- Check hook was added with `addAction()` not `addFilter()`
+
+**Component not loading**
+- Verify component registered with correct `usage` type
+- Check import path is relative to plugin root
+- Ensure component has default export
+- Verify backend server is running
+
+**Dependencies not installing**
+- Check `package.json` exists in plugin folder
+- Verify `activate()` method calls `npm install`
+- Check for npm errors in activation response
+
+---
+
+## 🤝 Contributing
+
+### Adding a New Hook
+
+1. Update `components/plugins/app/core/hookConstants.js`
+2. Update `HOOKS_DIRECTORY.md` with hook documentation
+3. Update `HOOKS_CHANGELOG.md` with version information
+4. Create example usage in a test plugin
+5. Submit PR with all documentation updates
+
+### Improving Documentation
+
+1. Fork repository
+2. Make changes to docs in `docs/hooks/`
+3. Test examples work
+4. Submit PR with clear description
+
+---
+
+## 📞 Support
+
+- **Issues:** [GitHub Issues](https://github.com/bookbaghq/bookbag-ce/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/bookbaghq/bookbag-ce/discussions)
+- **Email:** support@bookbag.com
+
+---
+
+## 📄 License
+
+Bookbag CE is MIT licensed. See LICENSE file for details.
+
+---
+
+**Happy Plugin Development! 🎉**
+
+---
+
+*Documentation maintained by the Bookbag team. Last updated November 5, 2024.*

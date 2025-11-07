@@ -13,11 +13,7 @@ class Init extends masterrecord.schema {
 
         // Seed default system settings (singleton record)
         this.seed('Setting', {
-            is_rag_active: true,
-            is_mail_active: true,
-            is_user_active: true,
-            is_workspace_active: true,
-            is_media_active: true,
+            disable_client_side: false,
             created_at: Date.now().toString(),
             updated_at: Date.now().toString()
         });

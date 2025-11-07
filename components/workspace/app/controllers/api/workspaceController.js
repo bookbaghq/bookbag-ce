@@ -238,12 +238,11 @@ class workspaceController {
             const now = Date.now().toString();
             const chat = new chatEntity();
             chat.created_at = now;
-            chat.is_workspace_created = true;
+            chat.created_by = 'Workspace';
             chat.updated_at = now;
             chat.session_id = (require('crypto').randomBytes(16).toString('hex'));
             chat.total_token_count = 0;
             chat.title = title;
-            chat.is_admin_created = false;
             this._chatContext.Chat.add(chat);
             this._chatContext.saveChanges();
 

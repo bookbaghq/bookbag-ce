@@ -1,75 +1,55 @@
 /**
  * User Plugin
  * Registers User Management menu items
+ *
+ * Uses: Generic Hooks System
  */
-
-const MasterRecord = require('masterrecord');
-
 
 /**
  * Load method - called by pluginLoader with API
- * @param {Object} pluginAPI - { hookService, pluginLoader, sidebarHook }
+ * @param {Object} pluginAPI - { hookService, HOOKS, pluginLoader }
  */
-
 function load(pluginAPI) {
-  const { sidebarHook } = pluginAPI;
+  const { hookService, HOOKS } = pluginAPI;
+  const master = require('mastercontroller');
 
-  // Register admin_menu hook callback
-  sidebarHook.onAdminMenu(async ({ req, res, user, tenant, tenantId }) => {
-
+  // Register admin_menu hook using generic hooks
+  hookService.addAction(HOOKS.ADMIN_MENU, async (context) => {
     // Add top-level Users menu
-    sidebarHook.add_menu_page({
+    context.addMenuItem({
       id: 'users',
       label: 'Users',
+      url: '/bb-admin/users',
       icon: 'User',
-      capability: 'read',
-      priority: 60,
-      render: null
+      position: 60
     });
 
     // Add submenus
-    sidebarHook.add_submenu_page('users', {
-      id: 'users-dashboard',
+    context.addSubmenuItem('users', {
       label: 'Dashboard',
-      path: '/bb-admin/users',
-      capability: 'read',
-      priority: 5
+      url: '/bb-admin/users'
     });
 
-    sidebarHook.add_submenu_page('users', {
-      id: 'all-users',
+    context.addSubmenuItem('users', {
       label: 'All Users',
-      path: '/bb-admin/users/all',
-      capability: 'read',
-      priority: 10
+      url: '/bb-admin/users/all'
     });
 
-    sidebarHook.add_submenu_page('users', {
-      id: 'add-new',
+    context.addSubmenuItem('users', {
       label: 'Add New',
-      path: '/bb-admin/users/add-new',
-      capability: 'read',
-      priority: 15
+      url: '/bb-admin/users/add-new'
     });
 
-    sidebarHook.add_submenu_page('users', {
-      id: 'users-profile',
+    context.addSubmenuItem('users', {
       label: 'Profile',
-      path: '/bb-admin/users/profile',
-      capability: 'read',
-      priority: 20
+      url: '/bb-admin/users/profile'
     });
 
-    sidebarHook.add_submenu_page('users', {
-      id: 'users-settings',
+    context.addSubmenuItem('users', {
       label: 'Settings',
-      path: '/bb-admin/users/settings',
-      capability: 'read',
-      priority: 15
+      url: '/bb-admin/users/settings'
     });
-
-  });
-
+  }, 10);
 }
 
 module.exports = { load };

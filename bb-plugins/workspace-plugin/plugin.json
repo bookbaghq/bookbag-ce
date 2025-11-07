@@ -1,0 +1,11 @@
+{
+  "name": "Workspace Plugin",
+  "slug": "workspace-plugin",
+  "version": "1.0.0",
+  "description": "Workspace collaboration and organization features",
+  "author": "Bookbag Team",
+  "entry": "index.js",
+  "category": "admin-sidebar",
+  "icon": "Briefcase",
+  "priority": 4
+}

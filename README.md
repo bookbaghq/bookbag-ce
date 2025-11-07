@@ -1,437 +1,503 @@
-# Bookbag
+# BookBag - Self-Hosted LLM Management Platform
 
-## Canonical source
-The canonical source of Bookbag, where active development occurs, is hosted on GitHub under the `bookbagHQ` organization. See the organization home for repositories and releases:
+> Enterprise-grade AI infrastructure platform that gives organizations complete control over their LLM operations.
 
-- https://github.com/bookbaghq
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
+[![Next.js](https://img.shields.io/badge/next.js-14%2B-black)](https://nextjs.org/)
 
-If you are working from a read-only mirror or an exported archive, please open issues and pull requests against the canonical source.
+## Overview
 
-## Enterprise LLM Management Platform
-Bookbag is a self-hosted, enterprise-grade AI infrastructure platform that gives companies complete control over their LLM operations. Unlike using ChatGPT or Claude directly, Bookbag provides centralized administration, multi-provider flexibility, knowledge base management, granular access controls, and comprehensive cost analytics.
+BookBag is a self-hosted platform that provides centralized management for Large Language Models (LLMs) across your organization. Unlike using ChatGPT or Claude directly, BookBag gives you complete control over costs, data, access, and knowledge integration.
 
-### Why Companies Choose Bookbag Over SaaS AI Tools
+**Key Benefits:**
+- Self-hosted on your infrastructure (data sovereignty)
+- Multi-provider support (OpenAI, Anthropic, Grok, local models)
+- RAG system for company knowledge integration
+- Complete cost tracking and attribution
+- Enterprise access controls and audit trails
+- Team collaboration with workspaces
 
-**The Challenge with ChatGPT/Claude Direct:**
-- ❌ No cost visibility per team or project
-- ❌ Data stored on external servers (compliance risk)
-- ❌ Limited company knowledge integration
-- ❌ Vendor lock-in to single provider
-- ❌ Minimal access controls beyond seat licenses
-- ❌ No audit trails for compliance
+## Quick Start
 
-**The Bookbag Solution:**
-- ✅ **Complete Cost Visibility** - Track token usage by user, team, model, and conversation
-- ✅ **Data Sovereignty** - Self-hosted on your infrastructure, data never leaves your network
-- ✅ **Knowledge Management** - RAG system integrates company docs at workspace and chat level
-- ✅ **Multi-Provider Freedom** - Switch between OpenAI, Anthropic, Grok, local models instantly
-- ✅ **Enterprise Access Control** - Workspaces, roles, model restrictions, permissions
-- ✅ **Full Audit Compliance** - Complete logs of conversations, users, and document access
-
-### Core LLM Management Features
-
-#### 🎯 **Model Management**
-- **Multi-Provider Support**: OpenAI (GPT-4, GPT-3.5), Anthropic (Claude), Grok (X.AI), Ollama (local models), Azure OpenAI, and any OpenAI-compatible API
-- **Model Library**: Browse and connect new models with one-click deployment
-- **Configuration Profiles**: Reusable templates for model settings (temperature, max tokens, system prompts)
-- **Lifecycle Control**: Publish/unpublish models, test before production rollout
-- **API Key Management**: Centralized, secure credential storage
-- **Grounding Modes**: Strict (context-only) vs soft (general knowledge) for RAG
-
-#### 💬 **Chat & Collaboration**
-- **Multi-User Chats**: Team members collaborate in shared conversations
-- **Workspace Organization**: Project-based isolation with shared context
-- **Full History**: Complete conversation archives with message-level token tracking
-- **Advanced Search**: Find conversations by content, title, or timeframe
-- **Token Analytics**: Per-user, per-model, per-chat usage tracking and cost attribution
-
-#### 📚 **RAG (Knowledge Base) System**
-- **Document Upload**: PDF, DOCX, TXT, CSV support with automatic text extraction
-- **Semantic Search**: Local embeddings (all-MiniLM-L6-v2) for privacy - no external API calls
-- **Layered Retrieval**: Workspace-level company docs + chat-specific documents
-- **Source Attribution**: See which documents informed each AI response
-- **Storage Quotas**: Enforce limits per user or workspace
-- **Vector Search**: Cosine similarity ranking for relevant chunk retrieval
-
-#### 👥 **User & Access Management**
-- **Role-Based Access**: Administrator vs Subscriber permissions
-- **Workspace Membership**: Organize teams with admin/member roles
-- **Session Management**: JWT-based authentication, SSO-ready
-- **Audit Trails**: Track every user action and model interaction
-- **Soft Delete**: Recovery options before permanent data removal
-
-#### 🏢 **Workspace Features**
-- **Project Isolation**: Separate contexts for different teams or initiatives
-- **Model Allowlists**: Control which models each workspace can access
-- **Shared Knowledge**: Workspace-level documents available to all members
-- **Custom Configuration**: Override prompts and profiles per workspace
-- **Team Chats**: All conversations organized under workspace umbrella
-
-#### 💰 **Token Analytics & Cost Control**
-- **Usage Dashboard**: Total tokens, average per chat, top consumers
-- **Cost Attribution**: Identify which teams/projects use most resources
-- **Model Comparison**: See which LLMs are most efficient for your workloads
-- **User Tracking**: Top 10 users by token consumption
-- **Chat Analysis**: Top 10 conversations by token usage
-- **Capacity Planning**: Historical data for infrastructure forecasting
-
-#### 📧 **Mail System**
-- **Email Templates**: Reusable templates for user notifications
-- **SMTP Integration**: Connect to Office 365, Gmail, or on-prem servers
-- **Email Logging**: Full audit trail of sent messages
-- **User Notifications**: Password resets, invitations, alerts
-
-#### ⚙️ **System Configuration**
-- **Multi-Database**: SQLite for dev (zero setup), MySQL for production
-- **Environment-Based**: Separate configs for dev/test/prod
-- **Auto-Deployment**: One-command deployment with auto-generated secrets
-- **Process Management**: PM2 integration for auto-restart and monitoring
-- **Cross-Platform**: Windows (PowerShell), macOS, Linux (Bash)
-
-### Business Benefits by Department
-
-**IT/Security Teams:**
-- Data sovereignty (self-hosted)
-- Full audit compliance
-- Role-based access governance
-- No vendor lock-in
-
-**Finance/Operations:**
-- Cost attribution by team/project
-- Budget controls with quotas
-- Usage forecasting
-- ROI measurement
-
-**Legal/Compliance:**
-- Data retention policies
-- Complete audit trails
-- Document access controls
-- No third-party data sharing
-
-**Product/Engineering:**
-- Multi-model testing
-- Custom system prompts
-- Project-specific knowledge bases
-- API integration flexibility
-
-**HR/Training:**
-- Onboarding knowledge bases
-- Department-specific training materials
-- Role-based access to resources
-- Skill development tracking
-
-### What Makes Bookbag Different
-
-| Feature | ChatGPT/Claude Direct | Bookbag |
-|---------|----------------------|---------|
-| **Deployment** | SaaS only | Self-hosted on your infrastructure |
-| **Cost Tracking** | None | Per-user, per-chat, per-model analytics |
-| **Knowledge Base** | Limited/none | Full RAG with workspace/chat docs |
-| **Provider Choice** | Locked to one | OpenAI, Anthropic, Grok, local models |
-| **Access Control** | Basic seats | Workspaces, roles, model allowlists |
-| **Audit Trail** | Limited | Complete logs, soft delete, archives |
-| **Customization** | Minimal | System prompts, templates, profiles |
-| **Team Collaboration** | Separate accounts | Shared workspaces and chats |
-| **Integration** | Standalone | Integrate with your infrastructure |
-| **Data Privacy** | External servers | Your servers only |
-
-### Architecture Highlights
-- **Backend**: Node.js, MasterController, MasterRecord ORM, Socket.IO
-- **Frontend**: Next.js (App Router), React 19, Tailwind CSS
-- **AI/ML**: LangChain text splitters, Xenova transformers (local embeddings)
-- **Databases**: SQLite (dev), MySQL 8+ (production), separate DBs per domain
-- **Security**: bcryptjs password hashing, JWT tokens, session management
-- **Formats**: PDF, DOCX, TXT, CSV extraction
-
-### Deployment features (New!)
-- 🚀 **One-command deployment** - `npm run deploy` (all platforms)
-- 🔐 **Auto JWT secrets** - No manual configuration needed
-- 🌐 **Auto CORS setup** - Frontend URL automatically whitelisted
-- 🖥️ **Cross-platform** - Windows (PowerShell), macOS, Linux (Bash)
-- 📦 **PM2 optional** - Works with or without process manager
-- ⚡ **Smart defaults** - Auto-adds protocols, prevents duplicates
-
-## Editions
-Bookbag follows an open‑core model similar in spirit to other platforms:
-
-- Community features are built in the main repository
-- Enterprise‑oriented or market‑specific additions may be delivered under separate directories if/when they exist (for example, `ee/` or `jh/`)
-
-See Licensing below for the exact terms.
-
-## Licensing
-See the `LICENSE` file at the repository root for details. In summary:
-
-- Documentation in `doc/` is under CC BY‑SA 4.0
-- (If present) `ee/` and `jh/` directories follow the licenses defined in their respective `LICENSE` files
-- Client‑side JavaScript is under the MIT Expat license
-- Third‑party components retain their original licenses
-- All other content is available under the MIT Expat license
-
-## Website
-For product information, demos, and services, please contact the Bookbag team. Repositories and org profile:
-
-- Bookbag.work
-
-## Requirements
-- Node.js 18+ (Node 20+ recommended)
-- npm 9+
-- Optional: PM2 for production process management (`npm install -g pm2`)
-- Optional databases:
-  - SQLite (default in development)
-  - MySQL 8+ (for test/production examples)
-
-**Supported OS:** 
-- ✅ Windows (PowerShell script)
-- ✅ macOS (Bash script)
-- ✅ Linux (Bash script)
-
-See `config/environments/*.json` for environment‑specific settings.
-
-## Installation (Bash Commands)
-The recommended way to run Bookbag for development is the node‑native setup:
-
-1) Setup Database Migrations
 ```bash
-# install Masterrecord
-npm install -g masterrecord
-# enable migrations
-masterrecord enable-migrations-all
-# run migrations development
-master=development masterrecord update-database-all
-# run migrations production
-master=production masterrecord update-database-all
-```
+# Clone the repository
+git clone https://github.com/bookbaghq/bookbag-ce.git
+cd bookbag-ce
 
-2) Quick Deploy (Recommended)
-```bash
-# One command installs deps, configures, builds (prod), and starts services
+# One-command deployment (recommended)
 npm run deploy
 ```
 
-3) Manual Install (Alternative)
-```bash
-
-# from the repo root
-npm install
-# then
-cd nextjs-app && npm install
-```
-
-4) Credentials
-```bash
-# password and email - please update after first use
-email: admin@bookbag.work
-password: admin
-```
-
-5) **Quick Start - Deploy Everything (Recommended)**
-
-**macOS/Linux:**
-```bash
-# Run the interactive deployment script
-npm run deploy
-```
-
-**Windows (PowerShell):**
-```powershell
-# Run the Windows deployment script
-npm run deploy:windows
-```
-
-The script will ask you:
-1. **Deployment mode:** Development (1) or Production (2)
-2. **Backend URL:** If not already set (NO trailing slash), e.g. `http://localhost:8080` (local) or `http://YOUR_SERVER_IP:8080` (server)
-
-The deploy script automatically:
-- ✅ Detects PM2 (uses it if available, works without it)
-- ✅ Installs all dependencies (backend + frontend)
-- ✅ Builds frontend (production mode only; dev mode runs hot reload and ignores prior builds)
-- ✅ **Auto-generates JWT secrets** if needed (no manual setup!)
-- ✅ **Auto-configures CORS** (adds frontend URL to whitelist)
-- ✅ Auto-adds `http://` protocol if missing
-- ✅ Prevents duplicate CORS entries
-- ✅ Starts both backend and frontend
+**Default credentials:**
+- Email: `admin@bookbag.work`
+- Password: `admin` (change after first login)
 
 **Access:**
-- **Backend:** http://127.0.0.1:8080  
-- **Frontend:** http://localhost:3000 (redirects to `/bb-auth/login`)
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8080
 
-**Optional: Set backend URL beforehand (skip the prompt):**
+For detailed installation instructions, see [INSTALL.md](docs/INSTALL.md).
+
+## Why BookBag?
+
+### The Challenge with SaaS AI Tools
+
+| Problem | Impact |
+|---------|--------|
+| No cost visibility | Can't track spending per team/project |
+| Data on external servers | Compliance and security risks |
+| Vendor lock-in | Stuck with one provider |
+| Limited knowledge integration | Can't leverage company documents |
+| Basic access controls | Insufficient for enterprise needs |
+| No audit trails | Compliance gaps |
+
+### The BookBag Solution
+
+| Feature | Benefit |
+|---------|---------|
+| **Complete Cost Visibility** | Track token usage by user, team, model, and conversation |
+| **Data Sovereignty** | Self-hosted, data never leaves your network |
+| **Knowledge Management** | RAG system integrates company docs at workspace and chat level |
+| **Multi-Provider Freedom** | Switch between OpenAI, Anthropic, Grok, local models instantly |
+| **Enterprise Access Control** | Workspaces, roles, model restrictions, permissions |
+| **Full Audit Compliance** | Complete logs of conversations, users, and document access |
+
+## Core Features
+
+### 🎯 Model Management
+- **Multi-Provider Support**: OpenAI, Anthropic Claude, Grok (X.AI), Ollama local models, Azure OpenAI
+- **Model Library**: Browse and deploy models with one click
+- **Configuration Profiles**: Reusable templates for model settings
+- **Lifecycle Control**: Publish/unpublish models, test before production
+- **Centralized API Keys**: Secure credential management
+- **Custom System Prompts**: Enforce behavior and guidelines
+
+### 💬 Chat & Collaboration
+- **Real-time Streaming**: WebSocket-based chat with streaming responses
+- **Multi-User Support**: Team collaboration in shared conversations
+- **Workspace Organization**: Project-based isolation with shared context
+- **Full History**: Complete conversation archives
+- **Advanced Search**: Find conversations by content or metadata
+- **Token Analytics**: Message-level usage tracking
+
+### 📚 RAG (Retrieval-Augmented Generation)
+- **Document Support**: PDF, DOCX, TXT, CSV with automatic text extraction
+- **Local Embeddings**: Privacy-focused (all-MiniLM-L6-v2), no external API calls
+- **Semantic Search**: Vector-based retrieval with cosine similarity
+- **Layered Knowledge**: Workspace-level + chat-specific documents
+- **Source Attribution**: See which documents informed responses
+- **Grounding Modes**: Strict (context-only) vs Soft (general knowledge)
+
+### 👥 User & Access Management
+- **Role-Based Access**: Administrator and Subscriber roles
+- **Workspace Membership**: Organize teams with granular permissions
+- **JWT Authentication**: Session management, SSO-ready
+- **Audit Trails**: Track every user action and interaction
+- **Soft Delete**: Recovery options before permanent removal
+
+### 🏢 Workspace Features
+- **Project Isolation**: Separate contexts for teams or initiatives
+- **Model Allowlists**: Control which models each workspace can access
+- **Shared Knowledge**: Workspace-level documents for all members
+- **Team Chats**: All conversations organized under workspace
+- **Access Control**: Admin and member roles per workspace
+
+### 💰 Token Analytics & Cost Control
+- **Usage Dashboard**: Total tokens, averages, top consumers
+- **Cost Attribution**: Identify resource-intensive teams/projects
+- **Model Comparison**: Efficiency analysis across providers
+- **User Tracking**: Top consumers and usage patterns
+- **Historical Data**: Capacity planning and forecasting
+
+### ⚙️ Admin Features
+- **User Management**: Create, edit, and manage user accounts
+- **System Settings**: Global feature toggles and configuration
+- **Plugin Management**: WordPress-style plugin system
+- **Model Configuration**: Centralized model and provider setup
+- **Usage Monitoring**: System-wide analytics and insights
+
+## Architecture
+
+### Technology Stack
+
+**Backend:**
+- Node.js with MasterController framework (MVC architecture)
+- MasterRecord ORM for database operations
+- Socket.IO for real-time WebSocket communication
+- Component-based modular structure
+- SQLite (development) / MySQL (production)
+
+**Frontend:**
+- Next.js 14+ with App Router
+- React 18+
+- Tailwind CSS for styling
+- Shadcn/ui component library
+- Real-time updates via WebSocket
+
+**AI/ML:**
+- LangChain text splitters for document processing
+- Xenova transformers for local embeddings
+- LanceDB for vector storage
+- Support for multiple LLM providers
+
+**Security:**
+- bcrypt password hashing
+- JWT-based authentication
+- Session management
+- CORS configuration
+- Input validation and XSS prevention
+
+For detailed architecture information, see [ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Documentation
+
+### Getting Started
+- [Installation Guide](docs/INSTALL.md) - Complete installation instructions
+- [Configuration Guide](docs/CONFIGURATION.md) - Configuration reference
+- [User Guide](docs/USER_GUIDE.md) - How to use BookBag features
+- [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
+
+### Development
+- [Developer Guide](docs/DEVELOPER_GUIDE.md) - Extend and customize BookBag
+- [Architecture](docs/ARCHITECTURE.md) - System design and structure
+- [API Documentation](docs/api/API_DOCUMENTATION.md) - REST API reference
+
+### Plugin Development
+- [Plugin Development Guide](docs/plugins/PLUGIN_DEVELOPMENT.md) - Create custom plugins
+- [Hooks Reference](docs/plugins/HOOKS_REFERENCE.md) - Available hooks
+- [Plugin API](docs/plugins/PLUGIN_API.md) - Plugin API reference
+
+### Operations
+- [Migration Guide](docs/MIGRATION_GUIDE.md) - Upgrade between versions
+- [Security Policy](SECURITY.md) - Security best practices
+- [Changelog](CHANGELOG.md) - Version history
+
+## Installation
+
+### Prerequisites
+- Node.js 18+ (20+ recommended)
+- npm 9+
+- 4GB+ RAM (8GB recommended)
+- 10GB+ disk space
+
+### Quick Installation
 
 **macOS/Linux:**
 ```bash
-# For local development
-export NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
-npm run deploy
-
-# For production server
-export NEXT_PUBLIC_BACKEND_URL=http://YOUR_SERVER_IP:8080
+git clone https://github.com/bookbaghq/bookbag-ce.git
+cd bookbag-ce
 npm run deploy
 ```
 
 **Windows (PowerShell):**
 ```powershell
-# For local development
-$env:NEXT_PUBLIC_BACKEND_URL="http://localhost:8080"
-npm run deploy:windows
-
-# For production server
-$env:NEXT_PUBLIC_BACKEND_URL="http://YOUR_SERVER_IP:8080"
+git clone https://github.com/bookbaghq/bookbag-ce.git
+cd bookbag-ce
 npm run deploy:windows
 ```
 
-**Automatic Features:**
-- **JWT Secrets:** Auto-generated on first run, stored in `config/environments/env.*.json`
-- **CORS Configuration:** Auto-updated in `config/initializers/cors.json` based on backend URL
-- **Protocol Handling:** Auto-adds `http://` if you enter just `IP:PORT`
+The deployment script will:
+- Install all dependencies (backend + frontend)
+- Auto-generate JWT secrets
+- Configure CORS
+- Build frontend (production mode)
+- Start backend and frontend services
 
----
+### Manual Installation
 
-6) **Alternative: Manual Setup (Advanced)**
+If you prefer manual setup:
 
-**Option A: Simple Development (Two Terminals)**
 ```bash
-# Terminal 1: Backend (Development mode)
+# Install backend dependencies
+npm install
+
+# Install frontend dependencies
+cd nextjs-app
+npm install
+cd ..
+
+# Setup database migrations
+npm install -g masterrecord
+masterrecord enable-migrations-all
+master=development masterrecord update-database-all
+
+# Start development servers (two terminals)
+# Terminal 1: Backend
 npm run dev
 
 # Terminal 2: Frontend
 cd nextjs-app && npm run dev
 ```
 
-**Option B: With PM2 (Server Deployments)**
+### Production Deployment
+
+For production deployment with PM2:
+
 ```bash
-# Install PM2 globally (one-time)
+# Install PM2 globally
 npm install -g pm2
 
-# Deploy with PM2
-npm run deploy:dev    # Development mode
-npm run deploy:prod   # Production mode
+# Deploy in production mode
+npm run deploy
 
-# Manage PM2 processes
+# Manage processes
 npm run pm2:status    # View status
 npm run pm2:logs      # View logs
-npm run pm2:restart   # Restart all
-npm run pm2:stop      # Stop all
+npm run pm2:restart   # Restart services
+npm run pm2:stop      # Stop services
 ```
+
+For detailed installation options, see [INSTALL.md](docs/INSTALL.md).
+
+## Configuration
+
+### Environment Configuration
+
+BookBag uses JSON configuration files in `config/environments/`:
+- `env.development.json` - Development settings
+- `env.production.json` - Production settings
+
+Select environment using the `master` variable:
+```bash
+master=production node server.js
+```
+
+### Key Configuration Areas
+
+- **Server Settings**: Ports, hostname, timeouts
+- **Database Contexts**: Per-component database configuration
+- **JWT Secrets**: Auto-generated authentication tokens
+- **LLM Providers**: API endpoints for OpenAI, Anthropic, Grok
+- **CORS**: Allowed origins for API access
+- **Media Storage**: File upload paths and limits
+
+For complete configuration reference, see [CONFIGURATION.md](docs/CONFIGURATION.md).
+
+## Usage
+
+### First-Time Setup
+
+1. **Create Admin Account**
+   - Navigate to http://localhost:3000
+   - Use default credentials or create new account
+   - First user becomes administrator
+
+2. **Configure LLM Providers**
+   - Go to Models > Settings
+   - Add API keys for OpenAI, Anthropic, or Grok
+   - Test connections
+
+3. **Install Models**
+   - Browse Models > Library
+   - Click "Install" on desired models
+   - Publish models to make them available
+
+4. **Create Workspaces** (optional)
+   - Go to Admin > Workspaces
+   - Create workspace for your team/project
+   - Add members and assign models
+
+5. **Upload Documents** (optional)
+   - Navigate to RAG > Documents
+   - Upload company documents (PDF, DOCX, TXT)
+   - Documents become available for context
+
+For detailed usage instructions, see [USER_GUIDE.md](docs/USER_GUIDE.md).
+
+## Contributing
+
+We welcome contributions from the community! BookBag is open source and built with collaboration in mind.
+
+### How to Contribute
+
+1. **Fork the repository** on GitHub
+2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
+3. **Make your changes** and commit: `git commit -m 'Add amazing feature'`
+4. **Push to your fork**: `git push origin feature/amazing-feature`
+5. **Open a Pull Request** against the main repository
+
+### Development Guidelines
+
+- Follow existing code style and conventions
+- Write tests for new features
+- Update documentation for user-facing changes
+- Keep commits focused and write clear commit messages
+
+For detailed contribution guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Plugin System
+
+BookBag features a WordPress-style plugin system with hooks and filters.
+
+### Creating Plugins
+
+Plugins can extend BookBag functionality without modifying core code:
+
+```javascript
+// Example plugin structure
+module.exports = {
+  name: 'my-custom-plugin',
+  version: '1.0.0',
+
+  init(hookService) {
+    // Register hooks
+    hookService.addFilter('chat_message', this.modifyMessage);
+  },
+
+  modifyMessage(message) {
+    // Modify chat messages
+    return message;
+  }
+};
+```
+
+### Available Hooks
+
+- `chat_message` - Modify messages before sending to LLM
+- `admin_menu` - Add items to admin sidebar
+- `rag_chunk` - Process document chunks
+- And many more...
+
+For plugin development, see [Plugin Development Guide](docs/plugins/PLUGIN_DEVELOPMENT.md).
+
+## Use Cases
+
+### For Enterprises
+- **Data Sovereignty**: Keep sensitive conversations on your infrastructure
+- **Cost Tracking**: Attribution per department, project, or user
+- **Compliance**: Complete audit trails and data retention policies
+- **Knowledge Base**: Ground AI in company documentation
+
+### For Development Teams
+- **Multi-Model Testing**: Compare providers side-by-side
+- **Custom Prompts**: Enforce coding standards and practices
+- **Project Knowledge**: Upload specs and docs as context
+- **API Integration**: Integrate with your development workflow
+
+### For Security/Compliance
+- **Self-Hosted**: No third-party data sharing
+- **Access Controls**: Granular permissions and roles
+- **Audit Logs**: Track all user actions
+- **Data Lifecycle**: Soft delete and retention policies
+
+## Comparison
+
+| Feature | ChatGPT/Claude | BookBag |
+|---------|---------------|---------|
+| Deployment | SaaS only | Self-hosted |
+| Cost Tracking | None | Per-user, per-chat, per-model |
+| Knowledge Base | Limited/none | Full RAG system |
+| Provider Choice | Locked to one | Multiple providers |
+| Access Control | Basic seats | Workspaces, roles, allowlists |
+| Audit Trail | Limited | Complete logs |
+| Customization | Minimal | System prompts, profiles |
+| Team Collaboration | Separate accounts | Shared workspaces |
+| Data Privacy | External servers | Your servers only |
+
+## Security
+
+Security is a top priority for BookBag. Key security features:
+
+- **Authentication**: bcrypt password hashing, JWT tokens
+- **Authorization**: Role-based access control (RBAC)
+- **Data Protection**: All passwords hashed, sensitive data encrypted
+- **Input Validation**: Protection against SQL injection and XSS
+- **Session Management**: Secure session handling with expiration
+- **Audit Logging**: Complete activity trails
+
+### Reporting Security Vulnerabilities
+
+Please report security vulnerabilities to our security team. **Do not create public GitHub issues for security vulnerabilities.**
+
+For details, see our [Security Policy](SECURITY.md).
+
+## License
+
+BookBag follows an open-core model:
+
+- **Core Platform**: MIT License (this repository)
+- **Documentation**: CC BY-SA 4.0
+- **Client-side JavaScript**: MIT License
+- **Third-party Components**: Original licenses apply
+
+See [LICENSE](LICENSE) for complete details.
+
+## Support
+
+### Community Support
+
+- **GitHub Issues**: [Report bugs and request features](https://github.com/bookbaghq/bookbag-ce/issues)
+- **GitHub Discussions**: [Ask questions and share ideas](https://github.com/bookbaghq/bookbag-ce/discussions)
+- **Documentation**: [Comprehensive guides](docs/)
+
+### Getting Help
+
+1. Check the [Troubleshooting Guide](docs/TROUBLESHOOTING.md)
+2. Search [existing issues](https://github.com/bookbaghq/bookbag-ce/issues)
+3. Join [GitHub Discussions](https://github.com/bookbaghq/bookbag-ce/discussions)
+4. Create a new issue with details
+
+When asking for help, please include:
+- BookBag version
+- Operating system and Node.js version
+- Steps to reproduce the issue
+- Error messages and logs
+- Relevant configuration (without secrets)
+
+## Roadmap
+
+Upcoming features and improvements:
+
+- [ ] Dark mode support
+- [ ] Enhanced analytics dashboard
+- [ ] Advanced plugin marketplace
+- [ ] Multi-language support
+- [ ] PostgreSQL support
+- [ ] Kubernetes deployment guides
+- [ ] API rate limiting
+- [ ] Advanced caching layer
+- [ ] Streaming conversation exports
+- [ ] Custom embedding models
+
+See [CHANGELOG.md](CHANGELOG.md) for version history and [GitHub Issues](https://github.com/bookbaghq/bookbag-ce/issues) for planned features.
+
+## Community
+
+### Code of Conduct
+
+We are committed to providing a welcoming and inclusive environment. Please read our [Code of Conduct](CODE_OF_CONDUCT.md) before participating.
+
+### Contributing
+
+We love contributions! Whether it's bug fixes, features, documentation, or feedback, all contributions are welcome.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## Acknowledgments
+
+BookBag is built with amazing open source technologies:
+
+- [Next.js](https://nextjs.org/) - React framework
+- [Node.js](https://nodejs.org/) - JavaScript runtime
+- [Socket.IO](https://socket.io/) - Real-time communication
+- [Tailwind CSS](https://tailwindcss.com/) - CSS framework
+- [Shadcn/ui](https://ui.shadcn.com/) - Component library
+- [LangChain](https://langchain.com/) - LLM orchestration
+- [LanceDB](https://lancedb.com/) - Vector database
+
+Special thanks to all our contributors and the open source community.
+
+## Links
+
+- **Website**: [Bookbag.work](https://bookbag.work)
+- **GitHub**: [bookbaghq](https://github.com/bookbaghq)
+- **Documentation**: [docs/](docs/)
+- **Issues**: [GitHub Issues](https://github.com/bookbaghq/bookbag-ce/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/bookbaghq/bookbag-ce/discussions)
 
 ---
 
-**📚 Documentation & Guides:**
-- `QUICKSTART-SERVER.md` - Quick server deployment guide
-- `DEPLOYMENT.md` - Complete deployment documentation
-- `DEPLOY-MODES.md` - Development vs Production explained
-- `NO-PM2-GUIDE.md` - Running locally without PM2
-- `DEPLOY-SCRIPT-INFO.md` - Deploy script details (Bash & PowerShell)
-- `CORS-SETUP.md` - CORS configuration guide
-- `scripts/README.md` - JWT secrets initialization
+**Built with ❤️ by the BookBag team**
 
-**🛠️ Utility Commands:**
-```bash
-# Initialize/regenerate JWT secrets manually
-npm run init-jwt
-
-# Update CORS whitelist manually
-npm run update-cors http://your-frontend-url:3000
-
-# PM2 process management
-npm run pm2:status    # View running processes
-npm run pm2:logs      # View logs
-npm run pm2:restart   # Restart all
-npm run pm2:stop      # Stop all
-```
-
-### MySQL configuration (test/prod)
-Use separate `host` and `port` keys (avoid `"localhost:3306"`). Example:
-```json
-{
-  "userContext":  { "host": "127.0.0.1", "port": 3306, "user": "root", "password": "password", "database": "User",  "type": "mysql" },
-  "modelContext": { "host": "127.0.0.1", "port": 3306, "user": "root", "password": "password", "database": "Model", "type": "mysql" },
-  "mailContext":  { "host": "127.0.0.1", "port": 3306, "user": "root", "password": "password", "database": "Mail",  "type": "mysql" },
-  "chatContext":  { "host": "127.0.0.1", "port": 3306, "user": "root", "password": "password", "database": "Chat",  "type": "mysql" }
-}
-```
-Create the databases once:
-```sql
-CREATE DATABASE IF NOT EXISTS `User`;
-CREATE DATABASE IF NOT EXISTS `Model`;
-CREATE DATABASE IF NOT EXISTS `Mail`;
-CREATE DATABASE IF NOT EXISTS `Chat`;
-```
-
-## Contributing
-We welcome issues and contributions via the canonical source. Please:
-- Fork the repository under your GitHub account (or within the `bookbaghq` org if you’re a member)
-- Create a feature branch, submit a pull request, and follow code style and lint rules
-- For larger changes, open an issue first to discuss design
-
-## Install a development environment
-If you prefer a single‑command setup, use your favorite Node version manager (nvm/fnm) and package manager. Otherwise, follow the steps in Installation above. Frontend and backend run as separate processes (Next.js dev server and Node backend).
-
-## Software stack
-- Backend: Node.js (MasterController + MasterRecord), Socket.IO
-- Frontend: Next.js (App Router), React 19, Tailwind‑based UI
-- Databases: SQLite (dev) or MySQL (test/prod examples)
-
-## UX design
-Follow established UI patterns in `nextjs-app/components/ui/*` and the existing page/layout conventions in `nextjs-app/app/*`.
-
-## Third‑party applications
-Bookbag integrates with OpenAI‑compatible endpoints and Grok. Email uses SMTP providers via `nodemailer`. You can wire additional services under `components/*/app/service` and `nextjs-app/services/*`.
-
-## Release cycle
-Bookbag uses semantic versioning in tags/releases. See the GitHub Releases page for notes when available.
-
-## Upgrading
-- Update dependencies with care (`npm outdated`, `npm update`) and review breaking changes in Next.js/Node
-- Review environment files under `config/environments` when changing providers or databases
-
-## Documentation
-- Installation and setup: `Installation.md`
-- Environment configs: `config/environments/*`
-- Frontend services and routes: `nextjs-app/services/*`, `nextjs-app/app/*`
-
-## Education
-Internal enablement and onboarding materials can be added under `doc/`.
-
-## Getting help
-- Open an issue in the canonical source repository
-- Contact the maintainers for support and trial requests
-
-## Why should I use Bookbag?
-
-### For Enterprises
-- **Data Sovereignty**: Self-hosted means your conversations and documents never leave your infrastructure
-- **Cost Control**: Track and attribute AI costs per user, team, model, and project
-- **Compliance Ready**: Complete audit trails, data retention policies, role-based access
-- **Vendor Freedom**: Switch between OpenAI, Anthropic, Grok, or local models without disruption
-- **Knowledge Integration**: RAG system grounds AI responses in your company documentation
-- **Team Collaboration**: Workspaces enable teams to share context and collective knowledge
-
-### For Development Teams
-- **Multi-Provider Testing**: Compare model performance across providers in real-time
-- **Custom Behavior**: System prompts enforce coding standards, documentation style, company policies
-- **Project Knowledge**: Upload design docs, specs, wikis as RAG documents for AI context
-- **Zero Setup Dev Environment**: SQLite requires no database installation
-- **Production Ready**: One command to deploy with MySQL backend and PM2 process management
-
-### For Security/Compliance
-- **Self-Hosted**: Deploy on-premises or private cloud, data never touches third-party servers
-- **Access Controls**: Workspaces, roles, model restrictions, granular permissions
-- **Audit Logs**: Complete history of user actions, conversations, document access
-- **Data Lifecycle**: Soft delete with recovery, configurable retention policies
-- **SSO Ready**: JWT-based auth integrates with enterprise identity systems
-
-### Technical Advantages
-- **Unified Platform**: Chat, admin, RAG, analytics in one system
-- **Modern Stack**: Next.js, React 19, Tailwind CSS, Socket.IO streaming
-- **Flexible Databases**: SQLite for dev (zero config), MySQL for production scale
-- **Local Embeddings**: No external API calls for vector search (privacy + cost savings)
-- **Cross-Platform**: Works on Windows, macOS, Linux with automated deployment
-
-### Cost Benefits
-- **No Per-Seat Licensing**: Self-hosted means pay for infrastructure, not users
-- **Usage Transparency**: Know exactly which teams/projects drive AI costs
-- **Budget Enforcement**: Set storage quotas, context limits, model restrictions
-- **Provider Optimization**: Route queries to most cost-effective model automatically
-- **Long-Term Savings**: Lower TCO vs. SaaS AI tools at enterprise scale
+*Self-hosted AI for everyone*

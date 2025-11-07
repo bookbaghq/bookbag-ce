@@ -1,0 +1,11 @@
+{
+  "name": "Token Management Plugin",
+  "slug": "tokens-plugin",
+  "version": "1.0.0",
+  "description": "API token generation and management",
+  "author": "Bookbag Team",
+  "entry": "index.js",
+  "category": "admin-sidebar",
+  "icon": "Key",
+  "priority": 9
+}

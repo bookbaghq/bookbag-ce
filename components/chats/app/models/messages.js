@@ -15,7 +15,7 @@ class Messages {
     }
 
     user_id(db){
-        db.string().notNullable();
+        db.string().nullable(); 
     }
 
     role(db){

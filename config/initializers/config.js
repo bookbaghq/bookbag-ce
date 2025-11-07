@@ -14,19 +14,26 @@ var modelContext = require(`${master.root}/components/models/app/models/modelCon
 var mailContext = require(`${master.root}/components/mail/app/models/mailContext`);
 var workspaceContext = require(`${master.root}/components/workspace/app/models/workspaceContext`);
 var mediaContext = require(`${master.root}/components/media/app/models/mediaContext`);
-var ragContext = require(`${master.root}/components/rag/app/models/ragContext`);
-var pluginContext = require(`${master.root}/components/plugins/app/models/pluginContext`);
+var ragContext = require(`${master.root}/bb-plugins/rag-plugin/app/models/ragContext`);
+var pluginContext = require(`${master.root}/bb-plugins/plugin-plugin/app/models/pluginContext`);
 var adminContext = require(`${master.root}/components/admin/app/models/adminContext`);
 
+// mail services
 const MailTemplateService = require(`${master.root}/components/mail/app/service/mailTemplateService`);
 const MailDeliveryService = require(`${master.root}/components/mail/app/service/mailDeliveryService`);
 const templateConfigPath = path.join(master.root, 'components', 'mail', 'config', 'mail-templates.json');
-const hookService = require(`${master.root}/components/plugins/app/core/hookRegistration.js`);
+
+// hook services
+const hookService = require(`${master.root}/bb-plugins/plugin-plugin/app/core/hookRegistration.js`);
+const { initializeCoreHooks, HOOKS } = require(`${master.root}/bb-plugins/plugin-plugin/app/core/hookInitializer.js`);
+const pluginLoader = require(`${master.root}/bb-plugins/plugin-plugin/app/core/pluginLoader.js`);
+
 // initlaizing the tools we need for Master to run properly
 master.serverSettings(master.env.server);
 master.request.init(request);
 master.error.init(master.env.error);
 master.router.addMimeList(mimes);
+
 // Initialize Socket.IO via MasterSocket (auto-loads CORS from config/initializers/cors.json)
 master.socket.init();
 master.sessions.init();
@@ -52,10 +59,12 @@ master.register("_mapper", mapObject);
 // Initialize and register mail services so controllers can use them
 const templateService = new MailTemplateService(templateConfigPath);
 const deliveryService = new MailDeliveryService(mailContext);
+
 // Register instances (not constructors)
 master.register('mailTemplateService', templateService);
 master.register('mailDeliveryService', deliveryService);
 master.register('hookService', hookService);
+master.register('pluginLoader', pluginLoader);
 
 master.component("components", "user");
 master.component("components", "chats");
@@ -63,11 +72,53 @@ master.component("components", "models");
 master.component("components", "mail");
 master.component("components", "workspace");
 master.component("components", "media");
-master.component("components", "rag");
-master.component("components", "plugins");
+// master.component("components", "rag"); // Now loaded as a plugin
+// master.component("components", "plugins"); // Now loaded from bb-plugins/plugin-plugin
 master.component("components", "admin");
 
+// ============================================================================
+// BOOKBAG HOOK SYSTEM INITIALIZATION
+// ============================================================================
 
+// Initialize core hooks (register all hook names)
+initializeCoreHooks();
+
+// Fire bookbag_init hook - early initialization phase
+hookService.doAction(HOOKS.CORE_INIT, {
+  master,
+  environment: process.env.master
+});
+
+// Load all active plugins from database
+// Plugins can register their hooks during this phase
+pluginLoader.loadActivePlugins();
+
+// Fire bookbag_ready hook - system fully loaded and ready
+hookService.doAction(HOOKS.CORE_READY, {
+  master,
+  pluginLoader,
+  loadedPlugins: pluginLoader.getLoadedPlugins()
+});
+
+hookService.doAction(HOOKS.CORE_SHUTDOWN, { master });
+hookService.doAction(HOOKS.CORE_SHUTDOWN, { master });
+
+/** Register graceful shutdown handler
+process.on('SIGTERM', async () => {
+  console.log('📴 SIGTERM received, firing bookbag_shutdown hook...');
+  await hookService.doAction(HOOKS.CORE_SHUTDOWN, { master });
+  console.log('✓ Graceful shutdown complete');
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  console.log('📴 SIGINT received, firing bookbag_shutdown hook...');
+  await hookService.doAction(HOOKS.CORE_SHUTDOWN, { master });
+  console.log('✓ Graceful shutdown complete');
+  process.exit(0);
+});
+
+ */
 
 // register these apps to have access to them in the controller.
 // example: master.register("mainContext", { anyobject : "name"});

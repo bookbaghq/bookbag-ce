@@ -22,7 +22,7 @@ class favoritesController {
                     const chat = this._chatContext.Chat
                         .where(c => c.id == $$ && c.is_archived == $$ && c.is_deleted == $$, m.chat_id, 0, 0)
                         .single();
-                    if (chat && !(chat.is_admin_created === true || chat.is_admin_created === 1)) {
+                    if (chat && chat.created_by !== 'Admin') {
                         favoriteChats.push(chat);
                     }
                 } catch (_) { /* ignore per-chat errors */ }

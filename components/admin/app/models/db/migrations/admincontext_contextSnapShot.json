@@ -1,6 +1,0 @@
-{
-  "contextLocation": "../../adminContext.js",
-  "migrationFolder": ".",
-  "snapShotLocation": "admincontext_contextSnapShot.json",
-  "schema": []
-}

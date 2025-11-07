@@ -70,3 +70,7 @@ router.route("bb-chat/api/chat/:chatId", "api/chat#getChatById", "get");
 // Token Analytics routes
 router.route("bb-chat/api/token-analytics", "api/tokenAnalytics#getAnalytics", "get");
 router.route("bb-chat/api/token-analytics/user/:userId", "api/tokenAnalytics#getUserAnalytics", "get");
+
+// Chat Settings routes
+router.route("bb-chat/api/chat/settings", "api/chatSettings#getSettings", "get");
+router.route("bb-chat/api/chat/settings", "api/chatSettings#updateSettings", "post");

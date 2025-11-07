@@ -19,7 +19,7 @@ router.route("bb-user/api/updateRoleUsers", "api/user#updateRoleUsers", "post");
 router.route("bb-user/api/delete", "api/user#delete", "delete");
 router.route("bb-user/api/create", "api/user#create", "post");
 
-router.route("bb-user/api/auth/register", "/api/credentials#register", "post");
+router.route("bb-user/api/auth/register", "api/credentials#register", "post");
 router.route("bb-user/api/auth/login", "api/credentials#login", "post");
 router.route("bb-user/api/auth/can-login", "api/credentials#canSignIn", "get");
 router.route("bb-user/api/auth/forgetPassword", "api/credentials#resetPassword", "post");

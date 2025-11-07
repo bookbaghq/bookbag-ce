@@ -1,0 +1,11 @@
+{
+  "name": "Plugin Management System",
+  "slug": "plugin-plugin",
+  "version": "1.0.0",
+  "description": "WordPress-style plugin management system with auto-discovery, activation, and hook registration",
+  "author": "Bookbag Team",
+  "entry": "index.js",
+  "category": "core",
+  "icon": "Puzzle",
+  "priority": 0
+}

@@ -46,9 +46,9 @@ export function NavMain({ items }) {
           // If item has no sub-items, render as a standalone menu item
           if (!item.items || item.items.length === 0) {
             const isActive = pathname === item.url;
-            
+
             return (
-              <SidebarMenuItem key={item.title}>
+              <SidebarMenuItem key={item.id}>
                 <SidebarMenuButton
                   asChild
                   tooltip={item.title}
@@ -70,7 +70,7 @@ export function NavMain({ items }) {
           
           return (
             <Collapsible
-              key={item.title}
+              key={item.id}
               asChild
               open={expanded[item.title] != null ? !!expanded[item.title] : (item.isActive || hasActiveChild)}
               onOpenChange={(open) => {
@@ -91,9 +91,9 @@ export function NavMain({ items }) {
                     {item.items.map((subItem) => {
                       // Use strict exact path matching for sub-items
                       const isActive = pathname === subItem.url;
-                      
+
                       return (
-                        <SidebarMenuSubItem key={subItem.title}>
+                        <SidebarMenuSubItem key={subItem.id}>
                           <SidebarMenuSubButton 
                             asChild 
                             className={isActive ? "bg-accent text-accent-foreground" : ""}

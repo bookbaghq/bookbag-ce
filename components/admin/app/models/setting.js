@@ -8,24 +8,8 @@ class Setting {
     db.integer().primary().auto();
   }
 
-  is_rag_active(db) {
-    db.boolean().default(true);
-  }
-
-  is_mail_active(db) {
-    db.boolean().default(true);
-  }
-  
-  is_user_active(db) {
-    db.boolean().default(true);
-  }
-
-  is_workspace_active(db) {
-    db.boolean().default(true);
-  }
-
-  is_media_active(db) {
-    db.boolean().default(true);
+  disable_client_side(db) {
+    db.boolean().default(false);
   }
 
   // Creation timestamp

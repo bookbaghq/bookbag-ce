@@ -7,7 +7,7 @@ class Chat {
     }
 
     session_id(db){
-        db.string().unique();
+        db.string().unique().notNullable();
     }
 
     Messages(db){
@@ -18,12 +18,53 @@ class Chat {
          db.hasMany('UserChat', 'chat_id'); 
     }
 
-    is_admin_created(db){
+    // disbale 
+    disable_chat_creation(db){
         db.boolean().default(false);
     }
 
-    is_workspace_created(db){
-        db.boolean().default(false);
+    created_by(db){
+        db.string().notNullable().default(3);
+        db.get(function(value){
+            switch(value) {
+                case 1:
+                    return 'API';
+                break;
+                case 2:
+                    return 'Admin';
+                break;
+                case 3:
+                    return 'User';
+                break;
+                case 4:
+                    return 'Workspace';
+                break;
+                default:
+                    return 'Unknown';
+                break;
+            }
+
+        });
+        db.set(function(value){
+          
+            switch(value) {
+                case 'API':
+                    return 1;
+                break;
+                case 'Admin':
+                    return 2;
+                break;
+                case 'User':
+                    return 3;
+                break;
+                case 'Workspace':
+                    return 4;
+                break;
+                default:
+                    return 'Unknown';
+                break;
+            }
+        });
     }
 
     total_token_count(db){

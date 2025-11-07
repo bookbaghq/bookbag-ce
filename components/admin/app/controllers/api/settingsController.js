@@ -29,12 +29,7 @@ class settingsController {
         const dateNow = Date.now().toString();
         setting.created_at = dateNow;
         setting.updated_at = dateNow;
-        setting.is_rag_active = true;
-        setting.is_mail_active = true;
-        setting.is_user_active = true;
-        setting.is_workspace_active = true;
-        setting.is_media_active = true;
-
+        setting.disable_client_side = false;
         this._adminContext.Setting.add(setting);
         this._adminContext.saveChanges();
       }
@@ -42,11 +37,7 @@ class settingsController {
       return this.returnJson({
         success: true,
         settings: {
-          is_rag_active: setting.is_rag_active !== false,
-          is_mail_active: setting.is_mail_active !== false,
-          is_user_active: setting.is_user_active !== false,
-          is_workspace_active: setting.is_workspace_active !== false,
-          is_media_active: setting.is_media_active !== false
+          disable_client_side: setting.disable_client_side,
         }
       });
     } catch (error) {
@@ -64,7 +55,7 @@ class settingsController {
    */
   async updateSettings(obj) {
     try {
-      const { is_rag_active, is_mail_active, is_user_active, is_workspace_active, is_media_active } = obj.params.formData || obj.params || {};
+      const { disable_client_side} = obj.params.formData || obj.params || {};
 
       // Get or create settings record (singleton pattern)
       let setting = this._adminContext.Setting.single();
@@ -76,20 +67,12 @@ class settingsController {
         const dateNow = Date.now().toString();
         setting.created_at = dateNow;
         setting.updated_at = dateNow;
-        setting.is_rag_active = is_rag_active !== undefined ? is_rag_active : true;
-        setting.is_mail_active = is_mail_active !== undefined ? is_mail_active : true;
-        setting.is_user_active = is_user_active !== undefined ? is_user_active : true;
-        setting.is_workspace_active = is_workspace_active !== undefined ? is_workspace_active : true;
-        setting.is_media_active = is_media_active !== undefined ? is_media_active : true;
+        setting.disable_client_side = disable_client_side !== undefined ? disable_client_side : false;
 
         this._adminContext.Setting.add(setting);
       } else {
         // Update existing settings
-        if (is_rag_active !== undefined) setting.is_rag_active = is_rag_active;
-        if (is_mail_active !== undefined) setting.is_mail_active = is_mail_active;
-        if (is_user_active !== undefined) setting.is_user_active = is_user_active;
-        if (is_workspace_active !== undefined) setting.is_workspace_active = is_workspace_active;
-        if (is_media_active !== undefined) setting.is_media_active = is_media_active;
+        if (disable_client_side !== undefined) setting.disable_client_side = disable_client_side
         setting.updated_at = Date.now().toString();
       }
 
@@ -99,11 +82,7 @@ class settingsController {
         success: true,
         message: 'Settings updated successfully',
         settings: {
-          is_rag_active: setting.is_rag_active,
-          is_mail_active: setting.is_mail_active,
-          is_user_active: setting.is_user_active,
-          is_workspace_active: setting.is_workspace_active,
-          is_media_active: setting.is_media_active
+          disable_client_side: setting.disable_client_side,
         }
       });
     } catch (error) {

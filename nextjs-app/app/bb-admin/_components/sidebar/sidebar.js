@@ -44,6 +44,7 @@ export function SidebarNav (props) {
         // Transform backend data to frontend format
         const transformedMenu = data.menu.map(menuItem => {
           const item = {
+            id: menuItem.id,  // Include unique ID for React keys
             title: menuItem.label,
             url: menuItem.url,
             icon: getIconComponent(menuItem.icon),
@@ -53,7 +54,8 @@ export function SidebarNav (props) {
           const submenus = data.submenu[menuItem.id];
           if (submenus && submenus.length > 0) {
             // Has submenus - add items array
-            item.items = submenus.map(sub => ({
+            item.items = submenus.map((sub, idx) => ({
+              id: `${menuItem.id}-${idx}`,  // Generate unique ID for submenu items
               title: sub.label,
               url: sub.url
             }));

@@ -1,58 +1,44 @@
 /**
  * Model Plugin
  * Registers AI Models menu items
+ *
+ * Uses: Generic Hooks System
  */
-
-const MasterRecord = require('masterrecord');
-
 
 /**
  * Load method - called by pluginLoader with API
- * @param {Object} pluginAPI - { hookService, pluginLoader, sidebarHook }
+ * @param {Object} pluginAPI - { hookService, HOOKS, pluginLoader }
  */
 function load(pluginAPI) {
-  const { sidebarHook } = pluginAPI;
+  const { hookService, HOOKS } = pluginAPI;
 
-  // Register admin_menu hook callback
-  sidebarHook.onAdminMenu(async ({ req, res, user, tenant, tenantId }) => {
-
+  // Register admin_menu hook using generic hooks
+  hookService.addAction(HOOKS.ADMIN_MENU, async (context) => {
     // Add top-level Models menu
-    sidebarHook.add_menu_page({
+    context.addMenuItem({
       id: 'models',
       label: 'Models',
+      url: '/bb-admin/models',
       icon: 'Cpu',
-      capability: 'read',
-      priority: 25,
-      render: null
+      position: 25
     });
 
     // Add submenus
-    sidebarHook.add_submenu_page('models', {
-      id: 'models-library',
+    context.addSubmenuItem('models', {
       label: 'Library',
-      path: '/bb-admin/models/library',
-      capability: 'read',
-      priority: 5
+      url: '/bb-admin/models/library'
     });
 
-    sidebarHook.add_submenu_page('models', {
-      id: 'models-my-models',
+    context.addSubmenuItem('models', {
       label: 'My Models',
-      path: '/bb-admin/models/my-models',
-      capability: 'read',
-      priority: 10
+      url: '/bb-admin/models/my-models'
     });
 
-    sidebarHook.add_submenu_page('models', {
-      id: 'models-settings',
+    context.addSubmenuItem('models', {
       label: 'Settings',
-      path: '/bb-admin/models/settings',
-      capability: 'read', // based on role read is everyone
-      priority: 15
+      url: '/bb-admin/models/settings'
     });
-
-  });
-
+  }, 10);
 }
 
 module.exports = { load };

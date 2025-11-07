@@ -1,12 +1,56 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { ModernChatInterface } from './_components/modern-chat-interface';
-import { KnowledgeBaseSidebar } from './_components/components/KnowledgeBaseSidebar';
+import { KnowledgeBaseSidebar } from '@/plugins/rag-plugin/nextjs/pages/client/KnowledgeBaseSidebar';
+import api from '@/apiConfig.json';
+
+const BASE_URL = api.ApiConfig.main;
 
 export default function ClientPage() {
+  const router = useRouter();
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
+  const [isCheckingAccess, setIsCheckingAccess] = useState(true);
+
+  // Check if client-side access is disabled
+  useEffect(() => {
+    const checkClientAccess = async () => {
+      try {
+        const response = await fetch(`${BASE_URL}/api/admin/settings`, {
+          credentials: 'include'
+        });
+        const data = await response.json();
+
+        if (data.success && data.settings.disable_client_side) {
+          // Client-side is disabled - check if user is admin
+          const userRes = await fetch(`${BASE_URL}/bb-user/api/auth/currentuser`, {
+            credentials: 'include'
+          });
+          const userData = await userRes.json();
+
+          if (userData?.isAdmin === true) {
+            // User is admin - redirect to admin panel
+            router.push('/bb-admin');
+          } else {
+            // User is not admin - logout and redirect to access denied
+            await fetch(`${BASE_URL}/bb-user/api/auth/logout`, {
+              credentials: 'include'
+            });
+            router.push('/bb-auth/access-denied');
+          }
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking client access:', error);
+      } finally {
+        setIsCheckingAccess(false);
+      }
+    };
+
+    checkClientAccess();
+  }, [router]);
 
   // Handle room selection from sidebar
   useEffect(() => {
@@ -56,6 +100,11 @@ export default function ClientPage() {
     console.log("save new messages", message)
     setChatMessages(prevMessages => [...prevMessages, message]);
   };
+
+  // Show loading while checking access
+  if (isCheckingAccess) {
+    return null;
+  }
 
   return (
     <div className="flex h-full w-full bg-background overflow-hidden">

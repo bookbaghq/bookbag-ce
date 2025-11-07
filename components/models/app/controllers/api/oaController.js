@@ -94,6 +94,6 @@ class oaController {
     returnJson(obj) { return obj; }
 }
 
-module.exports = oaController;
+module.exports = oaController
 
 

@@ -1,0 +1,11 @@
+{
+  "name": "RAG Plugin",
+  "slug": "rag-plugin",
+  "version": "1.0.0",
+  "description": "Retrieval-Augmented Generation knowledge base with document ingestion, embedding, and vector storage",
+  "author": "Bookbag Team",
+  "entry": "index.js",
+  "category": "admin-sidebar",
+  "icon": "Database",
+  "priority": 5
+}

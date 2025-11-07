@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ModernChatInterface } from '../_components/modern-chat-interface';
-import { KnowledgeBaseSidebar } from '../_components/components/KnowledgeBaseSidebar';
+import { DynamicPluginSidebar } from '../_components/DynamicPluginSidebar';
 
 export default function ChatPage() {
   const params = useParams();
@@ -137,10 +137,13 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-full w-full bg-background overflow-hidden">
-      <KnowledgeBaseSidebar
+      {/* WordPress-style: Dynamically load all registered sidebar-left components */}
+      <DynamicPluginSidebar
+        usage="sidebar-left"
         chatId={chatData.chatId}
         isWorkspaceCreated={chatData.isWorkspaceCreated}
       />
+
       <div className="flex-1 flex flex-col h-full relative">
         <ModernChatInterface
           initialChatId={chatData.chatId}
@@ -148,6 +151,13 @@ export default function ChatPage() {
           chatTitle={chatData.title}
         />
       </div>
+
+      {/* WordPress-style: Dynamically load all registered sidebar-right components */}
+      <DynamicPluginSidebar
+        usage="sidebar-right"
+        chatId={chatData.chatId}
+        isWorkspaceCreated={chatData.isWorkspaceCreated}
+      />
     </div>
   );
 }

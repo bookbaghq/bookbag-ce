@@ -1,0 +1,11 @@
+{
+  "name": "Models Plugin",
+  "slug": "model-plugin",
+  "version": "1.0.0",
+  "description": "LLM model configuration and management system",
+  "author": "Bookbag Team",
+  "entry": "index.js",
+  "category": "admin-sidebar",
+  "icon": "Cpu",
+  "priority": 6
+}

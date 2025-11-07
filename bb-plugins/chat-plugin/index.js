@@ -1,50 +1,44 @@
 /**
  * Chat Plugin
  * Registers Chat/Conversations menu items
+ *
+ * Uses: Generic Hooks System
  */
-
-const MasterRecord = require('masterrecord');
 
 /**
  * Load method - called by pluginLoader with API
- * @param {Object} pluginAPI - { hookService, pluginLoader, sidebarHook }
+ * @param {Object} pluginAPI - { hookService, HOOKS, pluginLoader }
  */
 function load(pluginAPI) {
-  const { sidebarHook } = pluginAPI;
+  const { hookService, HOOKS } = pluginAPI;
 
-  // Register admin_menu hook callback
-  sidebarHook.onAdminMenu(async ({ req, res, user, tenant, tenantId }) => {
-
-
+  // Register admin_menu hook using generic hooks
+  hookService.addAction(HOOKS.ADMIN_MENU, async (context) => {
     // Add top-level Chat menu
-    sidebarHook.add_menu_page({
+    context.addMenuItem({
       id: 'chats',
       label: 'Chats',
+      url: '/bb-admin/chats',
       icon: 'MessageSquare',
-      capability: 'read',
-      priority: 10,
-      render: null
+      position: 10
     });
 
     // Add submenus
-    sidebarHook.add_submenu_page('chats', {
-      id: 'chats-search',
+    context.addSubmenuItem('chats', {
       label: 'Search',
-      path: 'bb-admin/chats/search',
-      capability: 'read',
-      priority: 5
+      url: '/bb-admin/chats/search'
     });
 
-    sidebarHook.add_submenu_page('chats', {
-      id: 'chats-new',
+    context.addSubmenuItem('chats', {
       label: 'Create',
-      path: 'bb-admin/chats/create',
-      capability: 'read',
-      priority: 10
+      url: '/bb-admin/chats/create'
     });
 
-  });
-
+    context.addSubmenuItem('chats', {
+      label: 'Settings',
+      url: '/bb-admin/chats/settings'
+    });
+  }, 10);
 }
 
 module.exports = { load };

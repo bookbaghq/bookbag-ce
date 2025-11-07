@@ -5,10 +5,8 @@ const ChatHistoryService = require(`${master.root}/components/chats/app/service/
 const ModelService = require(`${master.root}/components/chats/app/service/modelService`);
 const llmConfigService = require("../../components/models/app/service/llmConfigService");
 const errorService = require(`${master.root}/app/service/errorService`);
-
-// RAG imports - load once at module level for efficiency
-const RAGContext = require(`${master.root}/components/rag/app/models/ragContext`);
-const RAGService = require(`${master.root}/components/rag/app/service/ragService`);
+const { HOOKS } = require(`${master.root}/bb-plugins/plugin-plugin/app/core/hookConstants`);
+const hookService = require(`${master.root}/bb-plugins/plugin-plugin/app/core/hookRegistration`);
 
 // AI Image handling imports
 const ResponseNormalizationService = require(`${master.root}/components/chats/app/service/responseNormalizationService`);
@@ -52,89 +50,6 @@ class chatSocket {
 		}
 	}
 
-	/**
-	 * Inject RAG grounding instructions into message history
-	 *
-	 * ⚠️ CRITICAL: This runs ALWAYS, even when ragContext is empty.
-	 * This prevents the model from hallucinating when RAG finds no documents.
-	 *
-	 * @param {Array} messageHistory - The conversation history to modify (mutated in place)
-	 * @param {string} ragContext - Retrieved context from RAG (may be empty string)
-	 * @param {string} ragQueryText - Original user query text
-	 * @returns {void} - Modifies messageHistory in place
-	 */
-	/**
-	 * Inject RAG grounding instructions into message history
-	 * Uses grounding_mode from model config (strict or soft)
-	 */
-	_injectRAGGrounding(messageHistory, ragContext, ragQueryText) {
-		let hasContext = ragContext && ragContext.trim().length > 0;
-
-		// 🔥 Trim overly large context to prevent context window overflow
-		const MAX_CONTEXT_CHARS = 12000;
-		if (hasContext && ragContext.length > MAX_CONTEXT_CHARS) {
-			console.warn(`⚠️  RAG: Truncating context from ${ragContext.length} to ${MAX_CONTEXT_CHARS} chars`);
-			ragContext = ragContext.slice(0, MAX_CONTEXT_CHARS) + '\n\n[...TRUNCATED FOR LENGTH...]';
-		}
-
-		// Only inject if we have context - skip injection entirely when no documents found
-		if (!hasContext) {
-			console.log(`ℹ️  RAG: No context found - skipping RAG grounding to allow normal model behavior`);
-			return;
-		}
-
-		// Get grounding mode from model config (DB-driven)
-		const groundingMode = (this.modelConfig?.grounding_mode || 'strict').toLowerCase();
-		const isSoftMode = groundingMode === 'soft';
-
-		console.log(`📚 RAG: Found context (${ragContext.length} chars) - Grounding mode: ${groundingMode}`);
-
-		const existingSystemPrompt = this.modelConfig.system_prompt || '';
-
-		// Build grounding instructions based on grounding_mode
-		let systemPromptWithContext;
-		if (isSoftMode) {
-			// Soft grounding - allows model flexibility (good for Grok, Claude)
-			systemPromptWithContext = `${existingSystemPrompt}
-
---- Retrieved Knowledge Base Context ---
-${ragContext}
---- End of Retrieved Context ---
-
-Use the information provided above to help answer the user's question. If the context contains relevant information, prioritize it in your response. If the context doesn't contain relevant information, you may use your general knowledge but mention that the information wasn't found in the knowledge base.`;
-		} else {
-			// Strict grounding - forces context-only answers (good for OpenAI)
-			systemPromptWithContext = `${existingSystemPrompt}
-
---- Retrieved Knowledge Base Context ---
-${ragContext}
---- End of Retrieved Context ---
-
-**INSTRUCTIONS:**
-Answer the user's question using the information provided between the "Retrieved Knowledge Base Context" markers above.
-- If the answer is present there, use it in your response.
-- If it is NOT present, reply: "I don't know based on the provided documents."
-- Prioritize the retrieved context over your general knowledge.`;
-		}
-
-		// Inject or update system message in history
-		const systemMsgIndex = messageHistory.findIndex(m => m.role === 'system');
-		if (systemMsgIndex >= 0) {
-			messageHistory[systemMsgIndex].content = systemPromptWithContext;
-		} else {
-			messageHistory.unshift({ role: 'system', content: systemPromptWithContext });
-		}
-
-		console.log(`✅ RAG: Context injected into system prompt (${groundingMode} mode)`);
-
-		// 🔥 Log final message history for debugging (optional, controlled by env var)
-		const DEBUG_MESSAGE_HISTORY = process.env.DEBUG_MESSAGE_HISTORY === 'true';
-		if (DEBUG_MESSAGE_HISTORY) {
-			console.log("\n📨 FINAL MESSAGE HISTORY AFTER RAG GROUNDING:");
-			console.log(JSON.stringify(messageHistory, null, 2));
-			console.log("\n");
-		}
-	}
 
 	// Client emits: socket.emit('start', { chatId, modelId, userMessageId, noThinking })
 	async start(data, socket /*, io */) {
@@ -181,8 +96,8 @@ Answer the user's question using the information provided between the "Retrieved
 				try {
 					const chatIdNum = parseInt(chatId, 10) || 0;
 					const chatEntity = chatContext?.Chat?.where?.(r => r.id == $$, chatIdNum)?.single();
-					// Check if chat is workspace-created using the is_workspace_created column
-					isWorkspaceCreated = !!(chatEntity && (chatEntity.is_workspace_created === true || chatEntity.is_workspace_created === 1));
+					// Check if chat is workspace-created using the created_by field
+					isWorkspaceCreated = !!(chatEntity && chatEntity.created_by === 'Workspace');
 				} catch (_) {}
 				console.log(`🔍 Workspace Detection: Chat ${chatId} - isWorkspaceCreated = ${isWorkspaceCreated}`);
 				if (isWorkspaceCreated) {
@@ -253,105 +168,49 @@ Answer the user's question using the information provided between the "Retrieved
 				return;
 			}
 
-			console.log(`🔄 About to start RAG integration...`);
-
-			// 🧠 RAG Integration: Query knowledge base before calling LLM
-			let ragContext = '';
-			let ragQueryText = ''; // Store the original query text for later use
-			try {
-				console.log(`\n🧠 === RAG INTEGRATION START (Chat ${chatId}) ===`);
-				// Initialize RAG service (using module-level imports for efficiency)
-				const ragCtx = new RAGContext();
-				console.log(`✓ RAG: Context initialized`);
-
-				// Check if RAG should be skipped based on settings
-				const shouldSkip = RAGService.shouldSkipRAG(ragCtx, chatContext, chatId);
-				console.log(`✓ RAG: shouldSkipRAG = ${shouldSkip}`);
-
-				if (shouldSkip) {
-					console.log('⏭️  RAG: Skipping due to settings');
-				} else {
-					const ragService = new RAGService(ragCtx);
-					console.log(`✓ RAG: Service created`);
-
-					// Get the user's last message to use as the query (reverse find is faster for long histories)
-					console.log(`✓ RAG: Message history length = ${messageHistory.length}`);
-					const lastUserMessage = [...messageHistory].reverse().find(m => m.role === 'user');
-					console.log(`✓ RAG: Last user message found = ${!!lastUserMessage}`);
-
-					if (lastUserMessage && lastUserMessage.content) {
-						ragQueryText = lastUserMessage.content; // Save the query text
-						console.log(`🔍 RAG: Querying knowledge base for chat ${chatId}${workspaceId ? ` (workspace ${workspaceId})` : ' (no workspace)'}...`);
-						console.log(`🔍 RAG: workspaceId = ${workspaceId}, chatId = ${chatId}`);
-						console.log(`🔍 RAG: Query text: "${ragQueryText}"`);
-
-						console.log(`🔍 RAG: Calling queryRAG with params:`, JSON.stringify({
-							chatId: parseInt(chatId, 10),
-							workspaceId: workspaceId ? parseInt(workspaceId, 10) : null,
-							question: ragQueryText,
-							k: 5
-						}));
-
-						// Query the knowledge base with layered retrieval (workspace + chat documents)
-						const results = await ragService.queryRAG({
-							chatId: parseInt(chatId, 10),
-							workspaceId: workspaceId ? parseInt(workspaceId, 10) : null,
-							question: ragQueryText,
-							k: 5
-						});
-
-						console.log(`✓ RAG: Query completed, results = ${results ? results.length : 'null'}`);
-
-						if (results && results.length > 0) {
-							console.log(`✅ RAG: Found ${results.length} relevant chunks (top score: ${results[0].score.toFixed(4)})`);
-							console.log(`✅ RAG: Top 3 chunks:`, results.slice(0, 3).map(r => ({
-								score: r.score.toFixed(4),
-								contentPreview: r.content.substring(0, 100) + '...'
-							})));
-
-							// Build context string from retrieved documents
-							ragContext = ragService.buildContextString(results);
-
-							console.log(`📚 RAG: Context length: ${ragContext.length} characters`);
-							console.log(`📚 RAG: Context preview: ${ragContext.substring(0, 200)}...`);
-						} else {
-							console.log(`ℹ️  RAG: No relevant documents found for this query`);
-						}
-					} else {
-						console.log(`⚠️  RAG: No user message found in history or message has no content`);
-					}
-				}
-				console.log(`🧠 === RAG INTEGRATION END ===\n`);
-			} catch (ragErr) {
-				// Non-fatal: if RAG fails, continue without it
-				console.error('⚠️  RAG query failed (non-fatal):', ragErr);
-				console.error('⚠️  RAG error stack:', ragErr.stack);
-			}
-
 			// Apply server-side auto-trim if enabled and model defines a real context_size
-			// 🔥 CRITICAL: Trim BEFORE injecting RAG context to ensure RAG context is never removed
-			try {
-				const hasContextRule = Number(this.modelConfig?.context_size || 0) > 0;
-				const dbAutoTrim = !!(this.modelConfig && this.modelConfig.auto_trim_on);
-				const shouldTrim = dbAutoTrim && hasContextRule;
-				if (shouldTrim) {
-					try {
-						messageHistory = await chatHistoryService.manageContextWindow(messageHistory);
-					} catch (_) {}
-				}
-			} catch (_) {}
+		try {
+			const hasContextRule = Number(this.modelConfig?.context_size || 0) > 0;
+			const dbAutoTrim = !!(this.modelConfig && this.modelConfig.auto_trim_on);
+			const shouldTrim = dbAutoTrim && hasContextRule;
+			if (shouldTrim) {
+				try {
+					messageHistory = await chatHistoryService.manageContextWindow(messageHistory);
+				} catch (_) {}
+			}
+		} catch (_) {}
 
-			// 🔥 ALWAYS inject RAG grounding AFTER trimming - even when no context is found
-			// This prevents the model from hallucinating when RAG returns no results
-			// By injecting after trim, we ensure RAG context is ALWAYS present in the final prompt
-			this._injectRAGGrounding(messageHistory, ragContext, ragQueryText);
-
-			// 🔍 DEBUG: Log final message history to verify RAG context is present
-			console.log(`📨 FINAL MESSAGE HISTORY BEFORE GENERATE (${messageHistory.length} messages):`);
-			messageHistory.forEach((msg, idx) => {
-				const preview = (msg.content || '').substring(0, 150).replace(/\n/g, ' ');
-				console.log(`  [${idx}] ${msg.role}: ${preview}...`);
+		// 🔌 HOOKS: Apply LLM_BEFORE_GENERATE filter to allow plugins to modify message history
+		// This is where plugins (like RAG) can inject context, modify prompts, etc.
+		try {
+			console.log(`🔌 Applying LLM_BEFORE_GENERATE filter hook...`);
+			const hookResult = await hookService.applyFilters(HOOKS.LLM_BEFORE_GENERATE, {
+				messageHistory,
+				chatId,
+				workspaceId,
+				modelConfig: this.modelConfig,
+				modelSettings: this.modelSettings,
+				userMessageId,
+				baseUrl,
+				chatContext,
+				currentUser
 			});
+
+			// Extract modified messageHistory from hook result
+			if (hookResult && hookResult.messageHistory) {
+				messageHistory = hookResult.messageHistory;
+				console.log(`✅ LLM_BEFORE_GENERATE hook applied successfully`);
+			}
+		} catch (hookErr) {
+			console.error('⚠️  LLM_BEFORE_GENERATE hook failed (non-fatal):', hookErr);
+		}
+
+		// 🔍 DEBUG: Log final message history
+		console.log(`📨 FINAL MESSAGE HISTORY BEFORE GENERATE (${messageHistory.length} messages):`);
+		messageHistory.forEach((msg, idx) => {
+			const preview = (msg.content || '').substring(0, 150).replace(/\n/g, ' ');
+			console.log(`  [${idx}] ${msg.role}: ${preview}...`);
+		});
 
 			// Thinking detection service
 			const ThinkingDetectionService = require(`${master.root}/components/chats/app/service/thinkingDetectionService`);

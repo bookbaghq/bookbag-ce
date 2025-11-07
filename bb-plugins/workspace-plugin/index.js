@@ -1,43 +1,34 @@
 /**
  * Workspace Plugin
  * Registers Workspace collaboration menu items
+ *
+ * Uses: Generic Hooks System
  */
-
-const MasterRecord = require('masterrecord');
-
 
 /**
  * Load method - called by pluginLoader with API
- * @param {Object} pluginAPI - { hookService, pluginLoader, sidebarHook }
+ * @param {Object} pluginAPI - { hookService, HOOKS, pluginLoader }
  */
 function load(pluginAPI) {
-  const { sidebarHook } = pluginAPI;
+  const { hookService, HOOKS } = pluginAPI;
 
-  // Register admin_menu hook callback
-  sidebarHook.onAdminMenu(async ({ req, res, user, tenant, tenantId }) => {
-
-
+  // Register admin_menu hook using generic hooks
+  hookService.addAction(HOOKS.ADMIN_MENU, async (context) => {
     // Add top-level Workspace menu
-    sidebarHook.add_menu_page({
+    context.addMenuItem({
       id: 'workspace',
       label: 'Workspaces',
+      url: '/bb-admin/workspaces',
       icon: 'Users',
-      capability: 'read',
-      priority: 50,
-      render: null
+      position: 50
     });
 
     // Add submenus
-    sidebarHook.add_submenu_page('workspace', {
-      id: 'workspace-list',
+    context.addSubmenuItem('workspace', {
       label: 'All',
-      path: '/bb-admin/workspaces',
-      capability: 'read',
-      priority: 5
+      url: '/bb-admin/workspaces'
     });
-
-  });
-
+  }, 10);
 }
 
 module.exports = { load };

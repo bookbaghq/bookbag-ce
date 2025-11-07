@@ -1,42 +1,34 @@
 /**
  * Tokens Plugin
  * Registers Token Analytics menu items
+ *
+ * Uses: Generic Hooks System
  */
-
-const MasterRecord = require('masterrecord');
-
 
 /**
  * Load method - called by pluginLoader with API
- * @param {Object} pluginAPI - { hookService, pluginLoader, sidebarHook }
+ * @param {Object} pluginAPI - { hookService, HOOKS, pluginLoader }
  */
 function load(pluginAPI) {
-  const { sidebarHook } = pluginAPI;
+  const { hookService, HOOKS } = pluginAPI;
 
-  // Register admin_menu hook callback
-  sidebarHook.onAdminMenu(async ({ req, res, user, tenant, tenantId }) => {
-
+  // Register admin_menu hook using generic hooks
+  hookService.addAction(HOOKS.ADMIN_MENU, async (context) => {
     // Add top-level Tokens menu
-    sidebarHook.add_menu_page({
+    context.addMenuItem({
       id: 'tokens',
       label: 'Tokens',
+      url: '/bb-admin/tokens',
       icon: 'Activity',
-      capability: 'read',
-      priority: 35,
-      render: null
+      position: 35
     });
 
     // Add submenus
-    sidebarHook.add_submenu_page('tokens', {
-      id: 'tokens-analytics',
+    context.addSubmenuItem('tokens', {
       label: 'Analytics',
-      path: '/bb-admin/tokens/analytics',
-      capability: 'read',
-      priority: 5
+      url: '/bb-admin/tokens/analytics'
     });
-
-  });
-
+  }, 10);
 }
 
 module.exports = { load };

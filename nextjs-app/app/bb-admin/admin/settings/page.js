@@ -15,11 +15,7 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState({
-    is_rag_active: true,
-    is_mail_active: true,
-    is_user_active: true,
-    is_workspace_active: true,
-    is_media_active: true
+    disable_client_side: false
   });
 
   useEffect(() => {
@@ -36,11 +32,7 @@ export default function AdminSettingsPage() {
 
       if (data.success) {
         setSettings({
-          is_rag_active: data.settings.is_rag_active !== false,
-          is_mail_active: data.settings.is_mail_active !== false,
-          is_user_active: data.settings.is_user_active !== false,
-          is_workspace_active: data.settings.is_workspace_active !== false,
-          is_media_active: data.settings.is_media_active !== false
+          disable_client_side: data.settings.disable_client_side || false
         });
       } else {
         toast.error(data.error || 'Failed to load settings');
@@ -94,120 +86,50 @@ export default function AdminSettingsPage() {
     <div className="container mx-auto p-6 max-w-4xl">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">System Settings</h1>
+        <h1 className="text-3xl font-bold mb-2">Client Access Settings</h1>
         <p className="text-muted-foreground">
-          Configure which features and modules are enabled across the application
+          Configure client-side access and availability
         </p>
       </div>
 
       {/* Settings Card */}
       <Card>
         <CardHeader>
-          <CardTitle>Feature Toggles</CardTitle>
+          <CardTitle>Client Access Control</CardTitle>
           <CardDescription>
-            Enable or disable system features and modules
+            Control access to the client-side interface
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* RAG Toggle */}
+          {/* Disable Client Side Toggle */}
           <div className="flex items-center justify-between space-x-4 p-4 border rounded-lg">
             <div className="space-y-0.5 flex-1">
-              <Label htmlFor="is_rag_active" className="text-base font-medium">
-                RAG (Retrieval-Augmented Generation)
+              <Label htmlFor="disable_client_side" className="text-base font-medium">
+                Disable Client-Side Access
               </Label>
               <p className="text-sm text-muted-foreground">
-                Enable RAG functionality for document uploads, knowledge bases, and context-aware AI responses.
-                When disabled, all document processing and retrieval features will be unavailable.
+                When enabled, users will not be able to access the client-side interface.
+                All requests to the bb-client page will be redirected to the login page.
               </p>
             </div>
             <Switch
-              id="is_rag_active"
-              checked={settings.is_rag_active}
+              id="disable_client_side"
+              checked={settings.disable_client_side}
               onCheckedChange={(checked) =>
-                setSettings({ ...settings, is_rag_active: checked })
+                setSettings({ ...settings, disable_client_side: checked })
               }
             />
           </div>
 
-          {/* Mail Toggle */}
-          <div className="flex items-center justify-between space-x-4 p-4 border rounded-lg">
-            <div className="space-y-0.5 flex-1">
-              <Label htmlFor="is_mail_active" className="text-base font-medium">
-                Email System
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Enable email functionality for notifications, password resets, and system communications.
-                When disabled, no emails will be sent from the system.
+          {/* Warning Message */}
+          {settings.disable_client_side && (
+            <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <strong>Warning:</strong> Client-side access is currently disabled.
+                Users will be redirected to the login page when attempting to access the client interface.
               </p>
             </div>
-            <Switch
-              id="is_mail_active"
-              checked={settings.is_mail_active}
-              onCheckedChange={(checked) =>
-                setSettings({ ...settings, is_mail_active: checked })
-              }
-            />
-          </div>
-
-          {/* User Management Toggle */}
-          <div className="flex items-center justify-between space-x-4 p-4 border rounded-lg">
-            <div className="space-y-0.5 flex-1">
-              <Label htmlFor="is_user_active" className="text-base font-medium">
-                User Management
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Enable user management features including user creation, profile editing, and role management.
-                Core authentication functionality remains active regardless of this setting.
-              </p>
-            </div>
-            <Switch
-              id="is_user_active"
-              checked={settings.is_user_active}
-              onCheckedChange={(checked) =>
-                setSettings({ ...settings, is_user_active: checked })
-              }
-            />
-          </div>
-
-          {/* Workspace Toggle */}
-          <div className="flex items-center justify-between space-x-4 p-4 border rounded-lg">
-            <div className="space-y-0.5 flex-1">
-              <Label htmlFor="is_workspace_active" className="text-base font-medium">
-                Workspaces
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Enable workspace functionality for team collaboration and shared resources.
-                When disabled, users can only access their personal chats and documents.
-              </p>
-            </div>
-            <Switch
-              id="is_workspace_active"
-              checked={settings.is_workspace_active}
-              onCheckedChange={(checked) =>
-                setSettings({ ...settings, is_workspace_active: checked })
-              }
-            />
-          </div>
-
-          {/* Media Toggle */}
-          <div className="flex items-center justify-between space-x-4 p-4 border rounded-lg">
-            <div className="space-y-0.5 flex-1">
-              <Label htmlFor="is_media_active" className="text-base font-medium">
-                Media Library
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Enable media upload and management functionality including images, files, and attachments.
-                When disabled, users cannot upload or manage media files.
-              </p>
-            </div>
-            <Switch
-              id="is_media_active"
-              checked={settings.is_media_active}
-              onCheckedChange={(checked) =>
-                setSettings({ ...settings, is_media_active: checked })
-              }
-            />
-          </div>
+          )}
 
           {/* Save Button */}
           <div className="flex justify-end pt-4">
@@ -235,14 +157,16 @@ export default function AdminSettingsPage() {
       {/* Additional Info */}
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle>About System Settings</CardTitle>
+          <CardTitle>About Client Access Control</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-muted-foreground">
           <div>
-            <h3 className="font-medium text-foreground mb-2">Feature Management</h3>
+            <h3 className="font-medium text-foreground mb-2">Client-Side Access</h3>
             <p>
-              These settings allow you to enable or disable major system features and modules.
-              Disabling a feature will hide related UI elements and prevent access to associated functionality.
+              This setting allows you to completely disable access to the client-side interface.
+              When enabled, all users attempting to access the bb-client page will be redirected
+              to the login page. This is useful for maintenance periods or when you want to
+              temporarily restrict client access.
             </p>
           </div>
 
@@ -250,18 +174,18 @@ export default function AdminSettingsPage() {
             <h3 className="font-medium text-foreground mb-2">Impact of Changes</h3>
             <ul className="list-disc list-inside space-y-1 ml-2">
               <li>Changes take effect immediately after saving</li>
-              <li>Disabled features remain in the database but are not accessible</li>
-              <li>Re-enabling features restores full functionality</li>
-              <li>Some core system features cannot be disabled for security reasons</li>
+              <li>Admin access remains unaffected</li>
+              <li>Users will be redirected to login when accessing bb-client</li>
+              <li>Re-enabling access restores full client functionality</li>
             </ul>
           </div>
 
           <div>
             <h3 className="font-medium text-foreground mb-2">Best Practices</h3>
             <p>
-              Only disable features that you do not need for your use case. Disabling features can help
-              simplify the user interface and reduce system complexity. However, ensure that disabling
-              a feature won&apos;t break workflows that depend on it.
+              Use this setting carefully as it will prevent all users from accessing the client interface.
+              Make sure to communicate with your users before enabling this setting to avoid confusion.
+              This setting is ideal for scheduled maintenance or system updates.
             </p>
           </div>
         </CardContent>
