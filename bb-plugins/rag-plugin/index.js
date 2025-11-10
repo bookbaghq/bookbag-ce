@@ -17,13 +17,11 @@
  */
 function load(pluginAPI) {
   const { hookService, HOOKS, registerView, registerClientComponent } = pluginAPI;
-  const path = require('path');
   const master = require('mastercontroller');
 
   // Register this plugin directory as a component so MasterController can find controllers
   // This allows the routes to resolve "api/rag#method" to this plugin's controllers
   try {
-    console.log('  ✓ Registering RAG plugin as MasterController component');
     master.component("bb-plugins", "rag-plugin");
   } catch (error) {
     console.error('  ✗ Failed to register plugin as component:', error.message);
@@ -31,16 +29,28 @@ function load(pluginAPI) {
 
   // Register admin views (WordPress-style)
   try {
-    console.log('  ✓ Registering RAG plugin admin views');
-    registerView('rag-settings', 'pages/admin/rag/settings/page', {
+    registerView('rag-settings', 'admin/rag/settings/page', {
       title: 'RAG Settings',
       capability: 'manage_options',
       icon: 'settings'
     });
-    registerView('rag-documents', 'pages/admin/rag/documents/page', {
+    registerView('rag-documents', 'admin/rag/documents/page', {
       title: 'RAG Documents',
       capability: 'manage_options',
       icon: 'file'
+    });
+
+    // Also register admin views as client components for static loading
+    // This enables Next.js to resolve dependencies at build time
+    registerClientComponent('RagSettingsPage', 'admin/rag/settings/page.js', {
+      description: 'RAG Settings admin page',
+      usage: 'admin-view',
+      viewSlug: 'rag-settings'
+    });
+    registerClientComponent('RagDocumentsPage', 'admin/rag/documents/page.js', {
+      description: 'RAG Documents admin page',
+      usage: 'admin-view',
+      viewSlug: 'rag-documents'
     });
   } catch (error) {
     console.error('  ✗ Failed to register admin views:', error.message);
@@ -48,8 +58,8 @@ function load(pluginAPI) {
 
   // Register client components
   try {
-    console.log('  ✓ Registering RAG plugin client components');
-    registerClientComponent('KnowledgeBaseSidebar', 'pages/client/KnowledgeBaseSidebar.js', {
+    // Register unbundled source - symlink + loader approach resolves at build time
+    registerClientComponent('KnowledgeBaseSidebar', 'client/KnowledgeBaseSidebar.js', {
       description: 'Document management sidebar for chat interface',
       usage: 'sidebar-left', // WordPress-style: register for left sidebar position
       features: ['document-list', 'workspace-creation', 'document-upload', 'rag-settings']
@@ -62,7 +72,6 @@ function load(pluginAPI) {
   // This is the core hook that injects RAG context into the LLM pipeline
   const llmBeforeGenerateHandler = require('./app/hooks/llmBeforeGenerateHandler');
   hookService.addFilter(HOOKS.LLM_BEFORE_GENERATE, llmBeforeGenerateHandler, 10);
-  console.log('  ✓ Registered LLM_BEFORE_GENERATE hook for RAG context injection');
 
   // Register admin_menu hook for sidebar menu
   hookService.addAction(HOOKS.ADMIN_MENU, async (context) => {
@@ -87,17 +96,6 @@ function load(pluginAPI) {
     });
   }, 10);
 
-  // todo?  why do we need this
-  // Register routes by loading the routes file
-  // This happens during plugin load, which is after MasterController initialization
-  try {
-    const routesPath = path.join(__dirname, 'config', 'routes.js');
-    console.log('  ✓ Loading RAG routes from plugin:', routesPath);
-    require(routesPath);
-    console.log('  ✓ RAG routes registered successfully');
-  } catch (error) {
-    console.error('  ✗ Failed to load RAG routes:', error.message);
-  }
 }
 
 /**
@@ -113,63 +111,24 @@ async function activate(pluginAPI) {
   const execAsync = promisify(exec);
   const fs = require('fs').promises;
 
-  console.log('\n🔌 Activating RAG Plugin...');
-
   try {
-    // 1. Install npm dependencies
-    console.log('  📦 Installing plugin dependencies...');
-    const pluginDir = path.join(__dirname);
+    const master = require('mastercontroller');
+    const pluginDir = __dirname;
 
-    // Check if package.json exists
-    const packageJsonPath = path.join(pluginDir, 'package.json');
+    // 1. Run database migrations
     try {
-      await fs.access(packageJsonPath);
-      console.log(`  ✓ Found package.json at ${packageJsonPath}`);
-
-      // Run npm install in plugin directory
-      const { stdout, stderr } = await execAsync('npm install', {
-        cwd: pluginDir,
-        env: { ...process.env, NODE_ENV: 'production' }
-      });
-
-      if (stdout) console.log(`  ✓ npm install output:\n${stdout.split('\n').map(l => '    ' + l).join('\n')}`);
-      if (stderr && !stderr.includes('npm WARN')) {
-        console.warn(`  ⚠ npm install warnings:\n${stderr.split('\n').map(l => '    ' + l).join('\n')}`);
-      }
-
-      console.log('  ✓ Plugin dependencies installed successfully');
-    } catch (err) {
-      if (err.code === 'ENOENT') {
-        console.log('  ℹ No package.json found, skipping dependency installation');
-      } else {
-        throw err;
-      }
-    }
-
-    // 2. Run database migrations
-    console.log('  🗄️  Running database migrations...');
-    try {
-      const master = require('mastercontroller');
-
       // Check if migrations directory exists
       const migrationsPath = path.join(pluginDir, 'app/models/db/migrations');
       try {
         await fs.access(migrationsPath);
 
         // Run masterrecord migrations for this plugin
-        const { stdout: migrationOutput } = await execAsync(
+        await execAsync(
           `cd ${master.root} && masterrecord update-database rag`,
           { env: process.env }
         );
-
-        console.log('  ✓ Database migrations completed');
-        if (migrationOutput) {
-          console.log(`${migrationOutput.split('\n').map(l => '    ' + l).join('\n')}`);
-        }
       } catch (err) {
-        if (err.code === 'ENOENT') {
-          console.log('  ℹ No migrations found, skipping');
-        } else {
+        if (err.code !== 'ENOENT') {
           throw err;
         }
       }
@@ -178,9 +137,15 @@ async function activate(pluginAPI) {
       throw err;
     }
 
+    // 2. Create symlink for Next.js integration
+    try {
+      const loaderGenerator = require(`${master.root}/components/plugins/app/core/loaderGenerator.js`);
+      await loaderGenerator.createPluginSymlink('rag-plugin');
+    } catch (err) {
+      console.warn('  ⚠ Symlink creation error:', err.message);
+    }
+
     // 3. Create necessary directories
-    console.log('  📁 Creating plugin directories...');
-    const master = require('mastercontroller');
     const directories = [
       path.join(master.root, 'storage/rag/documents'),
       path.join(master.root, 'storage/rag/vectors')
@@ -189,7 +154,6 @@ async function activate(pluginAPI) {
     for (const dir of directories) {
       try {
         await fs.mkdir(dir, { recursive: true });
-        console.log(`  ✓ Created directory: ${dir}`);
       } catch (err) {
         if (err.code !== 'EEXIST') throw err;
       }
@@ -202,8 +166,6 @@ async function activate(pluginAPI) {
         pluginPath: pluginDir
       });
     }
-
-    console.log('✓ RAG Plugin activated successfully!\n');
 
     return {
       success: true,
@@ -228,8 +190,6 @@ async function activate(pluginAPI) {
  * @param {Object} pluginAPI - { hookService, HOOKS, pluginLoader, pluginPath }
  */
 async function deactivate(pluginAPI) {
-  console.log('\n🔌 Deactivating RAG Plugin...');
-
   try {
     // Fire PLUGIN_DEACTIVATED hook
     if (pluginAPI.hookService && pluginAPI.HOOKS) {
@@ -238,8 +198,6 @@ async function deactivate(pluginAPI) {
         pluginPath: __dirname
       });
     }
-
-    console.log('✓ RAG Plugin deactivated successfully!\n');
 
     return {
       success: true,

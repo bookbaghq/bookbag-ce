@@ -12,6 +12,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import api from '@/apiConfig.json';
 
 export function DynamicPluginSidebar({ usage, chatId, ...props }) {
   const [components, setComponents] = useState([]);
@@ -26,17 +27,23 @@ export function DynamicPluginSidebar({ usage, chatId, ...props }) {
         setError(null);
 
         // 1. Query backend API for components with specified usage
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8080';
+        const backendUrl = api.ApiConfig.main;
         const response = await fetch(`${backendUrl}/api/plugins/components/list?usage=${usage}`);
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch components: ${response.statusText}`);
+          console.warn(`Failed to fetch plugin components: ${response.statusText}`);
+          setError(`Failed to fetch components: ${response.statusText}`);
+          setLoading(false);
+          return;
         }
 
         const data = await response.json();
 
         if (!data.success) {
-          throw new Error(data.error || 'Failed to load components');
+          console.warn('Plugin components API error:', data.error);
+          setError(data.error || 'Failed to load components');
+          setLoading(false);
+          return;
         }
 
         setComponents(data.components || []);
@@ -45,7 +52,7 @@ export function DynamicPluginSidebar({ usage, chatId, ...props }) {
         const loadedComps = await Promise.all(
           (data.components || []).map(async (comp) => {
             try {
-              // importPath format: "plugins/rag-plugin/nextjs/pages/client/KnowledgeBaseSidebar"
+              // importPath format: "plugins/rag-plugin/nextjs/client/KnowledgeBaseSidebar"
               // Extract plugin name and component path from the backend-provided path
               const pathParts = comp.importPath.split('/');
               const pluginName = pathParts[1]; // e.g., "rag-plugin"
@@ -68,7 +75,7 @@ export function DynamicPluginSidebar({ usage, chatId, ...props }) {
                 metadata: comp.metadata
               };
             } catch (err) {
-              console.error(`Error loading component ${comp.name}:`, err);
+              console.warn(`Error loading component ${comp.name}:`, err);
               return null;
             }
           })
@@ -78,7 +85,7 @@ export function DynamicPluginSidebar({ usage, chatId, ...props }) {
         setLoadedComponents(loadedComps.filter(Boolean));
 
       } catch (err) {
-        console.error('Error loading sidebar components:', err);
+        console.warn('Error loading sidebar components:', err);
         setError(err.message);
       } finally {
         setLoading(false);

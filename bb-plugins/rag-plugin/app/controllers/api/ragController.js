@@ -17,6 +17,7 @@ class ragController {
             this._ragContext = req.ragContext;
             this._chatContext = req.chatContext; // Add chat context for chat creation
             this._mediaContext = req.mediaContext; // Add media context for settings
+            
 
             // Lazy load services using relative paths
             const FileStorageService = require('../../service/fileStorageService');

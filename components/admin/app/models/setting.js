@@ -12,6 +12,11 @@ class Setting {
     db.boolean().default(false);
   }
 
+  // Plugin upload maximum file size in bytes (default: 104857600 = 100MB)
+  plugin_upload_max_file_size(db) {
+    db.integer().default(104857600);
+  }
+
   // Creation timestamp
   created_at(db) {
     db.string().notNullable();

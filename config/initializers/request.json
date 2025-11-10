@@ -3,6 +3,7 @@
     "formidable": {
         "multiples": true,
         "keepExtensions": true,
-        "maxFileSize": 5242880
+        "maxFileSize": 52428800,
+        "maxTotalFileSize": 52428800
     }
 }

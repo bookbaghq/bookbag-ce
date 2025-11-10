@@ -13,7 +13,7 @@
  */
 
 const master = require('mastercontroller');
-const { HOOKS } = require('../../../../../bb-plugins/plugin-plugin/app/core/hookConstants');
+const { HOOKS } = require('../../../../../components/plugins/app/core/hookConstants');
 
 class sidebarController {
   returnJson(obj) { return obj; }
@@ -36,6 +36,177 @@ class sidebarController {
       // Initialize menu data
       const menu = [];
       const submenu = {};
+
+      // Add core menu items (hardcoded - not plugin-dependent)
+      // These are essential features that should always be available
+
+      // Admin menu (position 1)
+      menu.push({
+        id: 'admin',
+        label: 'Admin',
+        url: '/bb-admin',
+        icon: 'Settings',
+        position: 1
+      });
+      submenu['admin'] = [
+        {
+          label: 'Dashboard',
+          url: '/bb-admin'
+        },
+        {
+          label: 'Settings',
+          url: '/bb-admin/admin/settings'
+        }
+      ];
+
+      // Chats menu (position 10)
+      menu.push({
+        id: 'chats',
+        label: 'Chats',
+        url: '/bb-admin/chats',
+        icon: 'MessageSquare',
+        position: 10
+      });
+      submenu['chats'] = [
+        {
+          label: 'Search',
+          url: '/bb-admin/chats/search'
+        },
+        {
+          label: 'Create',
+          url: '/bb-admin/chats/create'
+        },
+        {
+          label: 'Settings',
+          url: '/bb-admin/chats/settings'
+        }
+      ];
+
+      // Media menu (position 20)
+      menu.push({
+        id: 'media',
+        label: 'Media',
+        url: '/bb-admin/media',
+        icon: 'Image',
+        position: 20
+      });
+      submenu['media'] = [
+        {
+          label: 'Library',
+          url: '/bb-admin/media'
+        },
+        {
+          label: 'Settings',
+          url: '/bb-admin/media/settings'
+        }
+      ];
+
+      // Models menu (position 25)
+      menu.push({
+        id: 'models',
+        label: 'Models',
+        url: '/bb-admin/models',
+        icon: 'Cpu',
+        position: 25
+      });
+      submenu['models'] = [
+        {
+          label: 'Library',
+          url: '/bb-admin/models/library'
+        },
+        {
+          label: 'My Models',
+          url: '/bb-admin/models/my-models'
+        },
+        {
+          label: 'Settings',
+          url: '/bb-admin/models/settings'
+        }
+      ];
+
+      // Mail menu (position 40) - Core plugin
+      menu.push({
+        id: 'mail',
+        label: 'Mail',
+        url: '/bb-admin/mail',
+        icon: 'Mail',
+        position: 40
+      });
+      submenu['mail'] = [
+        {
+          label: 'Settings',
+          url: '/bb-admin/mail/settings'
+        },
+        {
+          label: 'Email Logs',
+          url: '/bb-admin/mail/logs'
+        }
+      ];
+
+      // Workspace menu (position 50) - Core plugin
+      menu.push({
+        id: 'workspace',
+        label: 'Workspaces',
+        url: '/bb-admin/workspaces',
+        icon: 'Users',
+        position: 50
+      });
+      submenu['workspace'] = [
+        {
+          label: 'All',
+          url: '/bb-admin/workspaces'
+        }
+      ];
+
+      // Users menu (position 60)
+      menu.push({
+        id: 'users',
+        label: 'Users',
+        url: '/bb-admin/users',
+        icon: 'User',
+        position: 60
+      });
+      submenu['users'] = [
+        {
+          label: 'Dashboard',
+          url: '/bb-admin/users'
+        },
+        {
+          label: 'All Users',
+          url: '/bb-admin/users/all'
+        },
+        {
+          label: 'Add New',
+          url: '/bb-admin/users/add-new'
+        },
+        {
+          label: 'Profile',
+          url: '/bb-admin/users/profile'
+        },
+        {
+          label: 'Settings',
+          url: '/bb-admin/users/settings'
+        }
+      ];
+
+      // Plugins menu (position 70) - Core plugin system
+      menu.push({
+        id: 'plugins',
+        label: 'Plugins',
+        url: '/bb-admin/plugins',
+        icon: 'Puzzle',
+        position: 70
+      });
+      submenu['plugins'] = [
+        {
+          label: 'Installed',
+          url: '/bb-admin/plugins/installed'
+        },
+        {
+          label: 'Add New',
+          url: '/bb-admin/plugins/new'
+        }
+      ];
 
       // Fire admin_menu hook to allow plugins to add menu items via generic hook system
       // Plugins can modify menu/submenu objects directly in the hook callback

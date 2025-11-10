@@ -47,32 +47,30 @@ if ($MODE_CHOICE -eq "1") {
 }
 Write-Host ""
 
-# Get backend URL from environment or prompt
-if ([string]::IsNullOrWhiteSpace($env:NEXT_PUBLIC_BACKEND_URL)) {
-    $BACKEND_URL = Read-Host "Enter your backend URL (e.g., http://your-server-ip:8080) [default: http://127.0.0.1:8080]"
-    if ([string]::IsNullOrWhiteSpace($BACKEND_URL)) {
-        # Use default if nothing entered
-        $env:NEXT_PUBLIC_BACKEND_URL = "http://127.0.0.1:8080"
-    } else {
-        $env:NEXT_PUBLIC_BACKEND_URL = $BACKEND_URL
-    }
+# Get backend URL from user input
+$BACKEND_URL = Read-Host "Enter your backend URL (e.g., http://your-server-ip:8080) [default: http://127.0.0.1:8080]"
+if ([string]::IsNullOrWhiteSpace($BACKEND_URL)) {
+    # Use default if nothing entered
+    $BACKEND_URL = "http://127.0.0.1:8080"
 }
 
 # Remove trailing slashes from backend URL
-$env:NEXT_PUBLIC_BACKEND_URL = $env:NEXT_PUBLIC_BACKEND_URL.TrimEnd('/')
+$BACKEND_URL = $BACKEND_URL.TrimEnd('/')
 
 # Ensure URL has http:// or https://
-if ($env:NEXT_PUBLIC_BACKEND_URL -notmatch '^https?://') {
+if ($BACKEND_URL -notmatch '^https?://') {
     # Only add http:// if there's actual content
-    if (-not [string]::IsNullOrWhiteSpace($env:NEXT_PUBLIC_BACKEND_URL)) {
-        $env:NEXT_PUBLIC_BACKEND_URL = "http://$($env:NEXT_PUBLIC_BACKEND_URL)"
+    if (-not [string]::IsNullOrWhiteSpace($BACKEND_URL)) {
+        $BACKEND_URL = "http://$BACKEND_URL"
     } else {
         # Fallback to default if somehow empty
-        $env:NEXT_PUBLIC_BACKEND_URL = "http://127.0.0.1:8080"
+        $BACKEND_URL = "http://127.0.0.1:8080"
     }
 }
 
-Write-Host "📦 Backend URL: $($env:NEXT_PUBLIC_BACKEND_URL)" -ForegroundColor Blue
+Write-Host ""
+Write-Host "✅ Configured Backend URL: $BACKEND_URL" -ForegroundColor Green
+Write-Host "   (This URL will be used by the frontend to connect to the backend)" -ForegroundColor Blue
 
 # Ensure JWT secrets are initialized before starting services (for specific environment)
 Write-Host "🔐 Initializing JWT secrets for $MODE environment..." -ForegroundColor Blue
@@ -82,7 +80,7 @@ Write-Host "✅ JWT secrets ensured for $MODE" -ForegroundColor Green
 Write-Host ""
 
 # Update CORS configuration with frontend URL
-$FRONTEND_ORIGIN = $env:NEXT_PUBLIC_BACKEND_URL -replace ':\d+$', ':3000'
+$FRONTEND_ORIGIN = $BACKEND_URL -replace ':\d+$', ':3000'
 Write-Host "🔒 Updating CORS configuration..." -ForegroundColor Blue
 Write-Host ""
 
@@ -114,6 +112,25 @@ fs.writeFileSync('$($corsConfigPath.Replace('\', '/'))', JSON.stringify(config, 
 } else {
     Write-Host "⚠️  CORS config not found at $corsConfigPath" -ForegroundColor Yellow
 }
+Write-Host ""
+
+# Update apiConfig.json with backend URL
+Write-Host "🔧 Updating apiConfig.json with backend URL..." -ForegroundColor Blue
+Set-Location nextjs-app
+try {
+    $configPath = "apiConfig.json"
+    if (Test-Path $configPath) {
+        $config = Get-Content $configPath -Raw | ConvertFrom-Json
+        $config.ApiConfig.main = $BACKEND_URL
+        $config | ConvertTo-Json -Depth 10 | Set-Content $configPath
+        Write-Host "✅ Updated apiConfig.json: main = $BACKEND_URL" -ForegroundColor Green
+    } else {
+        Write-Host "⚠️  apiConfig.json not found at $configPath" -ForegroundColor Yellow
+    }
+} catch {
+    Write-Host "⚠️  Error updating apiConfig.json: $($_.Exception.Message)" -ForegroundColor Yellow
+}
+Set-Location ..
 Write-Host ""
 
 # Step 1: Install backend dependencies

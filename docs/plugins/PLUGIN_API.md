@@ -480,7 +480,7 @@ if (user) {
 
 **first() - Get first record:**
 ```javascript
-const firstChat = chatContext.Chat.first();
+const firstChat = chatContext.Chat.single();
 ```
 
 **single() - Get singleton record:**

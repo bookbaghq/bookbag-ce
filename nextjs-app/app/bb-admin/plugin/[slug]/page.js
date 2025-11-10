@@ -6,6 +6,7 @@
  */
 
 import PluginViewClient from '../../_components/PluginViewClient';
+import api from '@/apiConfig.json';
 
 /**
  * Generate metadata for plugin pages
@@ -16,7 +17,7 @@ export async function generateMetadata({ params }) {
 
   try {
     // Try to load plugin-specific metadata
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8080';
+    const backendUrl = api.ApiConfig.main;
     const response = await fetch(`${backendUrl}/api/plugins/views/get?slug=${slug}`, {
       cache: 'no-store'
     });

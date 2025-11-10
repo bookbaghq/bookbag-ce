@@ -60,8 +60,6 @@ class TextExtractorService {
     async extract(filePath, mimeType = null) {
         const ext = path.extname(filePath).toLowerCase();
 
-        console.log(`📄 Extracting text from ${ext} file: ${path.basename(filePath)}`);
-
         try {
             switch (ext) {
                 case '.txt':
@@ -98,7 +96,6 @@ class TextExtractorService {
      */
     async extractPlainText(filePath) {
         const text = await fs.readFile(filePath, 'utf-8');
-        console.log(`   ✓ Extracted ${text.length} characters from plain text file`);
         return text;
     }
 
@@ -122,8 +119,6 @@ class TextExtractorService {
 
             const text = result.text || '';
             const pageCount = result.numPages || 0;
-
-            console.log(`   ✓ Extracted ${text.length} characters from PDF (${pageCount} pages)`);
 
             if (!text || text.trim().length === 0) {
                 throw new Error('PDF appears to be empty or contains only images (OCR not supported in MVP)');

@@ -1,0 +1,33 @@
+{
+  "name": "@bookbag/tokens-plugin",
+  "version": "1.0.0",
+  "description": "Comprehensive token usage analytics and management plugin for Bookbag. Tracks LLM token consumption, enforces limits, provides detailed analytics and cost estimation.",
+  "main": "index.js",
+  "keywords": [
+    "bookbag",
+    "plugin",
+    "tokens",
+    "analytics",
+    "llm",
+    "monitoring",
+    "limits",
+    "cost-tracking"
+  ],
+  "author": "Bookbag Team",
+  "license": "MIT",
+  "dependencies": {
+    "lucide-react": "^0.485.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sonner": "^1.7.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.0"
+  },
+  "scripts": {
+    "build": "node build.js",
+    "dev": "node build.js --watch"
+  }
+
+
+}

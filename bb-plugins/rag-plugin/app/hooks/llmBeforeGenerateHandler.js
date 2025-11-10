@@ -22,8 +22,6 @@ const RAGService = require('../service/ragService');
 
 async function handleLLMBeforeGenerate(context) {
     try {
-        console.log('🔌 RAG Plugin: LLM_BEFORE_GENERATE hook triggered');
-
         // Extract parameters from hook context
         const {
             messageHistory,
@@ -39,7 +37,6 @@ async function handleLLMBeforeGenerate(context) {
 
         // Validate required parameters
         if (!messageHistory || !Array.isArray(messageHistory)) {
-            console.log('⚠️  RAG: Invalid messageHistory, skipping RAG');
             return context;
         }
 
@@ -50,24 +47,19 @@ async function handleLLMBeforeGenerate(context) {
         const shouldSkip = RAGService.shouldSkipRAG(ragContext, chatContext, chatId);
 
         if (shouldSkip) {
-            console.log('🚫 RAG: Skipping based on settings flags');
             return context; // Return unmodified context
         }
 
         // 📝 Extract user's latest message (last message in history)
         const userMessage = messageHistory[messageHistory.length - 1];
         if (!userMessage || !userMessage.content) {
-            console.log('⚠️  RAG: No user message content found, skipping RAG');
             return context;
         }
 
         const question = userMessage.content;
-        console.log(`🔍 RAG: Processing question: "${question.substring(0, 100)}..."`);
 
         // 🧠 Query RAG system
         const ragService = new RAGService(ragContext);
-
-        console.log(`🔍 RAG: Querying with chatId=${chatId}, workspaceId=${workspaceId}`);
         const ragResults = await ragService.queryRAG({
             chatId,
             workspaceId,
@@ -77,11 +69,8 @@ async function handleLLMBeforeGenerate(context) {
 
         // If no results, return unmodified context
         if (!ragResults || ragResults.length === 0) {
-            console.log('📭 RAG: No relevant documents found, continuing without RAG context');
             return context;
         }
-
-        console.log(`✅ RAG: Found ${ragResults.length} relevant chunks`);
 
         // 📄 Build context string from results
         const ragContextString = ragService.buildContextString(ragResults);
@@ -98,9 +87,6 @@ async function handleLLMBeforeGenerate(context) {
 
         // Insert at second-to-last position (before the user's message)
         modifiedMessageHistory.splice(modifiedMessageHistory.length - 1, 0, ragSystemMessage);
-
-        console.log(`✅ RAG: Injected context into message history (${ragResults.length} chunks)`);
-        console.log(`📊 RAG: Message history length: ${messageHistory.length} → ${modifiedMessageHistory.length}`);
 
         // Return modified context with updated messageHistory
         return {

@@ -40,10 +40,10 @@ const nextConfig = {
                     // Match any context module that includes 'bb-plugins' in its path
                     /bb-plugins/,
                     (context) => {
-                         // ONLY match client sidebar components in pages/client/ subdirectory
+                         // ONLY match client sidebar components in client/ subdirectory
                          // This prevents webpack from trying to compile admin pages or other unrelated files
-                         // Regex matches: ./plugin-name/nextjs/pages/client/ComponentName.js
-                         context.regExp = /^\.\/[^/]+\/nextjs\/pages\/client\/.*\.(jsx?|tsx?)$/;
+                         // Regex matches: ./plugin-name/nextjs/client/ComponentName.js
+                         context.regExp = /^\.\/[^/]+\/nextjs\/client\/.*\.(jsx?|tsx?)$/;
                     }
                )
           );

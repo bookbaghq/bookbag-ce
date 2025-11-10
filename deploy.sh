@@ -69,35 +69,31 @@ if [ -z "$NETWORK_IP" ]; then
     NETWORK_IP="127.0.0.1"
 fi
 
-# Get backend URL from environment or prompt
-if [ -z "$NEXT_PUBLIC_BACKEND_URL" ]; then
-    DEFAULT_BACKEND_URL="http://${NETWORK_IP}:8080"
-    echo -n "Enter your backend URL (e.g., http://your-server-ip:8080) [default: ${DEFAULT_BACKEND_URL}]: "
-    read BACKEND_URL
-    if [ -z "$BACKEND_URL" ]; then
-        # Use detected network IP as default
-        export NEXT_PUBLIC_BACKEND_URL="${DEFAULT_BACKEND_URL}"
-    else
-        export NEXT_PUBLIC_BACKEND_URL=$BACKEND_URL
-    fi
+# Get backend URL from user or use default
+DEFAULT_BACKEND_URL="http://${NETWORK_IP}:8080"
+echo -n "Enter your backend URL (e.g., http://your-server-ip:8080) [default: ${DEFAULT_BACKEND_URL}]: "
+read BACKEND_URL
+if [ -z "$BACKEND_URL" ]; then
+    # Use detected network IP as default
+    BACKEND_URL="${DEFAULT_BACKEND_URL}"
 fi
 
 # Remove trailing slashes from backend URL
-export NEXT_PUBLIC_BACKEND_URL="${NEXT_PUBLIC_BACKEND_URL%/}"
+BACKEND_URL="${BACKEND_URL%/}"
 
 # Ensure URL has http:// or https:// (skip if already has it)
-if [[ ! "$NEXT_PUBLIC_BACKEND_URL" =~ ^https?:// ]]; then
+if [[ ! "$BACKEND_URL" =~ ^https?:// ]]; then
     # Only add http:// if there's actual content after it would be added
-    if [ -n "$NEXT_PUBLIC_BACKEND_URL" ]; then
-        export NEXT_PUBLIC_BACKEND_URL="http://$NEXT_PUBLIC_BACKEND_URL"
+    if [ -n "$BACKEND_URL" ]; then
+        BACKEND_URL="http://$BACKEND_URL"
     else
         # Fallback to default if somehow empty
-        export NEXT_PUBLIC_BACKEND_URL="http://127.0.0.1:8080"
+        BACKEND_URL="http://127.0.0.1:8080"
     fi
 fi
 
 echo ""
-echo -e "${GREEN}✅ Configured Backend URL: $NEXT_PUBLIC_BACKEND_URL${NC}"
+echo -e "${GREEN}✅ Configured Backend URL: $BACKEND_URL${NC}"
 echo -e "${BLUE}   (This URL will be used by the frontend to connect to the backend)${NC}"
 
 # Get frontend port (only in production mode)
@@ -113,8 +109,8 @@ if [ "$MODE" = "production" ]; then
 fi
 
 # Derive URLs for display (local and network)
-BACKEND_SCHEME=$(echo "$NEXT_PUBLIC_BACKEND_URL" | sed -E 's#^(https?)://.*#\1#')
-BACKEND_HOSTPORT=$(echo "$NEXT_PUBLIC_BACKEND_URL" | sed -E 's#^https?://([^/]+).*#\1#')
+BACKEND_SCHEME=$(echo "$BACKEND_URL" | sed -E 's#^(https?)://.*#\1#')
+BACKEND_HOSTPORT=$(echo "$BACKEND_URL" | sed -E 's#^https?://([^/]+).*#\1#')
 if [[ "$BACKEND_HOSTPORT" == *:* ]]; then
     BACKEND_PORT="${BACKEND_HOSTPORT##*:}"
 else
@@ -136,7 +132,7 @@ echo -e "${GREEN}✅ JWT secrets ensured for ${MODE}${NC}"
 echo ""
 
 # Update CORS configuration with frontend URLs (localhost, loopback, and network)
-FRONTEND_ORIGIN=$(echo $NEXT_PUBLIC_BACKEND_URL | sed -E "s|:[0-9]+|:${FRONTEND_PORT}|")
+FRONTEND_ORIGIN=$(echo $BACKEND_URL | sed -E "s|:[0-9]+|:${FRONTEND_PORT}|")
 echo -e "${BLUE}🔒 Updating CORS configuration...${NC}"
 
 if [ -f "config/initializers/cors.json" ]; then
@@ -208,14 +204,14 @@ try {
     console.error('⚠️  Error updating apiConfig.json:', error.message);
     process.exit(1);
 }
-" "$NEXT_PUBLIC_BACKEND_URL"
+" "$BACKEND_URL"
 echo -e "${GREEN}✅ API configuration updated${NC}"
 echo ""
 
 # Step 4: Build frontend (only for production)
 if [ "$BUILD_REQUIRED" = true ]; then
     echo -e "${BLUE}🏗️  Building frontend...${NC}"
-    NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL npm run build
+    npm run build
     echo -e "${GREEN}✅ Frontend built successfully${NC}"
     cd ..
 else
@@ -238,7 +234,7 @@ if [ "$USE_PM2" = true ]; then
     echo ""
 
     echo -e "${BLUE}🚀 Starting services with PM2 (${MODE} mode)...${NC}"
-    PORT=$FRONTEND_PORT NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL pm2 start $CONFIG_FILE --update-env
+    PORT=$FRONTEND_PORT pm2 start $CONFIG_FILE --update-env
     echo -e "${GREEN}✅ Services started in ${MODE} mode${NC}"
     echo ""
 
@@ -282,7 +278,7 @@ else
         
         # Start frontend in foreground
         cd nextjs-app
-        PORT=$FRONTEND_PORT NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL npm run dev
+        PORT=$FRONTEND_PORT npm run dev
     else
         echo -e "${YELLOW}Starting in production mode (foreground processes)${NC}"
         echo -e "${YELLOW}Press Ctrl+C to stop${NC}"
@@ -305,7 +301,7 @@ else
         
         # Start frontend in foreground
         cd nextjs-app
-        PORT=$FRONTEND_PORT NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL npm start
+        PORT=$FRONTEND_PORT npm start
     fi
 fi
 

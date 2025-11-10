@@ -6,6 +6,7 @@ import { NavMain } from "./nav-main";
 import { NavProjects } from "./nav-projects";
 import { NavUser } from "./nav-user";
 import * as LucideIcons from "lucide-react";
+import api from '@/apiConfig.json';
 
 import {
   Sidebar,
@@ -34,7 +35,7 @@ export function SidebarNav (props) {
 
   const fetchMenuItems = async () => {
     try {
-      const base = (await import('@/apiConfig.json')).default.ApiConfig.main;
+      const base = api.ApiConfig.main;
       const response = await fetch(`${base}/api/layout/sidebar`, {
         credentials: 'include'
       });
@@ -75,7 +76,7 @@ export function SidebarNav (props) {
 
   const fetchStorageUsage = async () => {
     try {
-      const base = (await import('@/apiConfig.json')).default.ApiConfig.main;
+      const base = api.ApiConfig.main;
       const response = await fetch(`${base}/bb-media/api/media/storage`, {
         credentials: 'include'
       });

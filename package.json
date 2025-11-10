@@ -24,6 +24,7 @@
     "pm2:status": "pm2 status"
   },
   "dependencies": {
+    "adm-zip": "^0.5.16",
     "bcryptjs": "^3.0.2",
     "content-type": "^1.0.5",
     "jsonwebtoken": "^9.0.2",
@@ -39,6 +40,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
+    "esbuild": "^0.25.12",
     "eslint": "^9.36.0"
   },
   "type": "commonjs"

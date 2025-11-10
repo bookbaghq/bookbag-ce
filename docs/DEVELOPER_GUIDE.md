@@ -330,7 +330,7 @@ const item = context.ExampleModel.find(id);
 const items = context.ExampleModel.all();
 
 // Get first record
-const first = context.ExampleModel.first();
+const first = context.ExampleModel.single();
 
 // Get single record (for singletons)
 const single = context.ExampleModel.single();

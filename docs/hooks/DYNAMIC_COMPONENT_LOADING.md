@@ -227,7 +227,7 @@ export function DynamicPluginSidebar({ usage, chatId, ...props }) {
         setError(null);
 
         // Fetch component list from backend
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8080';
+        const backendUrl = api.ApiConfig.main;
         const response = await fetch(`${backendUrl}/api/plugins/components/list?usage=${usage}`);
 
         if (!response.ok) {
@@ -392,7 +392,7 @@ export default function KnowledgeBaseSidebar({ chatId, isWorkspaceCreated }) {
 
   useEffect(() => {
     async function loadDocuments() {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8080';
+      const backendUrl = api.ApiConfig.main;
       const response = await fetch(`${backendUrl}/bb-rag/api/rag/list?tenantId=default`);
       const data = await response.json();
       setDocuments(data.documents || []);

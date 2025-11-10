@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { Loader2, Save } from 'lucide-react';
 import api from '@/apiConfig.json';
@@ -15,7 +16,8 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState({
-    disable_client_side: false
+    disable_client_side: false,
+    plugin_upload_max_file_size: 104857600 // Default 100MB in bytes
   });
 
   useEffect(() => {
@@ -32,7 +34,8 @@ export default function AdminSettingsPage() {
 
       if (data.success) {
         setSettings({
-          disable_client_side: data.settings.disable_client_side || false
+          disable_client_side: data.settings.disable_client_side || false,
+          plugin_upload_max_file_size: data.settings.plugin_upload_max_file_size || 104857600
         });
       } else {
         toast.error(data.error || 'Failed to load settings');
@@ -130,6 +133,72 @@ export default function AdminSettingsPage() {
               </p>
             </div>
           )}
+
+          {/* Save Button */}
+          <div className="flex justify-end pt-4">
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              size="lg"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Settings
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Plugin Upload Settings */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Plugin Upload Settings</CardTitle>
+          <CardDescription>
+            Configure maximum file size for plugin uploads
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Max File Size Input */}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="plugin_upload_max_file_size" className="text-base font-medium">
+                Maximum Plugin Upload Size (MB)
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Set the maximum file size allowed for plugin ZIP uploads. This limit helps control server resources and upload times.
+              </p>
+            </div>
+            <div className="flex items-center gap-4">
+              <Input
+                id="plugin_upload_max_file_size"
+                type="number"
+                min="1"
+                max="1000"
+                value={Math.round(settings.plugin_upload_max_file_size / 1048576)}
+                onChange={(e) => {
+                  const mb = parseInt(e.target.value) || 100;
+                  const bytes = mb * 1048576;
+                  setSettings({ ...settings, plugin_upload_max_file_size: bytes });
+                }}
+                className="w-32"
+              />
+              <span className="text-sm text-muted-foreground">MB</span>
+            </div>
+            <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>Note:</strong> The current limit is set to {Math.round(settings.plugin_upload_max_file_size / 1048576)} MB ({(settings.plugin_upload_max_file_size / 1048576).toFixed(2)} MB).
+                This matches WordPress-style plugin management where administrators can control upload limits similar to PHP's upload_max_filesize setting.
+              </p>
+            </div>
+          </div>
 
           {/* Save Button */}
           <div className="flex justify-end pt-4">

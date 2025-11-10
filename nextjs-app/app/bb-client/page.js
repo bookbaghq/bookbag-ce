@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ModernChatInterface } from './_components/modern-chat-interface';
-import { KnowledgeBaseSidebar } from '@/plugins/rag-plugin/nextjs/pages/client/KnowledgeBaseSidebar';
+import { getComponentsForUsage } from '@/lib/pluginComponentLoader';
 import api from '@/apiConfig.json';
 
 const BASE_URL = api.ApiConfig.main;
@@ -13,6 +13,9 @@ export default function ClientPage() {
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
+
+  // Load sidebar-left plugin components from static loader
+  const sidebarComponents = getComponentsForUsage('sidebar-left');
 
   // Check if client-side access is disabled
   useEffect(() => {
@@ -108,9 +111,16 @@ export default function ClientPage() {
 
   return (
     <div className="flex h-full w-full bg-background overflow-hidden">
-      <KnowledgeBaseSidebar
-        chatId={null}
-      />
+      {/* Statically loaded sidebar-left components */}
+      {sidebarComponents.length > 0 && (
+        <div className="sidebar-left-container">
+          {sidebarComponents.map((comp) => {
+            const { component: Component, name, metadata } = comp;
+            return <Component key={name} chatId={null} />;
+          })}
+        </div>
+      )}
+
       <div className="flex-1 flex flex-col h-full relative">
         <ModernChatInterface />
       </div>

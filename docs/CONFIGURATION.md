@@ -99,7 +99,6 @@ master=development|production
 
 # Override ports
 HTTP_PORT=8080
-NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
 ```
 
 ## Frontend Configuration

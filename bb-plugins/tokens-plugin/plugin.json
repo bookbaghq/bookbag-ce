@@ -1,11 +1,12 @@
 {
-  "name": "Token Management Plugin",
+  "name": "Token Analytics Plugin",
   "slug": "tokens-plugin",
   "version": "1.0.0",
-  "description": "API token generation and management",
+  "description": "Comprehensive LLM token usage analytics, monitoring, and limit enforcement. Tracks token consumption, provides detailed analytics, cost estimation, and enforces global/per-user/per-chat token limits.",
   "author": "Bookbag Team",
   "entry": "index.js",
-  "category": "admin-sidebar",
-  "icon": "Key",
-  "priority": 9
+  "category": "analytics",
+  "icon": "Activity",
+  "priority": 35
+
 }

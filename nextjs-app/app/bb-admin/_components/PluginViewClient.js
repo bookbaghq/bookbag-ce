@@ -10,6 +10,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { getAllComponents } from '@/lib/pluginComponentLoader';
+import api from '@/apiConfig.json';
 
 export default function PluginViewClient({ slug }) {
   const [viewInfo, setViewInfo] = useState(null);
@@ -24,35 +26,55 @@ export default function PluginViewClient({ slug }) {
         setError(null);
 
         // 1. Query backend API to get view info
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8080';
+        const backendUrl = api.ApiConfig.main;
         const response = await fetch(`${backendUrl}/api/plugins/views/get?slug=${slug}`);
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch view info: ${response.statusText}`);
+          console.warn(`Failed to fetch plugin view info: ${response.statusText}`);
+          setError(`Failed to fetch view info: ${response.statusText}`);
+          setLoading(false);
+          return;
         }
 
         const data = await response.json();
 
         if (!data.success) {
-          throw new Error(data.error || 'View not found');
+          console.warn('Plugin view API error:', data.error);
+          setError(data.error || 'View not found');
+          setLoading(false);
+          return;
         }
 
         const view = data.view;
         setViewInfo(view);
 
-        // 2. Load plugin component from static registry
-        // The registry is auto-generated from the database and contains static imports
-        const { getPluginComponent } = await import('@/plugins/registry');
-        const Component = getPluginComponent(view.slug);
+        // 2. Find component in static loader by viewSlug metadata
+        const allComponents = getAllComponents();
+        const matchingComponent = Object.entries(allComponents).find(([name, info]) =>
+          info.metadata?.usage === 'admin-view' && info.metadata?.viewSlug === slug
+        );
+
+        if (!matchingComponent) {
+          console.warn(`Plugin component not found for view slug: ${slug}`);
+          setError(`Plugin component not found for view slug: ${slug}`);
+          setLoading(false);
+          return;
+        }
+
+        const [componentName, componentInfo] = matchingComponent;
+        const Component = componentInfo.component;
 
         if (!Component) {
-          throw new Error(`Plugin component not found in registry for slug: ${view.slug}`);
+          console.warn(`Plugin component not loaded: ${componentName}`);
+          setError(`Plugin component not loaded: ${componentName}`);
+          setLoading(false);
+          return;
         }
 
         setPluginComponent(() => Component);
 
       } catch (err) {
-        console.error('Error loading plugin view:', err);
+        console.warn('Error loading plugin view:', err);
         setError(err.message);
       } finally {
         setLoading(false);

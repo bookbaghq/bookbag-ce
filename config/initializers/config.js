@@ -14,8 +14,7 @@ var modelContext = require(`${master.root}/components/models/app/models/modelCon
 var mailContext = require(`${master.root}/components/mail/app/models/mailContext`);
 var workspaceContext = require(`${master.root}/components/workspace/app/models/workspaceContext`);
 var mediaContext = require(`${master.root}/components/media/app/models/mediaContext`);
-var ragContext = require(`${master.root}/bb-plugins/rag-plugin/app/models/ragContext`);
-var pluginContext = require(`${master.root}/bb-plugins/plugin-plugin/app/models/pluginContext`);
+var pluginContext = require(`${master.root}/components/plugins/app/models/pluginContext`);
 var adminContext = require(`${master.root}/components/admin/app/models/adminContext`);
 
 // mail services
@@ -24,9 +23,9 @@ const MailDeliveryService = require(`${master.root}/components/mail/app/service/
 const templateConfigPath = path.join(master.root, 'components', 'mail', 'config', 'mail-templates.json');
 
 // hook services
-const hookService = require(`${master.root}/bb-plugins/plugin-plugin/app/core/hookRegistration.js`);
-const { initializeCoreHooks, HOOKS } = require(`${master.root}/bb-plugins/plugin-plugin/app/core/hookInitializer.js`);
-const pluginLoader = require(`${master.root}/bb-plugins/plugin-plugin/app/core/pluginLoader.js`);
+const hookService = require(`${master.root}/components/plugins/app/core/hookRegistration.js`);
+const { initializeCoreHooks, HOOKS } = require(`${master.root}/components/plugins/app/core/hookInitializer.js`);
+const pluginLoader = require(`${master.root}/components/plugins/app/core/pluginLoader.js`);
 
 // initlaizing the tools we need for Master to run properly
 master.serverSettings(master.env.server);
@@ -51,7 +50,6 @@ master.addSingleton("modelContext", modelContext);
 master.addSingleton("mailContext", mailContext);
 master.addSingleton("workspaceContext", workspaceContext);
 master.addSingleton("mediaContext", mediaContext);
-master.addSingleton("ragContext", ragContext);
 master.addSingleton("pluginContext", pluginContext);
 master.addSingleton("adminContext", adminContext);
 master.register("_mapper", mapObject);
@@ -72,8 +70,8 @@ master.component("components", "models");
 master.component("components", "mail");
 master.component("components", "workspace");
 master.component("components", "media");
+master.component("components", "plugins");
 // master.component("components", "rag"); // Now loaded as a plugin
-// master.component("components", "plugins"); // Now loaded from bb-plugins/plugin-plugin
 master.component("components", "admin");
 
 // ============================================================================
@@ -93,6 +91,29 @@ hookService.doAction(HOOKS.CORE_INIT, {
 // Plugins can register their hooks during this phase
 pluginLoader.loadActivePlugins();
 
+// After plugins are loaded, regenerate Next.js loader
+// This ensures the loader.js file has the latest component registrations
+(async () => {
+  try {
+    const loaderGenerator = require(`${master.root}/components/plugins/app/core/loaderGenerator.js`);
+
+    // Get all registered client components
+    const registeredComponents = pluginLoader.getRegisteredClientComponents();
+
+    // Generate loader.js file for Next.js static imports
+    console.log('📝 Generating Next.js plugin loader...');
+    const result = await loaderGenerator.generateLoader(registeredComponents);
+
+    if (result.success) {
+      console.log(`✓ Plugin loader generated with ${result.componentCount} component(s)`);
+    } else {
+      console.error('✗ Failed to generate plugin loader:', result.error);
+    }
+  } catch (error) {
+    console.error('✗ Error generating plugin loader:', error.message);
+  }
+})();
+
 // Fire bookbag_ready hook - system fully loaded and ready
 hookService.doAction(HOOKS.CORE_READY, {
   master,
@@ -103,25 +124,61 @@ hookService.doAction(HOOKS.CORE_READY, {
 hookService.doAction(HOOKS.CORE_SHUTDOWN, { master });
 hookService.doAction(HOOKS.CORE_SHUTDOWN, { master });
 
-/** Register graceful shutdown handler
-process.on('SIGTERM', async () => {
-  console.log('📴 SIGTERM received, firing bookbag_shutdown hook...');
-  await hookService.doAction(HOOKS.CORE_SHUTDOWN, { master });
-  console.log('✓ Graceful shutdown complete');
-  process.exit(0);
+// ============================================================================
+// STATIC FILE SERVING FOR PLUGIN FILES
+// ============================================================================
+// Serve /bb-plugins directory statically so dynamic imports can access plugin files
+const fs = require('fs');
+const url = require('url');
+
+master.loaded(() => {
+  const originalEmit = master.server.emit;
+
+  master.server.emit = function(event, req, res) {
+    if (event === 'request') {
+      const parsedUrl = url.parse(req.url);
+
+      // Check if request is for bb-plugins directory
+      if (parsedUrl.pathname && parsedUrl.pathname.startsWith('/bb-plugins/')) {
+        const filePath = path.join(master.root, parsedUrl.pathname);
+
+        // Security: Ensure the resolved path is still within bb-plugins
+        const resolvedPath = path.resolve(filePath);
+        const pluginsDir = path.resolve(master.root, 'bb-plugins');
+
+        if (resolvedPath.startsWith(pluginsDir)) {
+          fs.readFile(resolvedPath, (err, data) => {
+            if (err) {
+              res.writeHead(404, { 'Content-Type': 'text/plain' });
+              res.end('File not found');
+            } else {
+              // Determine MIME type
+              const ext = path.extname(resolvedPath);
+              let contentType = 'text/plain';
+
+              if (ext === '.js') contentType = 'application/javascript';
+              else if (ext === '.json') contentType = 'application/json';
+              else if (ext === '.css') contentType = 'text/css';
+              else if (ext === '.html') contentType = 'text/html';
+
+              res.writeHead(200, {
+                'Content-Type': contentType,
+                'Cache-Control': 'no-cache',
+                'Access-Control-Allow-Origin': '*',
+                'Cross-Origin-Resource-Policy': 'cross-origin'
+              });
+              res.end(data);
+            }
+          });
+          return; // Don't call original emit
+        }
+      }
+    }
+
+    // For all other requests, call original emit
+    originalEmit.apply(this, arguments);
+  };
+
+  // CRITICAL: Return true so master.router.load() gets called
+  return true;
 });
-
-process.on('SIGINT', async () => {
-  console.log('📴 SIGINT received, firing bookbag_shutdown hook...');
-  await hookService.doAction(HOOKS.CORE_SHUTDOWN, { master });
-  console.log('✓ Graceful shutdown complete');
-  process.exit(0);
-});
-
- */
-
-// register these apps to have access to them in the controller.
-// example: master.register("mainContext", { anyobject : "name"});
-
-// require as many components you need
-// example: master.component("components", "auth");

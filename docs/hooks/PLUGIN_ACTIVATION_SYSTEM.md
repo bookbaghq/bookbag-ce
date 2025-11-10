@@ -111,7 +111,7 @@ curl -X POST http://localhost:8080/api/plugins/activate \
 ```javascript
 async activatePlugin(pluginName) {
   // 1. Find plugin in database
-  const plugin = pluginContext.Plugin.where(p => p.name == $, pluginName).first();
+  const plugin = pluginContext.Plugin.where(p => p.name == $, pluginName).single();
 
   // 2. Require plugin file
   const pluginModule = require(fullPath);

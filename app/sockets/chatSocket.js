@@ -5,8 +5,8 @@ const ChatHistoryService = require(`${master.root}/components/chats/app/service/
 const ModelService = require(`${master.root}/components/chats/app/service/modelService`);
 const llmConfigService = require("../../components/models/app/service/llmConfigService");
 const errorService = require(`${master.root}/app/service/errorService`);
-const { HOOKS } = require(`${master.root}/bb-plugins/plugin-plugin/app/core/hookConstants`);
-const hookService = require(`${master.root}/bb-plugins/plugin-plugin/app/core/hookRegistration`);
+const { HOOKS } = require(`${master.root}/components/plugins/app/core/hookConstants`);
+const hookService = require(`${master.root}/components/plugins/app/core/hookRegistration`);
 
 // AI Image handling imports
 const ResponseNormalizationService = require(`${master.root}/components/chats/app/service/responseNormalizationService`);

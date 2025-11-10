@@ -38,6 +38,7 @@ class settingsController {
         success: true,
         settings: {
           disable_client_side: setting.disable_client_side,
+          plugin_upload_max_file_size: setting.plugin_upload_max_file_size || 104857600, // Default 100MB
         }
       });
     } catch (error) {
@@ -55,7 +56,7 @@ class settingsController {
    */
   async updateSettings(obj) {
     try {
-      const { disable_client_side} = obj.params.formData || obj.params || {};
+      const { disable_client_side, plugin_upload_max_file_size } = obj.params.formData || obj.params || {};
 
       // Get or create settings record (singleton pattern)
       let setting = this._adminContext.Setting.single();
@@ -68,11 +69,13 @@ class settingsController {
         setting.created_at = dateNow;
         setting.updated_at = dateNow;
         setting.disable_client_side = disable_client_side !== undefined ? disable_client_side : false;
+        setting.plugin_upload_max_file_size = plugin_upload_max_file_size !== undefined ? plugin_upload_max_file_size : 104857600;
 
         this._adminContext.Setting.add(setting);
       } else {
         // Update existing settings
-        if (disable_client_side !== undefined) setting.disable_client_side = disable_client_side
+        if (disable_client_side !== undefined) setting.disable_client_side = disable_client_side;
+        if (plugin_upload_max_file_size !== undefined) setting.plugin_upload_max_file_size = plugin_upload_max_file_size;
         setting.updated_at = Date.now().toString();
       }
 
@@ -83,6 +86,7 @@ class settingsController {
         message: 'Settings updated successfully',
         settings: {
           disable_client_side: setting.disable_client_side,
+          plugin_upload_max_file_size: setting.plugin_upload_max_file_size,
         }
       });
     } catch (error) {
