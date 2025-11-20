@@ -123,12 +123,12 @@ class PluginLoader {
       const backendUrl = apiConfig.BACKEND_URL || 'http://127.0.0.1:8080';
       const bundleUrl = `${backendUrl}${bundlePath}`;
 
-      const module = await import(/* webpackIgnore: true */ bundleUrl);
+      const loadedModule = await import(/* webpackIgnore: true */ bundleUrl);
 
       // Cache the loaded module
-      this.loadedBundles.set(bundlePath, module);
+      this.loadedBundles.set(bundlePath, loadedModule);
 
-      return module;
+      return loadedModule;
 
     } catch (error) {
       console.error(`[PluginLoader] Failed to load bundle ${bundlePath}:`, error);

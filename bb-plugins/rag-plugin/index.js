@@ -106,35 +106,18 @@ function load(pluginAPI) {
  */
 async function activate(pluginAPI) {
   const path = require('path');
-  const { exec } = require('child_process');
-  const { promisify } = require('util');
-  const execAsync = promisify(exec);
   const fs = require('fs').promises;
 
   try {
     const master = require('mastercontroller');
     const pluginDir = __dirname;
 
-    // 1. Run database migrations
-    try {
-      // Check if migrations directory exists
-      const migrationsPath = path.join(pluginDir, 'app/models/db/migrations');
-      try {
-        await fs.access(migrationsPath);
+    // 1. Run database migrations using universal migration manager
+    const { runMigrations } = require(`${master.root}/components/plugins/app/core/migrationManager.js`);
+    const migrationResult = await runMigrations('rag-plugin', master, { skipIfNoMigrations: true });
 
-        // Run masterrecord migrations for this plugin
-        await execAsync(
-          `cd ${master.root} && masterrecord update-database rag`,
-          { env: process.env }
-        );
-      } catch (err) {
-        if (err.code !== 'ENOENT') {
-          throw err;
-        }
-      }
-    } catch (err) {
-      console.error('  ✗ Migration error:', err.message);
-      throw err;
+    if (!migrationResult.success) {
+      throw new Error(`Migration failed: ${migrationResult.error}`);
     }
 
     // 2. Create symlink for Next.js integration

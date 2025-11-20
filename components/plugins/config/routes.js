@@ -26,3 +26,13 @@ router.route("api/plugins/delete", "api/pluginActivation#deletePlugin", "delete"
 router.route("api/plugins/upload", "api/pluginInstallation#uploadPlugin", "post");
 router.route("api/plugins/uninstall", "api/pluginInstallation#uninstallPlugin", "delete");
 router.route("api/plugins/validate", "api/pluginInstallation#validatePlugin", "post");
+
+// Plugin migration history API routes
+router.route("api/plugins/migrations/history", "api/migrationHistory#getHistory", "get");
+router.route("api/plugins/migrations/stats", "api/migrationHistory#getStats", "get");
+router.route("api/plugins/migrations/:id", "api/migrationHistory#getById", "get");
+
+// Hooks inspector API routes (Developer Tools)
+router.route("api/plugins/hooks/stats", "api/hooksInspector#getStats", "get");
+router.route("api/plugins/hooks/detail", "api/hooksInspector#getHookDetail", "get");
+router.route("api/plugins/hooks/list", "api/hooksInspector#listHooks", "get");

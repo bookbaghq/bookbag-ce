@@ -5,15 +5,16 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { 
-  Send, 
-  Square, 
-  Paperclip, 
+import {
+  Send,
+  Square,
+  Paperclip,
   Mic
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -172,10 +173,13 @@ export function ChatInput({
                   <div className="flex flex-wrap gap-2">
                     {attachedImages.map((img, idx) => (
                       <div key={idx} className="relative group">
-                        <img
+                        <Image
                           src={img.preview || img.url}
                           alt="Attachment"
+                          width={80}
+                          height={80}
                           className="w-20 h-20 object-cover rounded border"
+                          unoptimized
                         />
                         <Button
                           type="button"

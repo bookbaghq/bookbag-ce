@@ -41,6 +41,20 @@ const HOOKS = {
    */
   CORE_SHUTDOWN: 'bookbag_shutdown',
 
+  /**
+   * Fired when Next.js rebuild is triggered
+   * Use for: Regenerating symlinks, loader files, plugin bundles
+   * Type: Action
+   */
+  CORE_REBUILD: 'bookbag_rebuild',
+
+  /**
+   * Fired when environment configs are loaded
+   * Use for: Modifying runtime settings, environment-specific setup
+   * Type: Action
+   */
+  CORE_ENV_LOADED: 'bookbag_env_loaded',
+
   // ============================================================================
   // ADMIN HOOKS
   // ============================================================================
@@ -84,6 +98,30 @@ const HOOKS = {
    * Context: Admin toolbar render
    */
   ADMIN_TOOLBAR: 'admin_toolbar',
+
+  /**
+   * Register custom admin settings sections/panels
+   * Use for: Adding plugin configuration panels to settings pages
+   * Type: Action
+   * Context: Admin settings page render
+   */
+  ADMIN_SETTINGS_SECTIONS: 'admin_settings_sections',
+
+  /**
+   * Fired when an error occurs in admin panel
+   * Use for: Error logging, alerting, recovery
+   * Type: Action
+   * Passes: { error, context, userId, timestamp }
+   */
+  ADMIN_ERROR: 'admin_error',
+
+  /**
+   * Modify admin login page rendering
+   * Use for: Custom login UI, SSO integration, branding
+   * Type: Filter
+   * Context: Login page render
+   */
+  ADMIN_LOGIN_RENDER: 'admin_login_render',
 
   // ============================================================================
   // CHAT/PIPELINE HOOKS
@@ -194,6 +232,210 @@ const HOOKS = {
    */
   CLIENT_WIDGET_RENDER: 'client_widget_render',
 
+  /**
+   * Fired on Next.js route changes
+   * Use for: Analytics tracking, cleanup, route-specific logic
+   * Type: Action
+   * Passes: { from, to, userId }
+   */
+  CLIENT_ROUTE_CHANGE: 'client_route_change',
+
+  /**
+   * Fired when plugin assets (JS bundles) are loaded
+   * Use for: Post-load initialization, feature detection
+   * Type: Action
+   * Passes: { pluginName, bundlePath, loadTime }
+   */
+  CLIENT_ASSETS_LOADED: 'client_assets_loaded',
+
+  // ============================================================================
+  // USER & AUTH HOOKS
+  // ============================================================================
+
+  /**
+   * Fired when a new user is registered
+   * Use for: Welcome emails, onboarding, analytics
+   * Type: Action
+   * Passes: { user, registrationData, timestamp }
+   */
+  USER_REGISTERED: 'user_registered',
+
+  /**
+   * Fired when a user successfully logs in
+   * Use for: Session tracking, audit logs, analytics
+   * Type: Action
+   * Passes: { user, session, timestamp }
+   */
+  USER_LOGGED_IN: 'user_logged_in',
+
+  /**
+   * Fired when a user logs out
+   * Use for: Session cleanup, activity logs
+   * Type: Action
+   * Passes: { userId, sessionId, timestamp }
+   */
+  USER_LOGGED_OUT: 'user_logged_out',
+
+  /**
+   * Fired when a user account is deleted
+   * Use for: Data cleanup, purging related records
+   * Type: Action
+   * Passes: { userId, userData, deletedBy }
+   */
+  USER_DELETED: 'user_deleted',
+
+  // ============================================================================
+  // DATABASE & MIGRATION HOOKS
+  // ============================================================================
+
+  /**
+   * Fired when a migration starts executing
+   * Use for: UI notification, logging start time
+   * Type: Action
+   * Passes: { plugin, context, migrationName }
+   */
+  MIGRATION_STARTED: 'migration_started',
+
+  /**
+   * Fired when a migration completes successfully
+   * Use for: Logging success, UI updates, post-migration tasks
+   * Type: Action
+   * Passes: { plugin, context, migrationName, duration }
+   */
+  MIGRATION_COMPLETED: 'migration_completed',
+
+  /**
+   * Fired when a migration fails
+   * Use for: Error logging, rollback, alerting
+   * Type: Action
+   * Passes: { plugin, context, migrationName, error }
+   */
+  MIGRATION_FAILED: 'migration_failed',
+
+  /**
+   * Fired when a new MasterRecord context is registered
+   * Use for: Setup tasks, initialization, logging
+   * Type: Action
+   * Passes: { contextName, models, config }
+   */
+  CONTEXT_REGISTERED: 'context_registered',
+
+  // ============================================================================
+  // API LIFECYCLE HOOKS
+  // ============================================================================
+
+  /**
+   * Fired on every API request
+   * Use for: Auth, rate-limiting, request logging
+   * Type: Filter
+   * Passes: { req, res, route, method }
+   */
+  API_REQUEST_RECEIVED: 'api_request_received',
+
+  /**
+   * Fired before sending API response
+   * Use for: Response transformation, sanitization, logging
+   * Type: Filter
+   * Passes: { req, res, data, statusCode }
+   */
+  API_RESPONSE_SENT: 'api_response_sent',
+
+  /**
+   * Fired when external API session is created
+   * Use for: Session tracking, analytics, initialization
+   * Type: Action
+   * Passes: { apiId, sessionId, apiKey }
+   */
+  API_SESSION_CREATED: 'api_session_created',
+
+  /**
+   * Fired when external API rate limit is exceeded
+   * Use for: Logging, alerting, rate limit adjustments
+   * Type: Action
+   * Passes: { apiId, apiKey, currentCount, limit, window }
+   */
+  API_RATE_LIMIT_EXCEEDED: 'api_rate_limit_exceeded',
+
+  /**
+   * Fired before external API chat message is processed
+   * Use for: Message validation, preprocessing, content filtering
+   * Type: Filter
+   * Passes: { message, sessionId, apiId, messageHistory }
+   */
+  API_CHAT_BEFORE_MESSAGE: 'api_chat_before_message',
+
+  /**
+   * Fired after external API chat response is generated
+   * Use for: Response modification, logging, analytics
+   * Type: Filter
+   * Passes: { response, message, sessionId, apiId, tokens }
+   */
+  API_CHAT_AFTER_RESPONSE: 'api_chat_after_response',
+
+  // ============================================================================
+  // SCHEDULER / CRON HOOKS
+  // ============================================================================
+
+  /**
+   * Fired when a scheduled job runs
+   * Use for: Periodic tasks, maintenance, cleanup
+   * Type: Action
+   * Passes: { jobName, schedule, lastRun }
+   */
+  SCHEDULER_JOB: 'bookbag_scheduled_job',
+
+  /**
+   * Fired when a cron job fails
+   * Use for: Retry logic, error notifications
+   * Type: Action
+   * Passes: { jobName, error, attempt }
+   */
+  SCHEDULER_JOB_FAILED: 'bookbag_cron_failed',
+
+  /**
+   * Fired when a cron job completes successfully
+   * Use for: Logging, metrics, chaining jobs
+   * Type: Action
+   * Passes: { jobName, duration, result }
+   */
+  SCHEDULER_JOB_COMPLETED: 'bookbag_cron_completed',
+
+  // ============================================================================
+  // MEDIA & FILE SYSTEM HOOKS
+  // ============================================================================
+
+  /**
+   * Fired when a file is uploaded
+   * Use for: Generating previews, embeddings, indexing
+   * Type: Action
+   * Passes: { file, userId, path, metadata }
+   */
+  MEDIA_UPLOADED: 'media_uploaded',
+
+  /**
+   * Fired when a file is deleted
+   * Use for: Cleanup references, cache invalidation
+   * Type: Action
+   * Passes: { fileId, path, userId }
+   */
+  MEDIA_DELETED: 'media_deleted',
+
+  /**
+   * Fired when a file is renamed
+   * Use for: Updating references, search index updates
+   * Type: Action
+   * Passes: { fileId, oldPath, newPath, userId }
+   */
+  MEDIA_RENAMED: 'media_renamed',
+
+  /**
+   * Fired when storage limit threshold is reached
+   * Use for: Admin notifications, cleanup suggestions
+   * Type: Action
+   * Passes: { currentUsage, limit, percentage }
+   */
+  STORAGE_LIMIT_REACHED: 'storage_limit_reached',
+
   // ============================================================================
   // SYSTEM/DEVELOPER HOOKS
   // ============================================================================
@@ -241,7 +483,7 @@ function getAllHooks() {
 
 /**
  * Get hooks by category
- * @param {string} category - 'lifecycle', 'admin', 'chat', 'client', or 'system'
+ * @param {string} category - 'lifecycle', 'admin', 'chat', 'client', 'user', 'database', 'api', 'scheduler', 'media', or 'system'
  * @returns {Object} Object containing hooks for the specified category
  */
 function getHooksByCategory(category) {
@@ -250,7 +492,9 @@ function getHooksByCategory(category) {
       return {
         CORE_INIT: HOOKS.CORE_INIT,
         CORE_READY: HOOKS.CORE_READY,
-        CORE_SHUTDOWN: HOOKS.CORE_SHUTDOWN
+        CORE_SHUTDOWN: HOOKS.CORE_SHUTDOWN,
+        CORE_REBUILD: HOOKS.CORE_REBUILD,
+        CORE_ENV_LOADED: HOOKS.CORE_ENV_LOADED
       };
 
     case 'admin':
@@ -259,7 +503,10 @@ function getHooksByCategory(category) {
         ADMIN_VIEW_RENDER: HOOKS.ADMIN_VIEW_RENDER,
         ADMIN_REGISTER_VIEW: HOOKS.ADMIN_REGISTER_VIEW,
         ADMIN_ENQUEUE: HOOKS.ADMIN_ENQUEUE,
-        ADMIN_TOOLBAR: HOOKS.ADMIN_TOOLBAR
+        ADMIN_TOOLBAR: HOOKS.ADMIN_TOOLBAR,
+        ADMIN_SETTINGS_SECTIONS: HOOKS.ADMIN_SETTINGS_SECTIONS,
+        ADMIN_ERROR: HOOKS.ADMIN_ERROR,
+        ADMIN_LOGIN_RENDER: HOOKS.ADMIN_LOGIN_RENDER
       };
 
     case 'chat':
@@ -280,7 +527,54 @@ function getHooksByCategory(category) {
         CLIENT_SIDEBAR_RIGHT: HOOKS.CLIENT_SIDEBAR_RIGHT,
         CLIENT_MENU: HOOKS.CLIENT_MENU,
         CLIENT_TOOLBAR: HOOKS.CLIENT_TOOLBAR,
-        CLIENT_WIDGET_RENDER: HOOKS.CLIENT_WIDGET_RENDER
+        CLIENT_WIDGET_RENDER: HOOKS.CLIENT_WIDGET_RENDER,
+        CLIENT_ROUTE_CHANGE: HOOKS.CLIENT_ROUTE_CHANGE,
+        CLIENT_ASSETS_LOADED: HOOKS.CLIENT_ASSETS_LOADED
+      };
+
+    case 'user':
+    case 'auth':
+      return {
+        USER_REGISTERED: HOOKS.USER_REGISTERED,
+        USER_LOGGED_IN: HOOKS.USER_LOGGED_IN,
+        USER_LOGGED_OUT: HOOKS.USER_LOGGED_OUT,
+        USER_DELETED: HOOKS.USER_DELETED
+      };
+
+    case 'database':
+    case 'migration':
+      return {
+        MIGRATION_STARTED: HOOKS.MIGRATION_STARTED,
+        MIGRATION_COMPLETED: HOOKS.MIGRATION_COMPLETED,
+        MIGRATION_FAILED: HOOKS.MIGRATION_FAILED,
+        CONTEXT_REGISTERED: HOOKS.CONTEXT_REGISTERED
+      };
+
+    case 'api':
+      return {
+        API_REQUEST_RECEIVED: HOOKS.API_REQUEST_RECEIVED,
+        API_RESPONSE_SENT: HOOKS.API_RESPONSE_SENT,
+        API_SESSION_CREATED: HOOKS.API_SESSION_CREATED,
+        API_RATE_LIMIT_EXCEEDED: HOOKS.API_RATE_LIMIT_EXCEEDED,
+        API_CHAT_BEFORE_MESSAGE: HOOKS.API_CHAT_BEFORE_MESSAGE,
+        API_CHAT_AFTER_RESPONSE: HOOKS.API_CHAT_AFTER_RESPONSE
+      };
+
+    case 'scheduler':
+    case 'cron':
+      return {
+        SCHEDULER_JOB: HOOKS.SCHEDULER_JOB,
+        SCHEDULER_JOB_FAILED: HOOKS.SCHEDULER_JOB_FAILED,
+        SCHEDULER_JOB_COMPLETED: HOOKS.SCHEDULER_JOB_COMPLETED
+      };
+
+    case 'media':
+    case 'files':
+      return {
+        MEDIA_UPLOADED: HOOKS.MEDIA_UPLOADED,
+        MEDIA_DELETED: HOOKS.MEDIA_DELETED,
+        MEDIA_RENAMED: HOOKS.MEDIA_RENAMED,
+        STORAGE_LIMIT_REACHED: HOOKS.STORAGE_LIMIT_REACHED
       };
 
     case 'system':

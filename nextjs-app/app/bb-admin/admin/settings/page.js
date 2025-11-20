@@ -195,7 +195,7 @@ export default function AdminSettingsPage() {
             <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
               <p className="text-sm text-blue-800 dark:text-blue-200">
                 <strong>Note:</strong> The current limit is set to {Math.round(settings.plugin_upload_max_file_size / 1048576)} MB ({(settings.plugin_upload_max_file_size / 1048576).toFixed(2)} MB).
-                This matches WordPress-style plugin management where administrators can control upload limits similar to PHP's upload_max_filesize setting.
+                This matches WordPress-style plugin management where administrators can control upload limits similar to PHP&apos;s upload_max_filesize setting.
               </p>
             </div>
           </div>

@@ -5,4 +5,7 @@
  * for use in the Next.js application.
  */
 
-export { KnowledgeBaseSidebar } from './KnowledgeBaseSidebar';
+import KnowledgeBaseSidebarDefault from './KnowledgeBaseSidebar';
+
+// Re-export default export as named export
+export const KnowledgeBaseSidebar = KnowledgeBaseSidebarDefault;

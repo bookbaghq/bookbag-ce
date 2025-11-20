@@ -205,6 +205,25 @@ class sidebarController {
         {
           label: 'Add New',
           url: '/bb-admin/plugins/new'
+        },
+        {
+          label: 'Migration History',
+          url: '/bb-admin/plugins/migrations'
+        }
+      ];
+
+      // Developer Tools menu (position 75) - Developer utilities
+      menu.push({
+        id: 'developer-tools',
+        label: 'Developer Tools',
+        url: '/bb-admin/developer-tools',
+        icon: 'Code',
+        position: 75
+      });
+      submenu['developer-tools'] = [
+        {
+          label: 'Hooks Inspector',
+          url: '/bb-admin/developer-tools/hooks'
         }
       ];
 

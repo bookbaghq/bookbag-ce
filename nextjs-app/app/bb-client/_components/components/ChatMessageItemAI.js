@@ -5,6 +5,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Bot, User } from "lucide-react";
@@ -128,11 +129,14 @@ export function ChatMessageItemAI({
             {message.attachments && Array.isArray(message.attachments) && message.attachments.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2 justify-start">
                 {message.attachments.map((imageUrl, idx) => (
-                  <img
+                  <Image
                     key={idx}
                     src={imageUrl}
                     alt={`AI-generated image ${idx + 1}`}
+                    width={200}
+                    height={200}
                     className="max-w-[200px] rounded border border-border"
+                    unoptimized
                   />
                 ))}
               </div>
@@ -187,11 +191,14 @@ export function ChatMessageItemAI({
             {message.attachments && Array.isArray(message.attachments) && message.attachments.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2 justify-end">
                 {message.attachments.map((imageUrl, idx) => (
-                  <img
+                  <Image
                     key={idx}
                     src={imageUrl}
                     alt={`Attachment ${idx + 1}`}
+                    width={200}
+                    height={200}
                     className="max-w-[200px] rounded border border-border"
+                    unoptimized
                   />
                 ))}
               </div>

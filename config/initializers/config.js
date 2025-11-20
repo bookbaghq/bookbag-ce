@@ -16,6 +16,7 @@ var workspaceContext = require(`${master.root}/components/workspace/app/models/w
 var mediaContext = require(`${master.root}/components/media/app/models/mediaContext`);
 var pluginContext = require(`${master.root}/components/plugins/app/models/pluginContext`);
 var adminContext = require(`${master.root}/components/admin/app/models/adminContext`);
+var apiContext = require(`${master.root}/components/api/app/models/apiContext`);
 
 // mail services
 const MailTemplateService = require(`${master.root}/components/mail/app/service/mailTemplateService`);
@@ -52,6 +53,7 @@ master.addSingleton("workspaceContext", workspaceContext);
 master.addSingleton("mediaContext", mediaContext);
 master.addSingleton("pluginContext", pluginContext);
 master.addSingleton("adminContext", adminContext);
+master.addSingleton("apiContext", apiContext);
 master.register("_mapper", mapObject);
 
 // Initialize and register mail services so controllers can use them
@@ -73,6 +75,7 @@ master.component("components", "media");
 master.component("components", "plugins");
 // master.component("components", "rag"); // Now loaded as a plugin
 master.component("components", "admin");
+master.component("components", "api");
 
 // ============================================================================
 // BOOKBAG HOOK SYSTEM INITIALIZATION

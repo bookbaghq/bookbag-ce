@@ -405,7 +405,7 @@ export default function NewPluginPage() {
           <div className="flex items-start">
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-current mt-2 mr-3 flex-shrink-0"></span>
             <p>
-              The <span className="font-medium text-foreground">entry</span> field should point to your main plugin file (e.g., <span className="font-mono text-xs bg-background px-1 py-0.5 rounded">"entry": "index.js"</span>)
+              The <span className="font-medium text-foreground">entry</span> field should point to your main plugin file (e.g., <span className="font-mono text-xs bg-background px-1 py-0.5 rounded">&quot;entry&quot;: &quot;index.js&quot;</span>)
             </p>
           </div>
           <div className="flex items-start">

@@ -154,6 +154,60 @@
         "skipGetFunction": false,
         "valueConversion": true
       },
+      "last_error": {
+        "name": "last_error",
+        "type": "string",
+        "nullable": true,
+        "unique": false,
+        "auto": false,
+        "cascadeOnDelete": true,
+        "lazyLoading": true,
+        "isNavigational": false,
+        "skipGetFunction": false,
+        "valueConversion": true,
+        "tableName": "Plugin"
+      },
+      "error_count": {
+        "name": "error_count",
+        "type": "integer",
+        "default": 0,
+        "nullable": true,
+        "unique": false,
+        "auto": false,
+        "cascadeOnDelete": true,
+        "lazyLoading": true,
+        "isNavigational": false,
+        "skipGetFunction": false,
+        "valueConversion": true,
+        "tableName": "Plugin"
+      },
+      "last_loaded_at": {
+        "name": "last_loaded_at",
+        "type": "string",
+        "nullable": true,
+        "unique": false,
+        "auto": false,
+        "cascadeOnDelete": true,
+        "lazyLoading": true,
+        "isNavigational": false,
+        "skipGetFunction": false,
+        "valueConversion": true,
+        "tableName": "Plugin"
+      },
+      "is_broken": {
+        "name": "is_broken",
+        "type": "boolean",
+        "default": false,
+        "nullable": true,
+        "unique": false,
+        "auto": false,
+        "cascadeOnDelete": true,
+        "lazyLoading": true,
+        "isNavigational": false,
+        "skipGetFunction": false,
+        "valueConversion": true,
+        "tableName": "Plugin"
+      },
       "created_at": {
         "name": "created_at",
         "type": "string",
@@ -179,6 +233,107 @@
         "valueConversion": true
       },
       "__name": "Plugin"
+    },
+    {
+      "id": {
+        "name": "id",
+        "type": "integer",
+        "primary": true,
+        "nullable": false,
+        "unique": true,
+        "auto": true,
+        "cascadeOnDelete": true,
+        "lazyLoading": true,
+        "isNavigational": false,
+        "skipGetFunction": false,
+        "valueConversion": true
+      },
+      "plugin": {
+        "name": "plugin",
+        "type": "string",
+        "nullable": false,
+        "unique": false,
+        "auto": false,
+        "cascadeOnDelete": true,
+        "lazyLoading": true,
+        "isNavigational": false,
+        "skipGetFunction": false,
+        "valueConversion": true
+      },
+      "context": {
+        "name": "context",
+        "type": "string",
+        "nullable": false,
+        "unique": false,
+        "auto": false,
+        "cascadeOnDelete": true,
+        "lazyLoading": true,
+        "isNavigational": false,
+        "skipGetFunction": false,
+        "valueConversion": true
+      },
+      "ran_at": {
+        "name": "ran_at",
+        "type": "string",
+        "nullable": false,
+        "unique": false,
+        "auto": false,
+        "cascadeOnDelete": true,
+        "lazyLoading": true,
+        "isNavigational": false,
+        "skipGetFunction": false,
+        "valueConversion": true
+      },
+      "status": {
+        "name": "status",
+        "type": "string",
+        "default": "success",
+        "nullable": true,
+        "unique": false,
+        "auto": false,
+        "cascadeOnDelete": true,
+        "lazyLoading": true,
+        "isNavigational": false,
+        "skipGetFunction": false,
+        "valueConversion": true
+      },
+      "error_message": {
+        "name": "error_message",
+        "type": "string",
+        "nullable": true,
+        "unique": false,
+        "auto": false,
+        "cascadeOnDelete": true,
+        "lazyLoading": true,
+        "isNavigational": false,
+        "skipGetFunction": false,
+        "valueConversion": true
+      },
+      "stdout": {
+        "name": "stdout",
+        "type": "string",
+        "nullable": true,
+        "unique": false,
+        "auto": false,
+        "cascadeOnDelete": true,
+        "lazyLoading": true,
+        "isNavigational": false,
+        "skipGetFunction": false,
+        "valueConversion": true
+      },
+      "stderr": {
+        "name": "stderr",
+        "type": "string",
+        "nullable": true,
+        "unique": false,
+        "auto": false,
+        "cascadeOnDelete": true,
+        "lazyLoading": true,
+        "isNavigational": false,
+        "skipGetFunction": false,
+        "valueConversion": true
+      },
+      "__name": "PluginMigrationLog"
     }
   ]
 }
